@@ -1,0 +1,22 @@
+{
+  "configurations": [
+    {
+      "name": "Linux",
+      "includePath": [
+        "${workspaceFolder}/shared_include/shared"
+      ],
+      "compilerArgs": [
+        "-O3",
+        "-Wall",
+        "-Wextra",
+        "-Wpedantic",
+        "-std=c17"
+      ],
+      "defines": [],
+      "compilerPath": "/usr/bin/gcc",
+      "cStandard": "c17",
+      "intelliSenseMode": "linux-gcc-x64"
+    }
+  ],
+  "version": 4
+}

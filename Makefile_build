@@ -1,0 +1,60 @@
+#!/bin/make
+#Use ./make.sh or "source tasks.conf" to set the proper variables as defined in the project's build.conf.
+ifeq ($(used_make_sh),)
+$(error Use make.sh and a project's build.conf to set the proper variables for this makefile to work properly)
+endif
+$(shell mkdir -p include build shared_include bin)#Git didn't add the necessary files for the makefile to work.
+main_src_d=src/$(project_name)
+main_bin_d=bin/$(project_name)
+main_include_d=include/$(project_name)
+main_build_d=build/$(project_name)
+$(shell mkdir -p $(main_build_d))#Add separate folders for object builds and bin directory.
+$(shell mkdir -p $(main_bin_d))
+file_output=$(main_bin_d)/$(project_name)$(file_exe_postfix)
+file_executable=./$(project_name)$(file_exe_postfix)
+
+#recursive_search $(call recursive_search,(directory to search for suffixes and its subdirectories),(suffix)) returns all files with suffix
+get_files=$(wildcard $(1)/*.$(2))#Directory $(1) with suffix $(2)
+get_d=$(filter $(basename $(wildcard $(1)/*)),$(wildcard $(1)/*))#Get directories (No periods) only by filtering names without suffix.
+recursive_search=$(call get_files,$(1),$(2)) $(foreach dir,$(call get_d,$(1)),$(call $(0),$(dir),$(2)))#call $(0) is recursive_search (itself) to do recursion.
+recursive_dir=$(call get_d,$(1)) $(foreach dir,$(call get_d,$(1)),$(call $(0),$(dir)))#recursive_dir same as recursive_search, but searches for directories (No periods), but also files without dots.
+
+src_to_build_subd:=$(patsubst $(main_src_d)/%,%,$(call recursive_dir,$(main_src_d))) \
+$(foreach subd,$(use_shared_src_d),$(call recursive_dir,$(subd)))
+$(foreach proj,$(use_shared_src_d),$(shell mkdir -p $(main_build_d)/$(proj)))#Make project names of shared_src
+$(foreach subd,$(src_to_build_subd),$(shell mkdir -p $(main_build_d)/$(subd)))#Make subdirectories within src and shared_src for use within $(main_build_d) directory.
+
+all_src_c=$(call recursive_search,$(main_src_d),$(prefix))#*.$(prefix) for all subdirectores in src directory.
+all_shared_src_c=$(foreach subd,$(use_shared_src_d),$(call recursive_search,$(subd),$(prefix)))#For shared_src directory.
+
+build_objs:=$(patsubst $(main_src_d)/%.$(prefix),$(main_build_d)/%.o,$(all_src_c))
+#^Get all .$(prefix) files from src folder/subdirectories, replace extensions with .o and replace directories to build.
+build_share_objs:=$(foreach c_file,$(all_shared_src_c),$(patsubst %.$(prefix),$(main_build_d)/%.o,$(c_file)))
+
+all_headers_d=-I$(main_include_d) $(foreach ss,$(use_shared_src_d),-I$(patsubst shared_src/%,shared_include/%,$(ss)))
+
+src_headers_all_files=$(call recursive_search,$(main_include_d),*) \
+$(call recursive_search,shared_include,*) #The purpose is to make the makefile rebuild all $(prefix) files if any of these header files in directory/subdirectory have been recently edited.
+
+link_build=$(strip $(compiler) $(build_objs) $(build_share_objs) $(link_libs) -o $(file_output) $(linking_flags))
+
+.PHONY: all run clean
+all: $(build_objs) $(build_share_objs)
+	@echo -e "\033[1;34m--------------------LINKING [$(file_output)]--------------------\033[0m"
+	$(link_build)
+#For the recipes below, @echo used to print out the "(RE)BUILDING [obj file]" and the "build object file command" simultaneously even when -j(number) is used.
+$(main_build_d)/shared_src/%.o: shared_src/%.$(prefix) $(src_headers_all_files) $(main_src_d)/build.conf#Rebuild if any of these files or the *.$(prefix) file have been edited.
+	@echo -e "\033[1;34m--------------------(RE)BUILDING SHARED [$@]-------------------\033[0m\n\
+	$(strip $(compiler) -c $(patsubst $(main_build_d)/%.o,%.$(prefix),$@) $(all_headers_d) -o $@ $(compiler_flags))"
+	@$(strip $(compiler) -c $(patsubst $(main_build_d)/%.o,%.$(prefix),$@) $(all_headers_d) -o $@ $(compiler_flags))
+$(main_build_d)/%.o: $(main_src_d)/%.$(prefix) $(src_headers_all_files) $(main_src_d)/build.conf
+	@echo -e "\033[1;34m--------------------(RE)BUILDING [$@]-------------------\033[0m\n\
+	$(strip $(compiler) -c $(patsubst $(main_build_d)/%.o,$(main_src_d)/%.$(prefix),$@) $(all_headers_d) -o $@ $(compiler_flags))"
+	@$(strip $(compiler) -c $(patsubst $(main_build_d)/%.o,$(main_src_d)/%.$(prefix),$@) $(all_headers_d) -o $@ $(compiler_flags))
+run:#cd to $(main_bin_d) to fix filepaths when running with make.
+	@echo -e "\033[1;34m--------------------RUNNING [$(file_output)]--------------------\033[0m"
+	cd $(main_bin_d) && $(file_executable) $(binary_arguments)
+	@echo -e "\033[1;34m--------------------DONE RUNNING--------------------\033[0m"
+clean:#Remove executable and build directory files/folders.
+	@echo -e "\033[1;34m--------------------CLEANING--------------------\033[0m"
+	rm -rf $(main_bin_d) && rm -rf $(main_build_d)

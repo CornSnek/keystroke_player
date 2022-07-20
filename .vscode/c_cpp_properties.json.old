@@ -1,0 +1,22 @@
+{
+  "configurations": [
+    {
+      "name": "Linux",
+      "includePath": [
+        "${workspaceFolder}/include/project_name"
+      ],
+      "compilerArgs": [
+        "-O3",
+        "-Wall",
+        "-Wextra",
+        "-Wpedantic",
+        "-std=c17"
+      ],
+      "defines": [],
+      "compilerPath": "/usr/bin/clang",
+      "cStandard": "c17",
+      "intelliSenseMode": "linux-clang-x64"
+    }
+  ],
+  "version": 4
+}
