@@ -45,9 +45,9 @@ typedef union{
 }command_union_t;
 typedef enum{
     VT_KeyStroke,VT_Delay,VT_RepeatStart,VT_RepeatEnd
-}VariantType;
+}CommandType;
 typedef struct{//Aggregating like for SDL events (enums and unions).
-    VariantType type;
+    CommandType type;
     command_union_t cmd;
 }command_t;
 typedef struct command_array_s{
