@@ -6,7 +6,7 @@
 #include <stdlib.h>
 #include <stdbool.h>
 typedef enum{
-    RS_Start,RS_RepeatStart,RS_RepeatEnd,RS_RepeatEndNumber,RS_Keys,RS_KeyState,RS_Delay,RS_DelayNum
+    RS_Start,RS_RepeatStart,RS_RepeatEnd,RS_RepeatEndNumber,RS_Keys,RS_KeyState,RS_Delay,RS_DelayNum,RS_Mouse,RS_MouseType
 }ReadState;
 typedef struct repeat_id_manager_s repeat_id_manager_t;
 typedef struct command_array_s command_array_t;
@@ -37,14 +37,18 @@ typedef struct{
     int index;//Index refers to repeat_start_t's index.
     int counter_max;//0 means infinite loop.
 }repeat_end_t;
+typedef struct{
+    int mouse_type;
+}mouse_click_t;
 typedef union{
     keystroke_t ks;
     delay_ns_t delay;
     repeat_start_t repeat_start;
     repeat_end_t repeat_end;
+    mouse_click_t mouse;
 }command_union_t;
 typedef enum{
-    VT_KeyStroke,VT_Delay,VT_RepeatStart,VT_RepeatEnd
+    VT_KeyStroke,VT_Delay,VT_RepeatStart,VT_RepeatEnd,VT_MouseClick
 }CommandType;
 typedef struct{//Aggregating like for SDL events (enums and unions).
     CommandType type;

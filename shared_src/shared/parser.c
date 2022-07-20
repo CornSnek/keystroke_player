@@ -191,6 +191,10 @@ bool macro_buffer_process_next(macro_buffer_t* this){//Returns bool if processed
                 this->parse_error=true;
                 key_processed=true;
                 break;
+            case RS_Mouse:
+                //TODO
+            case RS_MouseType:
+                //TODO
             case RS_Keys:
                 if(char_is_key(current_char)) break;
                 else if(current_char=='='){
