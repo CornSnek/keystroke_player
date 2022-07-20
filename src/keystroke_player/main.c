@@ -10,7 +10,7 @@ int main(int argc, char** argv){
     (void)argc;
     (void)argv;
     printf("Making a keystroke player in c.\n");
-    char a_string_stack[]="a=d,a=d,a=d.m1;A=D.m2";
+    char a_string_stack[]="a=d,b=d,c=d.s1;d=d.s2;e=d.0";
     char* a_string_heap=(char*)malloc(sizeof(a_string_stack)/sizeof(char));
     strcpy(a_string_heap,a_string_stack);
     shared_string_manager* ssm=SSManager_new();
@@ -21,15 +21,7 @@ int main(int argc, char** argv){
         if(mb->parse_i==mb->size) break;
     }
     if(!mb->parse_error){
-        //run_program(cmd_arr);
-        int cmd_arr_len=command_array_count(cmd_arr);
-        int cmd_arr_i=0;
-        while(true){
-            command_t cmd=cmd_arr->cmds[cmd_arr_i];
-            command_union_t cmd_u=cmd_arr->cmds[cmd_arr_i].cmd;
-            VariantType cmd_type=cmd_arr->cmds[cmd_arr_i].type;
-            if(cmd_arr_i++==cmd_arr_len) break;
-        }
+        run_program(cmd_arr);
     }
     repeat_id_manager_free(rim);
     command_array_free(cmd_arr);
@@ -78,7 +70,7 @@ void run_program(command_array_t* cmd_arr){
                 break;
         }
 
-        if(cmd_arr_i++==cmd_arr_len) break;
+        if(++cmd_arr_i==cmd_arr_len) break;
     }
     key_down_check_key_up(kdt,xdo_obj,focus_window);
     key_down_check_free(kdt);

@@ -357,7 +357,6 @@ command_array_t* command_array_new(shared_string_manager* ssm){
 }
 void command_array_add(command_array_t* this, command_t cmd_arr){
     this->size++;
-    printf("%ld\n",sizeof(cmd_arr));
     if(this->cmds) this->cmds=(command_t*)realloc(this->cmds,sizeof(command_t)*(this->size));
     else this->cmds=(command_t*)malloc(sizeof(command_t));
     EXIT_IF_NULL(this->cmds,command_t*);
