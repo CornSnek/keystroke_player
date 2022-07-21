@@ -313,7 +313,7 @@ bool macro_buffer_process_next(macro_buffer_t* this){//Returns bool if processed
                 this->parse_error=true;
                 key_processed=true;
                 break;
-            case RS_MouseState://TODO below
+            case RS_MouseState:
                 if(char_is_keystate(current_char)){
                     if(added_keystate){
                         fprintf(stderr,"Cannot add more than 1 keystate.\n");
@@ -333,7 +333,7 @@ bool macro_buffer_process_next(macro_buffer_t* this){//Returns bool if processed
                     );
                     break;
                 }else if(current_char=='.'){
-                    new_token_i+=2;//To read numbers.
+                    new_token_i+=2;//To read numbers only.
                     parse_i_offset=-1;
                     read_state=RS_MouseDelay;
                     break;
@@ -349,7 +349,7 @@ bool macro_buffer_process_next(macro_buffer_t* this){//Returns bool if processed
                         case 'm': case 'M': delay_mult=1000; break;
                         case 'u': case 'U': delay_mult=1;
                     }
-                    new_token_i+=1;
+                    new_token_i+=1;//To read numbers only.
                     parse_i_offset=-1;
                     read_state=RS_MouseDelayNum;
                     break;
