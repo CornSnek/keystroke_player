@@ -6,7 +6,7 @@
 #include <stdlib.h>
 #include <stdbool.h>
 typedef enum{
-    RS_Start,RS_RepeatStart,RS_RepeatEnd,RS_RepeatEndNumber,RS_Keys,RS_KeyState,RS_Delay,RS_DelayNum,RS_Mouse,RS_MouseType
+    RS_Start,RS_RepeatStart,RS_RepeatEnd,RS_RepeatEndNumber,RS_KeyOrMouse,RS_KeyState,RS_Delay,RS_DelayNum,RS_MouseType,RS_MouseState,RS_MouseDelay,RS_MouseDelayNum
 }ReadState;
 typedef struct repeat_id_manager_s repeat_id_manager_t;
 typedef struct command_array_s command_array_t;
@@ -38,6 +38,7 @@ typedef struct{
     int counter_max;//0 means infinite loop.
 }repeat_end_t;
 typedef struct{
+    bool mouse_state;
     int mouse_type;
 }mouse_click_t;
 typedef union{

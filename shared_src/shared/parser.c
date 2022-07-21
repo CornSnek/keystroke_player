@@ -65,20 +65,22 @@ bool macro_buffer_process_next(macro_buffer_t* this){//Returns bool if processed
     bool* keystate_tokens=(bool*)malloc(sizeof(bool));
     EXIT_IF_NULL(keystate_tokens,bool*);
     __uint64_t delay_mult; 
-    char* num_str=(char*)malloc(sizeof(char));
+    char* num_str=(char*)malloc(sizeof(char)*2);
     EXIT_IF_NULL(num_str,char*);
     __uint64_t parsed_num=0;
     bool added_keystate=false;
     int num_key_tokens=0;
     int new_token_i=0; //To exclude reading certain non-alphanumeric characters
     int parse_i_offset=0;
+    bool maybe_mouse=false;
     do{
         const char current_char=this->contents[this->parse_i+new_token_i+parse_i_offset];
-        //printf("%c %d %d %d\n",current_char,this->parse_i,parse_i_offset,new_token_i);
+        printf("'%c' %d %d %d %d\n",current_char,this->parse_i,parse_i_offset,new_token_i,(int)read_state);
         switch(read_state){
             case RS_Start:
                 if(char_is_key(current_char)){
-                    read_state=RS_Keys;
+                    if(current_char=='m'||current_char=='M'){maybe_mouse=true;}
+                    read_state=RS_KeyOrMouse;
                     break;
                 }else if(current_char=='('){
                     new_token_i+=1;
@@ -191,18 +193,23 @@ bool macro_buffer_process_next(macro_buffer_t* this){//Returns bool if processed
                 this->parse_error=true;
                 key_processed=true;
                 break;
-            case RS_Mouse:
-                //TODO
-            case RS_MouseType:
-                //TODO
-            case RS_Keys:
+            case RS_KeyOrMouse:
+                if(maybe_mouse&&isdigit(current_char)){
+                        new_token_i+=parse_i_offset;
+                        parse_i_offset=-1;
+                        read_state=RS_MouseType;
+                        break;
+                }
                 if(char_is_key(current_char)) break;
                 else if(current_char=='='){
                     read_state=RS_KeyState;
                     added_keystate=false;
                     break;
-                }else if(current_char==','||current_char=='.'){fprintf(stderr,"= should be added after key.\n"); exit(EXIT_FAILURE);}
-                fprintf(stderr,"In state RS_Keys, current character not allowed '%c'.\n",current_char);
+                }else if(current_char==','||current_char=='.'){
+                    fprintf(stderr,"= should be added after key.\n");
+                    exit(EXIT_FAILURE);
+                }
+                fprintf(stderr,"In state RS_KeyOrMouse, current character not allowed '%c'.\n",current_char);
                 this->parse_error=true;
                 key_processed=true;
                 break;
@@ -220,11 +227,11 @@ bool macro_buffer_process_next(macro_buffer_t* this){//Returns bool if processed
                     break;
                 }else if(current_char==','){
                     add_read_token(this,read_tokens,&num_key_tokens,&new_token_i,&parse_i_offset);
-                    read_tokens=(char**)realloc(read_tokens,sizeof(char*)*(++num_key_tokens+1));//+1 to expect another read_/keystate_ in RS_Keys.
+                    read_tokens=(char**)realloc(read_tokens,sizeof(char*)*(++num_key_tokens+1));//+1 to expect another read_/keystate_ in RS_KeyOrMouse.
                     EXIT_IF_NULL(read_tokens,char*);
                     keystate_tokens=(bool*)realloc(keystate_tokens,sizeof(bool)*(num_key_tokens+1));
                     EXIT_IF_NULL(keystate_tokens,bool*);
-                    read_state=RS_Keys;
+                    read_state=RS_KeyOrMouse;
                     break;
                 }else if(current_char=='.'){
                     add_read_token(this,read_tokens,&num_key_tokens,&new_token_i,&parse_i_offset);
@@ -288,6 +295,94 @@ bool macro_buffer_process_next(macro_buffer_t* this){//Returns bool if processed
                     break;
                 }
                 fprintf(stderr,"In state RS_DelayNum, current character not allowed '%c'.\n",current_char);
+                this->parse_error=true;
+                key_processed=true;
+                break;
+            case RS_MouseType:
+                if(isdigit(current_char)){
+                    num_str[0]=current_char;
+                    num_str[1]='\0';
+                    break;
+                }else if(current_char=='='){
+                    new_token_i+=2;//To read numbers.
+                    parse_i_offset=-1;
+                    read_state=RS_MouseState;
+                    break;
+                }
+                fprintf(stderr,"In state RS_MouseType, current character not allowed '%c'.\n",current_char);
+                this->parse_error=true;
+                key_processed=true;
+                break;
+            case RS_MouseState://TODO below
+                if(char_is_keystate(current_char)){
+                    if(added_keystate){
+                        fprintf(stderr,"Cannot add more than 1 keystate.\n");
+                        this->parse_error=true;
+                        key_processed=true;
+                        break;
+                    }
+                    if(current_char=='u'||current_char=='U') keystate_tokens[0]=false;//Using keystate since there's only 1 mouse click.
+                    else keystate_tokens[0]=true;
+                    added_keystate=true;
+                    command_array_add(this->cmd_arr,
+                        (command_t){.type=VT_MouseClick,
+                            .cmd.mouse=(mouse_click_t){.mouse_state=keystate_tokens[0],
+                                .mouse_type=strtol(num_str,NULL,10)
+                            }
+                        }
+                    );
+                    break;
+                }else if(current_char=='.'){
+                    new_token_i+=2;//To read numbers.
+                    parse_i_offset=-1;
+                    read_state=RS_MouseDelay;
+                    break;
+                }
+                fprintf(stderr,"In state RS_MouseType, current character not allowed '%c'.\n",current_char);
+                this->parse_error=true;
+                key_processed=true;
+                break;
+            case RS_MouseDelay:
+                if(char_is_delay(current_char)){
+                    switch(current_char){
+                        case 's': case 'S': delay_mult=1000000; break;
+                        case 'm': case 'M': delay_mult=1000; break;
+                        case 'u': case 'U': delay_mult=1;
+                    }
+                    new_token_i+=1;
+                    parse_i_offset=-1;
+                    read_state=RS_MouseDelayNum;
+                    break;
+                }else if(isdigit(current_char)){
+                    delay_mult=1;//Default microseconds.
+                    read_state=RS_MouseDelayNum;
+                    num_str[parse_i_offset]=current_char;
+                    num_str=(char*)realloc(num_str,sizeof(char)*(parse_i_offset+2));
+                    EXIT_IF_NULL(num_str,char*);
+                    break;
+                }
+                fprintf(stderr,"In state RS_MouseDelay, current character not allowed '%c'.\n",current_char);
+                this->parse_error=true;
+                key_processed=true;
+                break;
+            case RS_MouseDelayNum:
+                if(isdigit(current_char)){
+                    num_str[parse_i_offset]=current_char;
+                    num_str=(char*)realloc(num_str,sizeof(char)*(parse_i_offset+2));
+                    EXIT_IF_NULL(num_str,char*);
+                    break;
+                }else if(current_char==';'||current_char=='\0'){
+                    num_str[parse_i_offset]='\0';
+                    parsed_num=strtol(num_str,NULL,10)*delay_mult;
+                    if(parsed_num) command_array_add(this->cmd_arr,
+                        (command_t){.type=VT_Delay,
+                            .cmd.delay=parsed_num
+                        }
+                    );
+                    key_processed=true;
+                    break;
+                }
+                fprintf(stderr,"In state RS_MouseDelayNum, current character not allowed '%c'.\n",current_char);
                 this->parse_error=true;
                 key_processed=true;
                 break;
@@ -384,6 +479,8 @@ void command_array_print(const command_array_t* this){
                 break;
             case VT_RepeatEnd:
                 printf("(%d) RepeatEnd: RepeatAtIndex: %d MaxCounter: %d\n",i,cmd.repeat_end.index,cmd.repeat_end.counter_max);
+                break;
+            default:
                 break;
         }
     }

@@ -9,7 +9,8 @@ void run_program(command_array_t* cmd_arr);
 int main(int argc, char** argv){
     (void)argc;
     (void)argv;
-    char a_string_stack[]="(A;w+a=d.s1;w+a=u.s1;d=d.s2;d=u.0;(B;i=d.0;i=u.0;o=d.0;o=u.0;)B=5;)A=3";
+    //char a_string_stack[]="(A;w+a=d.s1;w+a=u.s1;d=d.s2;d=u.0;(B;i=d.1000;i=u.1000;o=d.1000;o=u.1000;)B=5;)A=3";
+    char a_string_stack[]="(A;m5=u.s2;)A=3";
     char* a_string_heap=(char*)malloc(sizeof(a_string_stack)/sizeof(char));
     strcpy(a_string_heap,a_string_stack);
     shared_string_manager* ssm=SSManager_new();
@@ -41,9 +42,9 @@ void run_program(command_array_t* cmd_arr){
     int cmd_arr_i=0;
     key_down_check_t* kdt=key_down_check_new();
     while(true){
-        command_t cmd=cmd_arr->cmds[cmd_arr_i];
         command_union_t cmd_u=cmd_arr->cmds[cmd_arr_i].cmd;
         CommandType cmd_type=cmd_arr->cmds[cmd_arr_i].type;
+        int* rst_counter=0;
         switch(cmd_type){
             case(VT_KeyStroke):
                 if(cmd_u.ks.key_state){
@@ -62,10 +63,13 @@ void run_program(command_array_t* cmd_arr){
                 usleep(cmd_u.delay);
                 break;
             case(VT_RepeatEnd):
-                int* rst_counter=&(cmd_arr->cmds[cmd_u.repeat_end.index].cmd.repeat_start.counter);
+                rst_counter=&(cmd_arr->cmds[cmd_u.repeat_end.index].cmd.repeat_start.counter);
                 printf("Command #%d: Jump to Command #%d if Counter %d reaches %d\n",cmd_arr_i,cmd_u.repeat_end.index,++(*rst_counter),cmd_u.repeat_end.counter_max);
-                if(*rst_counter!=cmd_u.repeat_end.counter_max) cmd_arr_i=cmd_u.repeat_end.index;//Go back if not counter_max
+                if(*rst_counter!=cmd_u.repeat_end.counter_max) cmd_arr_i=cmd_u.repeat_end.index-1;//Go back if not counter_max
                 else *rst_counter=0;//Reset to 0.
+                break;
+            case(VT_RepeatStart):
+                printf("Command #%d: This is a loop counter (%d).\n",cmd_arr_i,cmd_u.repeat_start.counter);
                 break;
             default:
                 break;
