@@ -12,7 +12,7 @@ int trim_whitespace(char** strptr){//For null-terminated strings only, and reedi
     (*strptr)[str_i-whitespace_count]='\0';//Null terminate last character and reallocate as whitespace-trimmed string.
     *strptr=(char*)realloc(*strptr,(str_i-whitespace_count+1)*sizeof(char));
     EXIT_IF_NULL(*strptr,char*);
-    return str_i-whitespace_count+1;
+    return str_i-whitespace_count;
 }
 
 void replace_str(char** p_owner strptr_owner, const char* replace, const char* with){//Assume all null-terminated.
@@ -45,8 +45,7 @@ void replace_str(char** p_owner strptr_owner, const char* replace, const char* w
 macro_buffer_t* macro_buffer_new(char* p_owner str_owned, shared_string_manager* ssm, command_array_t* cmd_arr, repeat_id_manager_t* rim){
     macro_buffer_t* this=(macro_buffer_t*)(malloc(sizeof(macro_buffer_t)));
     EXIT_IF_NULL(this,macro_buffer_t);
-    int size=trim_whitespace(&str_owned);
-    *this=(macro_buffer_t){.size=size,.parse_i=0,.contents=str_owned,.ssm=ssm,.cmd_arr=cmd_arr,.rim=rim,.parse_error=false};
+    *this=(macro_buffer_t){.parse_i=0,.line_num=1,.char_num=1,.size=strlen(str_owned),.contents=str_owned,.ssm=ssm,.cmd_arr=cmd_arr,.rim=rim,.parse_error=false};
     return this;
 }
 void add_read_token(macro_buffer_t* this,char** read_tokens,int* num_key_tokens,int* new_token_i,int* parse_i_offset){
@@ -75,7 +74,7 @@ bool macro_buffer_process_next(macro_buffer_t* this){//Returns bool if processed
     bool maybe_mouse=false;
     do{
         const char current_char=this->contents[this->parse_i+new_token_i+parse_i_offset];
-        printf("'%c' %d %d %d %d\n",current_char,this->parse_i,parse_i_offset,new_token_i,(int)read_state);
+        printf("'%c' %d %d %d State:%d Length:%d\n",current_char,this->parse_i,parse_i_offset,new_token_i,(int)read_state,this->size);
         switch(read_state){
             case RS_Start:
                 if(char_is_key(current_char)){
@@ -95,8 +94,14 @@ bool macro_buffer_process_next(macro_buffer_t* this){//Returns bool if processed
                 }else if(current_char=='\0'){
                     key_processed=true;
                     break;
+                }else if(current_char=='\n'){//Only exclude \n at RS_Start.
+                    new_token_i+=1;
+                    parse_i_offset=-1;
+                    this->line_num++;
+                    this->char_num=0;//1 after loop repeats.
+                    break;
                 }
-                fprintf(stderr,"In state RS_Start, current character not allowed '%c'.\n",current_char);
+                fprintf(stderr,"In state RS_Start, current character not allowed '%c' at line %d char %d.\n",current_char,this->line_num,this->char_num);
                 this->parse_error=true;
                 key_processed=true;
                 break;
@@ -119,7 +124,7 @@ bool macro_buffer_process_next(macro_buffer_t* this){//Returns bool if processed
                     key_processed=true;
                     break;
                 }
-                fprintf(stderr,"In state RS_RepeatStart, current character not allowed '%c'.\n",current_char);
+                fprintf(stderr,"In state RS_RepeatStart, current character not allowed '%c' at line %d char %d.\n",current_char,this->line_num,this->char_num);
                 this->parse_error=true;
                 key_processed=true;
                 break;
@@ -136,12 +141,12 @@ bool macro_buffer_process_next(macro_buffer_t* this){//Returns bool if processed
                         read_state=RS_RepeatEndNumber;
                         break;
                     }
-                    fprintf(stderr,"String '%s' was not initially defined in a RS_RepeatStart.\n",repeat_name_str);
+                    fprintf(stderr,"String '%s' was not initially defined.\n",repeat_name_str);
                     this->parse_error=true;
                     key_processed=true;
                     break;
                 }
-                if(current_char==';'||current_char=='\0'){
+                if(current_char==';'){
                     repeat_name_str=(char*)calloc(parse_i_offset+1,sizeof(char));
                     EXIT_IF_NULL(repeat_name_str,char);
                     strncpy(repeat_name_str,this->contents+this->parse_i+new_token_i,parse_i_offset);
@@ -160,12 +165,12 @@ bool macro_buffer_process_next(macro_buffer_t* this){//Returns bool if processed
                         key_processed=true;
                         break;
                     }
-                    fprintf(stderr,"String '%s' was not initially defined in a RS_RepeatStart.\n",repeat_name_str);
+                    fprintf(stderr,"String '%s' was not initially defined.\n",repeat_name_str);
                     this->parse_error=true;
                     key_processed=true;
                     break;
                 }
-                fprintf(stderr,"In state RS_RepeatEnd, current character not allowed '%c'.\n",current_char);
+                fprintf(stderr,"In state RS_RepeatEnd, current character not allowed '%c' at line %d char %d.\n",current_char,this->line_num,this->char_num);
                 this->parse_error=true;
                 key_processed=true;
                 break;
@@ -175,7 +180,7 @@ bool macro_buffer_process_next(macro_buffer_t* this){//Returns bool if processed
                     num_str=(char*)realloc(num_str,sizeof(char)*(parse_i_offset+2));
                     EXIT_IF_NULL(num_str,char*);
                     break;
-                }else if(current_char==';'||current_char=='\0'){
+                }else if(current_char==';'){
                     num_str[parse_i_offset]='\0';
                     parsed_num=strtol(num_str,NULL,10);
                     command_array_add(this->cmd_arr,
@@ -189,7 +194,7 @@ bool macro_buffer_process_next(macro_buffer_t* this){//Returns bool if processed
                     key_processed=true;
                     break;
                 }
-                fprintf(stderr,"In state RS_RepeatEndNumber, current character not allowed '%c'.\n",current_char);
+                fprintf(stderr,"In state RS_RepeatEndNumber, current character not allowed '%c' at line %d char %d.\n",current_char,this->line_num,this->char_num);
                 this->parse_error=true;
                 key_processed=true;
                 break;
@@ -209,7 +214,7 @@ bool macro_buffer_process_next(macro_buffer_t* this){//Returns bool if processed
                     fprintf(stderr,"= should be added after key.\n");
                     exit(EXIT_FAILURE);
                 }
-                fprintf(stderr,"In state RS_KeyOrMouse, current character not allowed '%c'.\n",current_char);
+                fprintf(stderr,"In state RS_KeyOrMouse, current character not allowed '%c' at line %d char %d.\n",current_char,this->line_num,this->char_num);
                 this->parse_error=true;
                 key_processed=true;
                 break;
@@ -239,7 +244,7 @@ bool macro_buffer_process_next(macro_buffer_t* this){//Returns bool if processed
                     read_state=RS_Delay;
                     break;
                 }
-                fprintf(stderr,"In state RS_KeyState, current character not allowed '%c'.\n",current_char);
+                fprintf(stderr,"In state RS_KeyState, current character not allowed '%c' at line %d char %d.\n",current_char,this->line_num,this->char_num);
                 this->parse_error=true;
                 key_processed=true;
                 break;
@@ -262,7 +267,7 @@ bool macro_buffer_process_next(macro_buffer_t* this){//Returns bool if processed
                     EXIT_IF_NULL(num_str,char*);
                     break;
                 }
-                fprintf(stderr,"In state RS_Delay, current character not allowed '%c'.\n",current_char);
+                fprintf(stderr,"In state RS_Delay, current character not allowed '%c' at line %d char %d.\n",current_char,this->line_num,this->char_num);
                 this->parse_error=true;
                 key_processed=true;
                 break;
@@ -272,7 +277,7 @@ bool macro_buffer_process_next(macro_buffer_t* this){//Returns bool if processed
                     num_str=(char*)realloc(num_str,sizeof(char)*(parse_i_offset+2));
                     EXIT_IF_NULL(num_str,char*);
                     break;
-                }else if(current_char==';'||current_char=='\0'){
+                }else if(current_char==';'){
                     num_str[parse_i_offset]='\0';
                     parsed_num=strtol(num_str,NULL,10)*delay_mult;
                     for(int i=0;i<num_key_tokens;i++){
@@ -294,7 +299,7 @@ bool macro_buffer_process_next(macro_buffer_t* this){//Returns bool if processed
                     key_processed=true;
                     break;
                 }
-                fprintf(stderr,"In state RS_DelayNum, current character not allowed '%c'.\n",current_char);
+                fprintf(stderr,"In state RS_DelayNum, current character not allowed '%c' at line %d char %d.\n",current_char,this->line_num,this->char_num);
                 this->parse_error=true;
                 key_processed=true;
                 break;
@@ -309,7 +314,7 @@ bool macro_buffer_process_next(macro_buffer_t* this){//Returns bool if processed
                     read_state=RS_MouseState;
                     break;
                 }
-                fprintf(stderr,"In state RS_MouseType, current character not allowed '%c'.\n",current_char);
+                fprintf(stderr,"In state RS_MouseType, current character not allowed '%c' at line %d char %d.\n",current_char,this->line_num,this->char_num);
                 this->parse_error=true;
                 key_processed=true;
                 break;
@@ -338,7 +343,7 @@ bool macro_buffer_process_next(macro_buffer_t* this){//Returns bool if processed
                     read_state=RS_MouseDelay;
                     break;
                 }
-                fprintf(stderr,"In state RS_MouseType, current character not allowed '%c'.\n",current_char);
+                fprintf(stderr,"In state RS_MouseType, current character not allowed '%c' at line %d char %d.\n",current_char,this->line_num,this->char_num);
                 this->parse_error=true;
                 key_processed=true;
                 break;
@@ -361,7 +366,7 @@ bool macro_buffer_process_next(macro_buffer_t* this){//Returns bool if processed
                     EXIT_IF_NULL(num_str,char*);
                     break;
                 }
-                fprintf(stderr,"In state RS_MouseDelay, current character not allowed '%c'.\n",current_char);
+                fprintf(stderr,"In state RS_MouseDelay, current character not allowed '%c' at line %d char %d.\n",current_char,this->line_num,this->char_num);
                 this->parse_error=true;
                 key_processed=true;
                 break;
@@ -371,7 +376,7 @@ bool macro_buffer_process_next(macro_buffer_t* this){//Returns bool if processed
                     num_str=(char*)realloc(num_str,sizeof(char)*(parse_i_offset+2));
                     EXIT_IF_NULL(num_str,char*);
                     break;
-                }else if(current_char==';'||current_char=='\0'){
+                }else if(current_char==';'){
                     num_str[parse_i_offset]='\0';
                     parsed_num=strtol(num_str,NULL,10)*delay_mult;
                     if(parsed_num) command_array_add(this->cmd_arr,
@@ -382,12 +387,13 @@ bool macro_buffer_process_next(macro_buffer_t* this){//Returns bool if processed
                     key_processed=true;
                     break;
                 }
-                fprintf(stderr,"In state RS_MouseDelayNum, current character not allowed '%c'.\n",current_char);
+                fprintf(stderr,"In state RS_MouseDelayNum, current character not allowed '%c' at line %d char %d.\n",current_char,this->line_num,this->char_num);
                 this->parse_error=true;
                 key_processed=true;
                 break;
         }
         parse_i_offset++;
+        this->char_num++;
     }while(!key_processed);
     this->parse_i+=new_token_i+parse_i_offset;
     free(read_tokens);//Free any arrays from parsing.

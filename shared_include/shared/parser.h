@@ -12,6 +12,8 @@ typedef struct repeat_id_manager_s repeat_id_manager_t;
 typedef struct command_array_s command_array_t;
 typedef struct{
     int parse_i;
+    int line_num;
+    int char_num;
     int size;
     char* contents;
     shared_string_manager* ssm;

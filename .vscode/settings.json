@@ -30,7 +30,9 @@
         "initializer_list": "c",
         "utility": "c",
         "variant": "c",
-        "shared_string.h": "c"
+        "shared_string.h": "c",
+        "*.ipp": "c",
+        "valarray": "c"
     },
     //"editor.autoClosingBrackets": "never",
     //"editor.autoClosingDelete": "never",
