@@ -63,7 +63,7 @@ bool macro_buffer_process_next(macro_buffer_t* this){//Returns bool if processed
     bool maybe_mouse=false;
     do{
         const char current_char=this->contents[this->parse_i+read_i+parse_i_offset];
-        printf("'%c' %d %d %d State:%d Length:%d\n",current_char,this->parse_i,parse_i_offset,read_i,(int)read_state,this->size);
+        //printf("'%c' %d %d %d State:%d Length:%d\n",current_char,this->parse_i,parse_i_offset,read_i,(int)read_state,this->size);
         switch(read_state){
             case RS_Start:
                 if(char_is_key(current_char)){
@@ -126,7 +126,7 @@ bool macro_buffer_process_next(macro_buffer_t* this){//Returns bool if processed
                     str_name=(char*)calloc(parse_i_offset+1,sizeof(char));
                     EXIT_IF_NULL(str_name,char);
                     strncpy(str_name,this->contents+this->parse_i+read_i,parse_i_offset);
-                    repeat_id_add_name(this->rim,str_name,command_array_count(this->cmd_arr));
+                    repeat_id_manager_add_name(this->rim,str_name,command_array_count(this->cmd_arr));
                     command_array_add(this->cmd_arr,
                         (command_t){.type=VT_RepeatStart,
                             .cmd.repeat_start=(repeat_start_t){
@@ -170,7 +170,7 @@ bool macro_buffer_process_next(macro_buffer_t* this){//Returns bool if processed
                         command_array_add(this->cmd_arr,
                             (command_t){.type=VT_RepeatEnd,
                                 .cmd.repeat_end=(repeat_end_t){
-                                    .index=repeat_id_search_index(this->rim,str_name),
+                                    .index=repeat_id_manager_search_index(this->rim,str_name),
                                     .counter_max=0
                                 }
                             }
@@ -201,7 +201,7 @@ bool macro_buffer_process_next(macro_buffer_t* this){//Returns bool if processed
                     command_array_add(this->cmd_arr,
                         (command_t){.type=VT_RepeatEnd,
                             .cmd.repeat_end=(repeat_end_t){
-                                .index=repeat_id_search_index(this->rim,str_name),
+                                .index=repeat_id_manager_search_index(this->rim,str_name),
                                 .counter_max=parsed_num
                             }
                         }
@@ -250,7 +250,7 @@ bool macro_buffer_process_next(macro_buffer_t* this){//Returns bool if processed
                     break;
                 }else if(current_char==';'){
                     str_name=malloc(sizeof(char)*parse_i_offset-1);//-2 to exclude RS_KeyState modifiers, but -1 because null terminator.
-                    strncpy(str_name,this->contents+this->parse_i,parse_i_offset-2);
+                    strncpy(str_name,this->contents+this->parse_i+read_i,parse_i_offset-2);
                     str_name[parse_i_offset-2]='\0';
                     SSManager_add_string(this->ssm,&str_name);
                     command_array_add(this->cmd_arr,
@@ -385,7 +385,7 @@ repeat_id_manager_t* repeat_id_manager_new(shared_string_manager* ssm){
     *this=(repeat_id_manager_t){.size=0,.names=NULL,.index=NULL,.ssm=ssm};
     return this;
 }
-void repeat_id_add_name(repeat_id_manager_t* this, char*  str_owned, int index){
+void repeat_id_manager_add_name(repeat_id_manager_t* this, char* str_owned, int index){
     this->size++;
     if(this->names){
         this->names=(char**)realloc(this->names,sizeof(char*)*(this->size));
@@ -405,7 +405,7 @@ void repeat_id_add_name(repeat_id_manager_t* this, char*  str_owned, int index){
     fprintf(stderr,"Repeat name '%s' has been used more than once.\n",str_owned);
     exit(EXIT_FAILURE);
 }
-int repeat_id_search_index(const repeat_id_manager_t* this,const char* search_str){
+int repeat_id_manager_search_index(const repeat_id_manager_t* this,const char* search_str){
     for(int i=0;i<this->size;i++){
         if(strcmp(search_str,this->names[i])==0){
             return this->index[i];

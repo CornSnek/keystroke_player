@@ -35,11 +35,11 @@ START_TEST(repeat_id_search_str_test){
     strcpy(string_heaps[0],str0);
     strcpy(string_heaps[1],str1);
     strcpy(string_heaps[2],str2);
-    repeat_id_add_name(rim,string_heaps[0],10);
-    repeat_id_add_name(rim,string_heaps[1],20);
-    repeat_id_add_name(rim,string_heaps[2],69);
-    ck_assert_int_eq(repeat_id_search_index(rim,string_heaps[2]),69);
-    ck_assert_int_eq(repeat_id_search_index(rim,"CCCCC"),-1);
+    repeat_id_manager_add_name(rim,string_heaps[0],10);
+    repeat_id_manager_add_name(rim,string_heaps[1],20);
+    repeat_id_manager_add_name(rim,string_heaps[2],69);
+    ck_assert_int_eq(repeat_id_manager_search_index(rim,string_heaps[2]),69);
+    ck_assert_int_eq(repeat_id_manager_search_index(rim,"CCCCC"),-1);
     free(string_heaps);
     repeat_id_manager_free(rim);
     SSManager_free(ssm);

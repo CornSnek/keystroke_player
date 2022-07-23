@@ -6,7 +6,17 @@
 #include <stdlib.h>
 #include <stdbool.h>
 typedef enum{
-    RS_Start,RS_Comments,RS_RepeatStart,RS_RepeatEnd,RS_RepeatEndNumber,RS_KeyOrMouse,RS_KeyState,RS_Delay,RS_DelayNum,RS_MouseType,RS_MouseState
+    RS_Start,
+    RS_Comments,
+    RS_RepeatStart,
+    RS_RepeatEnd,
+    RS_RepeatEndNumber,
+    RS_KeyOrMouse,
+    RS_KeyState,
+    RS_Delay,
+    RS_DelayNum,
+    RS_MouseType,
+    RS_MouseState
 }ReadState;
 typedef enum{
     IS_Down,IS_Up,IS_Click
@@ -73,8 +83,8 @@ void macro_buffer_free(macro_buffer_t* this);
 keystroke_t* keystroke_new(bool key_state, char*  key_owned);
 void keystroke_free(keystroke_t* this);
 repeat_id_manager_t* repeat_id_manager_new(shared_string_manager* ssm);
-void repeat_id_add_name(repeat_id_manager_t* this, char*  str_owned, int index);
-int repeat_id_search_index(const repeat_id_manager_t* this,const char* search_str);
+void repeat_id_manager_add_name(repeat_id_manager_t* this, char*  str_owned, int index);
+int repeat_id_manager_search_index(const repeat_id_manager_t* this,const char* search_str);
 void repeat_id_manager_free(repeat_id_manager_t* this);
 command_array_t* command_array_new(shared_string_manager* ssm);
 void command_array_add(command_array_t* this, command_t cmd_arr);

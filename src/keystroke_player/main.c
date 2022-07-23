@@ -24,7 +24,7 @@ typedef struct{
     delay_ns_t mouse_check_delay;
 }Config;
 const Config InitConfig={
-    .init_delay=1000000,.mouse_check_delay=500
+    .init_delay=2000000,.mouse_check_delay=5000
 };
 bool fgets_change(char* str,int buffer_len);
 bool write_to_config(const Config config);
@@ -227,6 +227,7 @@ void* mouse_check_listener(void* srs_v){
 bool run_program(command_array_t* cmd_arr, Config config){
     xdo_t* xdo_obj=xdo_new(NULL);
     Window focus_window;
+    //command_array_print(cmd_arr);
     xdo_select_window_with_click(xdo_obj,&focus_window);
     xdo_raise_window(xdo_obj,focus_window);
     xdo_focus_window(xdo_obj,focus_window);
@@ -234,7 +235,9 @@ bool run_program(command_array_t* cmd_arr, Config config){
     int cmd_arr_i=0;
     key_down_check_t* kdc=key_down_check_new();
     shared_rs srs=(shared_rs){.xdo_obj=xdo_obj,.program_done=false,.mouse={0},.mouse_check_delay=config.mouse_check_delay};
+    printf("Starting script in %ld microseconds (%f seconds)\n",config.init_delay,(float)config.init_delay/1000000);
     usleep(config.init_delay);
+    printf("Running.");
     xdo_get_mouse_location(xdo_obj,&srs.mouse.x,&srs.mouse.y,NULL);
     pthread_t input_t;
     pthread_mutex_init(&input_mutex,NULL);
@@ -252,7 +255,7 @@ bool run_program(command_array_t* cmd_arr, Config config){
         CommandType cmd_type=cmd_arr->cmds[cmd_arr_i].type;
         int* rst_counter=0;
         switch(cmd_type){
-            case(VT_KeyStroke)://TODO: Change InputStates with xdo functions respectively.
+            case(VT_KeyStroke):
                 pthread_mutex_lock(&input_mutex);
                 switch(cmd_u.ks.key_state){
                     case IS_Down:
@@ -276,14 +279,19 @@ bool run_program(command_array_t* cmd_arr, Config config){
                 usleep(cmd_u.delay);
                 break;
             case(VT_RepeatEnd):
-                rst_counter=&(cmd_arr->cmds[cmd_u.repeat_end.index].cmd.repeat_start.counter);
-                printf("Command %d/%d: Jump to Command #%d if Counter %d reaches %d\n",cmd_arr_i+1,cmd_arr_len,cmd_u.repeat_end.index+2,++(*rst_counter),cmd_u.repeat_end.counter_max);
-                if(*rst_counter!=cmd_u.repeat_end.counter_max) cmd_arr_i=cmd_u.repeat_end.index;//Go back if not counter_max
-                else *rst_counter=0;//Reset to loop again.
+                if(cmd_u.repeat_end.counter_max){//Counter has been set.
+                    rst_counter=&(cmd_arr->cmds[cmd_u.repeat_end.index].cmd.repeat_start.counter);
+                    printf("Command %d/%d: Jump to Command #%d if Counter %d reaches %d\n",cmd_arr_i+1,cmd_arr_len,cmd_u.repeat_end.index+2,++(*rst_counter),cmd_u.repeat_end.counter_max);
+                    if(*rst_counter!=cmd_u.repeat_end.counter_max) cmd_arr_i=cmd_u.repeat_end.index;//Go back if not counter_max
+                    else *rst_counter=0;//Reset to loop again.
+                }else{//Loop forever otherwise.
+                    printf("Command %d/%d: Jump to Command #%d (Repeats forever)\n",cmd_arr_i+1,cmd_arr_len,cmd_u.repeat_end.index+2);
+                    cmd_arr_i=cmd_u.repeat_end.index;
+                }
                 break;
-            case(VT_RepeatStart):
+            /*case(VT_RepeatStart):
                 printf("Command %d/%d: This is a loop counter (%d).\n",cmd_arr_i+1,cmd_arr_len,cmd_u.repeat_start.counter);
-                break;
+                break;*/
             case(VT_MouseClick):
                 pthread_mutex_lock(&input_mutex);
                 switch(cmd_u.mouse.mouse_state){
@@ -311,7 +319,7 @@ bool run_program(command_array_t* cmd_arr, Config config){
     }
     pthread_mutex_unlock(&input_mutex);
     pthread_join(input_t,NULL);
-    key_down_check_key_up(kdc,xdo_obj,focus_window);
+    key_down_check_key_up(kdc,xdo_obj,CURRENTWINDOW);
     key_down_check_free(kdc);
     xdo_free(xdo_obj);
     return true;
