@@ -6,7 +6,7 @@
 #include <stdlib.h>
 #include <stdbool.h>
 typedef enum{
-    RS_Start,RS_Comments,RS_RepeatStart,RS_RepeatEnd,RS_RepeatEndNumber,RS_KeyOrMouse,RS_KeyState,RS_Delay,RS_DelayNum,RS_MouseType,RS_MouseState,RS_MouseDelay,RS_MouseDelayNum
+    RS_Start,RS_Comments,RS_RepeatStart,RS_RepeatEnd,RS_RepeatEndNumber,RS_KeyOrMouse,RS_KeyState,RS_Delay,RS_DelayNum,RS_MouseType,RS_MouseState
 }ReadState;
 typedef struct repeat_id_manager_s repeat_id_manager_t;
 typedef struct command_array_s command_array_t;

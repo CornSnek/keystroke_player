@@ -5,7 +5,7 @@
 #include <check.h>
 START_TEST(parse_from_string){
     printf("Starting Test parse_from_string\n");
-    char a_string_stack[]="(A;Ctrl+Alt+Delete=d,Down=d,Up=d.s1;Down=u.m1234;)A=50;Alt+q=d.0;";
+    char a_string_stack[]="(A;Ctrl+Alt+Delete=d;m1=u;.30;)A;";
     char* a_string_heap=(char*)malloc(sizeof(a_string_stack)/sizeof(char));
     strcpy(a_string_heap,a_string_stack);
     shared_string_manager* ssm=SSManager_new();
@@ -91,8 +91,8 @@ Suite* test_suite(void){
     s=suite_create("parser.h");
     tc_core=tcase_create("Core");
     tcase_add_test(tc_core,parse_from_string);
-    tcase_add_test(tc_core,repeat_id_search_str_test);
-    tcase_add_test(tc_core,shared_string_test);
+    //tcase_add_test(tc_core,repeat_id_search_str_test);
+    //tcase_add_test(tc_core,shared_string_test);
     suite_add_tcase(s,tc_core);
     return s;
 }
