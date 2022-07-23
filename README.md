@@ -1,5 +1,5 @@
 # keystroke_player
-Linux X11 Autoclicker that can also use the keyboard, and script support is added this is inspired by click4ever from https://github.com/daniel-araujo/click4ever. I just added keyboard support and scripting support for personal uses.
+Linux X11 Autoclicker that can also use the keyboard, and script support is added. This is inspired by click4ever from https://github.com/daniel-araujo/click4ever. I just added keyboard support and scripting support for personal scripting uses.
 # Usage
 Run the program. It is a command line program where you can edit config, compile/run scripts, or exit the program.
 It runs autoclicker scripts that can stop executing the program completely if the mouse moves.
@@ -60,4 +60,4 @@ Requires [xdotool library](https://github.com/jordansissel/xdotool).
 
 (Optional) Testing requires [Check library](https://github.com/libcheck/check).
 
-Note: This has been built using Visual Studio Code under Arch Linux. Repositories for xdotool and check is in Arch Linux. It may also be in other distrobutions of Linux too.
+Note: This has been built using Visual Studio Code under Arch Linux. Repositories for xdotool and check is in Arch Linux. It may also be readily available in other distributions of Linux.
