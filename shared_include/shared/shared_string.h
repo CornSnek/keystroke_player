@@ -8,7 +8,7 @@ typedef struct{//Container of strings that point to the same string with the sam
     int* c_str_rc;//Reference count to destroy same pointer strings.
 }shared_string_manager;
 shared_string_manager* SSManager_new(void);
-char* SSManager_add_string(shared_string_manager* this, char** p_owner str_p_owned);
+char* SSManager_add_string(shared_string_manager* this, char**  str_p_owned);
 int SSManager_count_string(const shared_string_manager* this, const char* str_cmp);
 void SSManager_print_strings(const shared_string_manager* this);
 void SSManager_free_string(shared_string_manager* this, const char* str_del);

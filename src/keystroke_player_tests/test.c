@@ -13,7 +13,7 @@ START_TEST(parse_from_string){
     repeat_id_manager_t* rim=repeat_id_manager_new(ssm);
     macro_buffer_t* mb=macro_buffer_new(a_string_heap,ssm,cmd_arr,rim);
     while(macro_buffer_process_next(mb)){
-        if(mb->parse_i==mb->size) break;
+        if(mb->parse_i>mb->size) break;
     }
     printf("%d\n",mb->parse_error);
     command_array_print(cmd_arr);

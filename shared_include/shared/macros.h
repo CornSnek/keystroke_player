@@ -7,5 +7,4 @@ if(!token_name){\
     fprintf(stderr,"Unable to get pointer of type '" #type "' for token '" #token_name "' at line %d.\n",__LINE__);\
     exit(EXIT_FAILURE);\
 }
-#define p_owner
 #endif

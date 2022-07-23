@@ -8,7 +8,7 @@ shared_string_manager* SSManager_new(void){
     EXIT_IF_NULL(this,shared_string_manager*);
     return this;
 }
-char* SSManager_add_string(shared_string_manager* this, char** p_owner str_p_owned){//Returns freed pointer while it modifies into the new shared pointer.
+char* SSManager_add_string(shared_string_manager* this, char**  str_p_owned){//Returns freed pointer while it modifies into the new shared pointer.
     for(int i=0;i<this->count;i++){
         if(strcmp(*str_p_owned,this->c_strs[i])==0){
             char* freed_pointer=*str_p_owned;

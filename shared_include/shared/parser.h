@@ -62,15 +62,15 @@ typedef struct command_array_s{
     command_t* cmds;
     shared_string_manager* SSM;
 }command_array_t;
-int trim_whitespace(char** p_owner strptr_owner);
+int trim_whitespace(char**  strptr_owner);
 void replace_str(char** strptr, const char* replace, const char* with);
-macro_buffer_t* macro_buffer_new(char* p_owner str_owned, shared_string_manager* ssm, command_array_t* cmd_arr, repeat_id_manager_t* rim);//macro_buffer_new has ownership to char*.
+macro_buffer_t* macro_buffer_new(char*  str_owned, shared_string_manager* ssm, command_array_t* cmd_arr, repeat_id_manager_t* rim);//macro_buffer_new has ownership to char*.
 bool macro_buffer_process_next(macro_buffer_t* mb);
 void macro_buffer_free(macro_buffer_t* this);
-keystroke_t* keystroke_new(bool key_state, char* p_owner key_owned);
+keystroke_t* keystroke_new(bool key_state, char*  key_owned);
 void keystroke_free(keystroke_t* this);
 repeat_id_manager_t* repeat_id_manager_new(shared_string_manager* ssm);
-void repeat_id_add_name(repeat_id_manager_t* this, char* p_owner str_owned, int index);
+void repeat_id_add_name(repeat_id_manager_t* this, char*  str_owned, int index);
 int repeat_id_search_index(const repeat_id_manager_t* this,const char* search_str);
 void repeat_id_manager_free(repeat_id_manager_t* this);
 command_array_t* command_array_new(shared_string_manager* ssm);

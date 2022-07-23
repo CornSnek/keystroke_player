@@ -15,7 +15,7 @@ int trim_whitespace(char** strptr){//For null-terminated strings only, and reedi
     return str_i-whitespace_count;
 }
 
-void replace_str(char** p_owner strptr_owner, const char* replace, const char* with){//Assume all null-terminated.
+void replace_str(char**  strptr_owner, const char* replace, const char* with){//Assume all null-terminated.
     char* new_strptr=(char*)(malloc(sizeof(char)*1));
     EXIT_IF_NULL(new_strptr,char*)
     int strptr_i=0;
@@ -42,17 +42,17 @@ void replace_str(char** p_owner strptr_owner, const char* replace, const char* w
     free(*strptr_owner);
     *strptr_owner=new_strptr;//Change freed pointer to new pointer.
 }
-macro_buffer_t* macro_buffer_new(char* p_owner str_owned, shared_string_manager* ssm, command_array_t* cmd_arr, repeat_id_manager_t* rim){
+macro_buffer_t* macro_buffer_new(char*  str_owned, shared_string_manager* ssm, command_array_t* cmd_arr, repeat_id_manager_t* rim){
     macro_buffer_t* this=(macro_buffer_t*)(malloc(sizeof(macro_buffer_t)));
     EXIT_IF_NULL(this,macro_buffer_t);
     *this=(macro_buffer_t){.parse_i=0,.line_num=1,.char_num=1,.size=strlen(str_owned),.contents=str_owned,.ssm=ssm,.cmd_arr=cmd_arr,.rim=rim,.parse_error=false};
     return this;
 }
-void add_read_token(macro_buffer_t* this,char** read_tokens,int* num_key_tokens,int* new_token_i,int* parse_i_offset){
+void add_read_token(macro_buffer_t* this,char** read_tokens,int* num_key_tokens,int* read_i,int* parse_i_offset){
     read_tokens[(*num_key_tokens)]=(char*)calloc((*parse_i_offset)-1,sizeof(char));//calloc to add null characters or 0. -1 to exclude RS_KeyState modifiers '|u', '|d'... etc.
     EXIT_IF_NULL(read_tokens[(*num_key_tokens)],char);
-    strncpy(read_tokens[(*num_key_tokens)],this->contents+this->parse_i+(*new_token_i),(*parse_i_offset)-2); //-2 to exclude RS_KeyState modifiers.
-    (*new_token_i)+=(*parse_i_offset)+1;//+1 to exclude reading comma or period.
+    strncpy(read_tokens[(*num_key_tokens)],this->contents+this->parse_i+(*read_i),(*parse_i_offset)-2); //-2 to exclude RS_KeyState modifiers.
+    (*read_i)+=(*parse_i_offset)+1;//+1 to exclude reading comma or period.
     (*parse_i_offset)=-1;//To reset to 0 because ++ is added at end of loop.
 }
 bool macro_buffer_process_next(macro_buffer_t* this){//Returns bool if processed successfully or not.
@@ -69,12 +69,12 @@ bool macro_buffer_process_next(macro_buffer_t* this){//Returns bool if processed
     __uint64_t parsed_num=0;
     bool added_keystate=false;
     int num_key_tokens=0;
-    int new_token_i=0; //To exclude reading certain non-alphanumeric characters
+    int read_i=0; //To exclude reading certain non-alphanumeric characters
     int parse_i_offset=0;
     bool maybe_mouse=false;
     do{
-        const char current_char=this->contents[this->parse_i+new_token_i+parse_i_offset];
-        printf("'%c' %d %d %d State:%d Length:%d\n",current_char,this->parse_i,parse_i_offset,new_token_i,(int)read_state,this->size);
+        const char current_char=this->contents[this->parse_i+read_i+parse_i_offset];
+        //printf("'%c' %d %d %d State:%d Length:%d\n",current_char,this->parse_i,parse_i_offset,read_i,(int)read_state,this->size);
         switch(read_state){
             case RS_Start:
                 if(char_is_key(current_char)){
@@ -82,12 +82,12 @@ bool macro_buffer_process_next(macro_buffer_t* this){//Returns bool if processed
                     read_state=RS_KeyOrMouse;
                     break;
                 }else if(current_char=='('){
-                    new_token_i+=1;
+                    read_i+=1;
                     parse_i_offset=-1;
                     read_state=RS_RepeatStart;
                     break;
                 }else if(current_char==')'){
-                    new_token_i+=1;
+                    read_i+=1;
                     parse_i_offset=-1;
                     read_state=RS_RepeatEnd;
                     break;
@@ -95,7 +95,7 @@ bool macro_buffer_process_next(macro_buffer_t* this){//Returns bool if processed
                     key_processed=true;
                     break;
                 }else if(current_char=='\n'){//Only exclude \n at RS_Start.
-                    new_token_i+=1;
+                    read_i+=1;
                     parse_i_offset=-1;
                     this->line_num++;
                     this->char_num=0;//1 after loop repeats.
@@ -110,7 +110,7 @@ bool macro_buffer_process_next(macro_buffer_t* this){//Returns bool if processed
                 if(current_char==';'){
                     repeat_name_str=(char*)calloc(parse_i_offset+1,sizeof(char));
                     EXIT_IF_NULL(repeat_name_str,char);
-                    strncpy(repeat_name_str,this->contents+this->parse_i+new_token_i,parse_i_offset);
+                    strncpy(repeat_name_str,this->contents+this->parse_i+read_i,parse_i_offset);
                     repeat_id_add_name(this->rim,repeat_name_str,command_array_count(this->cmd_arr));
                     command_array_add(this->cmd_arr,
                         (command_t){.type=VT_RepeatStart,
@@ -119,7 +119,7 @@ bool macro_buffer_process_next(macro_buffer_t* this){//Returns bool if processed
                             }
                         }
                     );
-                    new_token_i+=parse_i_offset+1;
+                    read_i+=parse_i_offset+1;
                     parse_i_offset=-1;
                     key_processed=true;
                     break;
@@ -133,10 +133,10 @@ bool macro_buffer_process_next(macro_buffer_t* this){//Returns bool if processed
                 if(current_char=='='){
                     repeat_name_str=(char*)calloc(parse_i_offset+1,sizeof(char));
                     EXIT_IF_NULL(repeat_name_str,char);
-                    strncpy(repeat_name_str,this->contents+this->parse_i+new_token_i,parse_i_offset);
+                    strncpy(repeat_name_str,this->contents+this->parse_i+read_i,parse_i_offset);
                     const bool str_exists=(repeat_name_str!=SSManager_add_string(this->ssm,&repeat_name_str));
                     if(str_exists){
-                        new_token_i+=parse_i_offset+1;
+                        read_i+=parse_i_offset+1;
                         parse_i_offset=-1;
                         read_state=RS_RepeatEndNumber;
                         break;
@@ -149,7 +149,7 @@ bool macro_buffer_process_next(macro_buffer_t* this){//Returns bool if processed
                 if(current_char==';'){
                     repeat_name_str=(char*)calloc(parse_i_offset+1,sizeof(char));
                     EXIT_IF_NULL(repeat_name_str,char);
-                    strncpy(repeat_name_str,this->contents+this->parse_i+new_token_i,parse_i_offset);
+                    strncpy(repeat_name_str,this->contents+this->parse_i+read_i,parse_i_offset);
                     const bool str_exists=(repeat_name_str!=SSManager_add_string(this->ssm,&repeat_name_str));
                     if(str_exists){
                         command_array_add(this->cmd_arr,
@@ -160,7 +160,7 @@ bool macro_buffer_process_next(macro_buffer_t* this){//Returns bool if processed
                                 }
                             }
                         );
-                        new_token_i+=parse_i_offset+1;
+                        read_i+=parse_i_offset+1;
                         parse_i_offset=-1;
                         key_processed=true;
                         break;
@@ -200,7 +200,7 @@ bool macro_buffer_process_next(macro_buffer_t* this){//Returns bool if processed
                 break;
             case RS_KeyOrMouse:
                 if(maybe_mouse&&isdigit(current_char)){
-                        new_token_i+=parse_i_offset;
+                        read_i+=parse_i_offset;
                         parse_i_offset=-1;
                         read_state=RS_MouseType;
                         break;
@@ -231,7 +231,7 @@ bool macro_buffer_process_next(macro_buffer_t* this){//Returns bool if processed
                     added_keystate=true;
                     break;
                 }else if(current_char==','){
-                    add_read_token(this,read_tokens,&num_key_tokens,&new_token_i,&parse_i_offset);
+                    add_read_token(this,read_tokens,&num_key_tokens,&read_i,&parse_i_offset);
                     read_tokens=(char**)realloc(read_tokens,sizeof(char*)*(++num_key_tokens+1));//+1 to expect another read_/keystate_ in RS_KeyOrMouse.
                     EXIT_IF_NULL(read_tokens,char*);
                     keystate_tokens=(bool*)realloc(keystate_tokens,sizeof(bool)*(num_key_tokens+1));
@@ -239,7 +239,7 @@ bool macro_buffer_process_next(macro_buffer_t* this){//Returns bool if processed
                     read_state=RS_KeyOrMouse;
                     break;
                 }else if(current_char=='.'){
-                    add_read_token(this,read_tokens,&num_key_tokens,&new_token_i,&parse_i_offset);
+                    add_read_token(this,read_tokens,&num_key_tokens,&read_i,&parse_i_offset);
                     ++num_key_tokens;
                     read_state=RS_Delay;
                     break;
@@ -255,7 +255,7 @@ bool macro_buffer_process_next(macro_buffer_t* this){//Returns bool if processed
                         case 'm': case 'M': delay_mult=1000; break;
                         case 'u': case 'U': delay_mult=1;
                     }
-                    new_token_i+=1;
+                    read_i+=1;
                     parse_i_offset=-1;
                     read_state=RS_DelayNum;
                     break;
@@ -309,7 +309,7 @@ bool macro_buffer_process_next(macro_buffer_t* this){//Returns bool if processed
                     num_str[1]='\0';
                     break;
                 }else if(current_char=='='){
-                    new_token_i+=2;//To read numbers.
+                    read_i+=2;//To read numbers.
                     parse_i_offset=-1;
                     read_state=RS_MouseState;
                     break;
@@ -338,7 +338,7 @@ bool macro_buffer_process_next(macro_buffer_t* this){//Returns bool if processed
                     );
                     break;
                 }else if(current_char=='.'){
-                    new_token_i+=2;//To read numbers only.
+                    read_i+=2;//To read numbers only.
                     parse_i_offset=-1;
                     read_state=RS_MouseDelay;
                     break;
@@ -354,7 +354,7 @@ bool macro_buffer_process_next(macro_buffer_t* this){//Returns bool if processed
                         case 'm': case 'M': delay_mult=1000; break;
                         case 'u': case 'U': delay_mult=1;
                     }
-                    new_token_i+=1;//To read numbers only.
+                    read_i+=1;//To read numbers only.
                     parse_i_offset=-1;
                     read_state=RS_MouseDelayNum;
                     break;
@@ -395,7 +395,7 @@ bool macro_buffer_process_next(macro_buffer_t* this){//Returns bool if processed
         parse_i_offset++;
         this->char_num++;
     }while(!key_processed);
-    this->parse_i+=new_token_i+parse_i_offset;
+    this->parse_i+=read_i+parse_i_offset;
     free(read_tokens);//Free any arrays from parsing.
     free(keystate_tokens);
     free(num_str);
@@ -405,7 +405,7 @@ void macro_buffer_free(macro_buffer_t* this){
     free(this->contents);
     free(this);
 }
-keystroke_t* keystroke_new(bool key_state, char* p_owner key_owned){//keystroke_t owns key string.
+keystroke_t* keystroke_new(bool key_state, char*  key_owned){//keystroke_t owns key string.
     keystroke_t* this=(keystroke_t*)(malloc(sizeof(keystroke_t)));
     EXIT_IF_NULL(this,macro_buffer_t);
     *this=(keystroke_t){.key_state=key_state,.key=key_owned};
@@ -421,7 +421,7 @@ repeat_id_manager_t* repeat_id_manager_new(shared_string_manager* ssm){
     *this=(repeat_id_manager_t){.size=0,.names=NULL,.index=NULL,.ssm=ssm};
     return this;
 }
-void repeat_id_add_name(repeat_id_manager_t* this, char* p_owner str_owned, int index){
+void repeat_id_add_name(repeat_id_manager_t* this, char*  str_owned, int index){
     this->size++;
     if(this->names){
         this->names=(char**)realloc(this->names,sizeof(char*)*(this->size));
