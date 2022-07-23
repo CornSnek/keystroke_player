@@ -8,6 +8,9 @@
 typedef enum{
     RS_Start,RS_Comments,RS_RepeatStart,RS_RepeatEnd,RS_RepeatEndNumber,RS_KeyOrMouse,RS_KeyState,RS_Delay,RS_DelayNum,RS_MouseType,RS_MouseState
 }ReadState;
+typedef enum{
+    IS_Down,IS_Up,IS_Click
+}InputState;
 typedef struct repeat_id_manager_s repeat_id_manager_t;
 typedef struct command_array_s command_array_t;
 typedef struct{
@@ -22,7 +25,7 @@ typedef struct{
     bool parse_error;
 }macro_buffer_t;
 typedef struct{
-    bool key_state;
+    InputState key_state;
     char* key;
 }keystroke_t;
 typedef struct repeat_id_manager_s{//Get ids from created names.
@@ -40,7 +43,7 @@ typedef struct{
     int counter_max;//0 means infinite loop.
 }repeat_end_t;
 typedef struct{
-    bool mouse_state;
+    InputState mouse_state;
     int mouse_type;
 }mouse_click_t;
 typedef union{

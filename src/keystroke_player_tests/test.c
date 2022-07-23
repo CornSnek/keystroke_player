@@ -91,8 +91,8 @@ Suite* test_suite(void){
     s=suite_create("parser.h");
     tc_core=tcase_create("Core");
     tcase_add_test(tc_core,parse_from_string);
-    //tcase_add_test(tc_core,repeat_id_search_str_test);
-    //tcase_add_test(tc_core,shared_string_test);
+    tcase_add_test(tc_core,repeat_id_search_str_test);
+    tcase_add_test(tc_core,shared_string_test);
     suite_add_tcase(s,tc_core);
     return s;
 }

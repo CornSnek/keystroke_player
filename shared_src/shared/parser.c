@@ -48,17 +48,10 @@ macro_buffer_t* macro_buffer_new(char*  str_owned, shared_string_manager* ssm, c
     *this=(macro_buffer_t){.parse_i=0,.line_num=1,.char_num=1,.size=strlen(str_owned),.contents=str_owned,.ssm=ssm,.cmd_arr=cmd_arr,.rim=rim,.parse_error=false};
     return this;
 }
-void add_read_token(macro_buffer_t* this,char** read_tokens,int* num_key_tokens,int* read_i,int* parse_i_offset){
-    read_tokens[(*num_key_tokens)]=(char*)calloc((*parse_i_offset)-1,sizeof(char));//calloc to add null characters or 0. -1 to exclude RS_KeyState modifiers '|u', '|d'... etc.
-    EXIT_IF_NULL(read_tokens[(*num_key_tokens)],char);
-    strncpy(read_tokens[(*num_key_tokens)],this->contents+this->parse_i+(*read_i),(*parse_i_offset)-2); //-2 to exclude RS_KeyState modifiers.
-    (*read_i)+=(*parse_i_offset)+1;//+1 to exclude reading comma or period.
-    (*parse_i_offset)=-1;//To reset to 0 because ++ is added at end of loop.
-}
 bool macro_buffer_process_next(macro_buffer_t* this){//Returns bool if processed successfully or not.
     ReadState read_state=RS_Start;
     bool key_processed=false;
-    bool key_state;
+    InputState input_state;
     char* str_name=0;
     __uint64_t delay_mult; 
     char* num_str=(char*)malloc(sizeof(char)*2);
@@ -248,8 +241,11 @@ bool macro_buffer_process_next(macro_buffer_t* this){//Returns bool if processed
                         key_processed=true;
                         break;
                     }
-                    if(current_char=='u'||current_char=='U') key_state=false;
-                    else key_state=true;
+                    switch(current_char){
+                        case 'D': case 'd': input_state=IS_Down; break;
+                        case 'U': case 'u': input_state=IS_Up; break;
+                        default: input_state=IS_Click;
+                    }
                     added_keystate=true;
                     break;
                 }else if(current_char==';'){
@@ -261,7 +257,7 @@ bool macro_buffer_process_next(macro_buffer_t* this){//Returns bool if processed
                         (command_t){.type=VT_KeyStroke,
                             .cmd.ks=(keystroke_t){
                                 .key=str_name,//SSManager/keystroke_t owns char* key.
-                                .key_state=key_state
+                                .key_state=input_state
                             }
                         }
                     );
@@ -339,12 +335,15 @@ bool macro_buffer_process_next(macro_buffer_t* this){//Returns bool if processed
                         key_processed=true;
                         break;
                     }
-                    if(current_char=='u'||current_char=='U') key_state=false;//Using keystate since there's only 1 mouse click.
-                    else key_state=true;
+                    switch(current_char){
+                        case 'D': case 'd': input_state=IS_Down; break;
+                        case 'U': case 'u': input_state=IS_Up; break;
+                        default: input_state=IS_Click;
+                    }
                     added_keystate=true;
                     command_array_add(this->cmd_arr,
                         (command_t){.type=VT_MouseClick,
-                            .cmd.mouse=(mouse_click_t){.mouse_state=key_state,
+                            .cmd.mouse=(mouse_click_t){.mouse_state=input_state,
                                 .mouse_type=strtol(num_str,NULL,10)
                             }
                         }
@@ -477,7 +476,7 @@ bool char_is_key(char c){
     return isalnum(c)||(c=='_')||(c=='+');
 }
 bool char_is_keystate(char c){
-    return (c=='u')||(c=='d')||(c=='U')||(c=='D');
+    return (c=='u')||(c=='d')||(c=='c')||(c=='U')||(c=='D')||(c=='C');
 }
 bool char_is_whitespace(char c){
     return (c==' ')||(c=='\t')||(c=='\n')||(c=='\v')||(c=='\f')||(c=='\r');
