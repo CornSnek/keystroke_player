@@ -1,6 +1,10 @@
 (A;
-(M1;m1=c;w=d;.m100;w=u;)M1=10; #Use w/a/s/d while clicking with mouse left button.
-(M2;m1=c;a=d;.m100;a=u;)M2=10;
-(M3;m1=c;s=d;.m100;s=u;)M3=10;
-(M4;m1=c;d=d;.m100;d=u;)M4=10;
+(M1;m1=c;w=d;.m100;w=u;)M1=2; #Use w/a/s/d while clicking with mouse left button.
+(M2;m1=c;w+a=d;.m100;w+a=u;)M2=2;
+(M3;m1=c;a=d;.m100;a=u;)M3=2;
+(M4;m1=c;a+s=d;.m100;a+s=u;)M4=2;
+(M5;m1=c;s=d;.m100;s=u;)M5=2;
+(M6;m1=c;s+d=d;.m100;s+d=u;)M6=2;
+(M7;m1=c;d=d;.m100;d=u;)M7=2;
+(M8;m1=c;d+w=d;.m100;d+w=u;)M8=2;
 )A; #Loop forever.
