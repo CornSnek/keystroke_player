@@ -79,7 +79,7 @@ int main(int argc, char** argv){
                 //Fallthrough
             case IS_BuildFile:
                 file_str=read_default_file();
-                printf("Set file path to open. Default: %s\n",file_str?file_str:"(None)");
+                printf("Set file path to open. Current file: %s\n",file_str?file_str:"(None)");
                 printf("(Press enter to skip): ");
                 fgets(input_str,INPUT_BUFFER_LEN+1,stdin);
                 if(input_str[0]!='\n'){
@@ -97,11 +97,11 @@ int main(int argc, char** argv){
                 free(file_str);//Free from read_default_file.
                 ProgramStatus ps=parse_file(input_str,read_config_file(),also_run);
                 switch(ps){
-                    case PS_RunSuccess: printf("Program script ran successfully.\n"); break;
-                    case PS_CompileSuccess: printf("Program script compiled successfully.\n"); break;
-                    case PS_ReadError: printf("Program script failed (File non-existent or read error).\n"); break;
-                    case PS_ParseError: printf("Program script failed (File parsing errors).\n"); break;
-                    case PS_ProgramError: printf("Program script failed (Running program errors).\n"); break;
+                    case PS_RunSuccess: printf("Autoclicker script ran successfully.\n"); break;
+                    case PS_CompileSuccess: printf("Autoclicker script compiled successfully.\n"); break;
+                    case PS_ReadError: printf("Autoclicker script failed (File non-existent or read error).\n"); break;
+                    case PS_ParseError: printf("Autoclicker script failed (File parsing errors).\n"); break;
+                    case PS_ProgramError: printf("Autoclicker script failed (Running program errors).\n"); break;
                 }
                 input_state=IS_Start;
                 break;

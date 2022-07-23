@@ -1,0 +1,3 @@
+(A;                 #Start of loop with "A" string.
+m3=d.0;m3=u.m100;   #3 = Left mouse click. No delay for down, but delay 100 milliseconds for up.
+)A=100;             #Repeat 100 times.

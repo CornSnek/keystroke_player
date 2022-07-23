@@ -81,30 +81,51 @@ bool macro_buffer_process_next(macro_buffer_t* this){//Returns bool if processed
                     if(current_char=='m'||current_char=='M'){maybe_mouse=true;}
                     read_state=RS_KeyOrMouse;
                     break;
-                }else if(current_char=='('){
-                    read_i+=1;
-                    parse_i_offset=-1;
-                    read_state=RS_RepeatStart;
-                    break;
-                }else if(current_char==')'){
-                    read_i+=1;
-                    parse_i_offset=-1;
-                    read_state=RS_RepeatEnd;
-                    break;
-                }else if(current_char=='\0'){
-                    key_processed=true;
-                    break;
-                }else if(current_char=='\n'){//Only exclude \n at RS_Start.
-                    read_i+=1;
+                }
+                switch(current_char){
+                    case '(':
+                        read_i+=1;
+                        parse_i_offset=-1;
+                        read_state=RS_RepeatStart;
+                        break;
+                    case ')':
+                        read_i+=1;
+                        parse_i_offset=-1;
+                        read_state=RS_RepeatEnd;
+                        break;
+                    case '\0':
+                        key_processed=true;
+                        break;
+                    case '\n':
+                        read_i+=1;
+                        parse_i_offset=-1;
+                        this->line_num++;
+                        this->char_num=0;//1 after loop repeats.
+                        break;
+                    case '#':
+                        read_state=RS_Comments;
+                        break;
+                    case ' '://Fallthrough
+                    case '\t'://Allow tabs and spaces before making comments.
+                        read_i+=1;
+                        parse_i_offset=-1;
+                        break;
+                    default:
+                        fprintf(stderr,"In state RS_Start, current character not allowed '%c' at line %d char %d.\n",current_char,this->line_num,this->char_num);
+                        this->parse_error=true;
+                        key_processed=true;
+                        break;
+                }
+                break;
+            case RS_Comments:
+                if(current_char=='\n'){
+                    read_i+=parse_i_offset;
                     parse_i_offset=-1;
                     this->line_num++;
                     this->char_num=0;//1 after loop repeats.
-                    break;
-                }
-                fprintf(stderr,"In state RS_Start, current character not allowed '%c' at line %d char %d.\n",current_char,this->line_num,this->char_num);
-                this->parse_error=true;
-                key_processed=true;
-                break;
+                    read_state=RS_Start;
+                }else if(current_char=='\0') key_processed=true;
+                break; //No need for errors here.
             case RS_RepeatStart:
                 if(char_is_key(current_char)) break;
                 if(current_char==';'){
@@ -200,7 +221,7 @@ bool macro_buffer_process_next(macro_buffer_t* this){//Returns bool if processed
                 break;
             case RS_KeyOrMouse:
                 if(maybe_mouse&&isdigit(current_char)){
-                        read_i+=parse_i_offset;
+                        read_i+=parse_i_offset;//No +1 to reread digit.
                         parse_i_offset=-1;
                         read_state=RS_MouseType;
                         break;
