@@ -24,7 +24,7 @@ typedef struct{
     delay_ns_t mouse_check_delay;
 }Config;
 const Config InitConfig={
-    .init_delay=2000000,.mouse_check_delay=5000
+    .init_delay=2000000,.mouse_check_delay=100000
 };
 bool fgets_change(char* str,int buffer_len);
 bool write_to_config(const Config config);
@@ -281,7 +281,7 @@ bool run_program(command_array_t* cmd_arr, Config config){
             case(VT_RepeatEnd):
                 if(cmd_u.repeat_end.counter_max){//Counter has been set.
                     rst_counter=&(cmd_arr->cmds[cmd_u.repeat_end.index].cmd.repeat_start.counter);
-                    printf("Command %d/%d: Jump to Command #%d if Counter %d reaches %d\n",cmd_arr_i+1,cmd_arr_len,cmd_u.repeat_end.index+2,++(*rst_counter),cmd_u.repeat_end.counter_max);
+                    printf("Command %d/%d: Jump to Command #%d until counter %d reaches %d\n",cmd_arr_i+1,cmd_arr_len,cmd_u.repeat_end.index+2,++(*rst_counter),cmd_u.repeat_end.counter_max);
                     if(*rst_counter!=cmd_u.repeat_end.counter_max) cmd_arr_i=cmd_u.repeat_end.index;//Go back if not counter_max
                     else *rst_counter=0;//Reset to loop again.
                 }else{//Loop forever otherwise.
