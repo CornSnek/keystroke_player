@@ -134,8 +134,6 @@ bool macro_buffer_process_next(macro_buffer_t* this){//Returns bool if processed
                             }
                         }
                     );
-                    read_i+=parse_i_offset+1;
-                    parse_i_offset=-1;
                     key_processed=true;
                     break;
                 }
@@ -175,8 +173,6 @@ bool macro_buffer_process_next(macro_buffer_t* this){//Returns bool if processed
                                 }
                             }
                         );
-                        read_i+=parse_i_offset+1;
-                        parse_i_offset=-1;
                         key_processed=true;
                         break;
                     }

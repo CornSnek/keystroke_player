@@ -247,7 +247,7 @@ bool run_program(command_array_t* cmd_arr, Config config){
     shared_rs srs=(shared_rs){.xdo_obj=xdo_obj,.program_done=false,.mouse={0},.mouse_check_delay=config.mouse_check_delay};
     printf("Starting script in %ld microseconds (%f seconds)\n",config.init_delay,(float)config.init_delay/1000000);
     usleep(config.init_delay);
-    printf("Running.");
+    printf("Running.\n");
     xdo_get_mouse_location(xdo_obj,&srs.mouse.x,&srs.mouse.y,NULL);
     pthread_t input_t;
     pthread_mutex_init(&input_mutex,NULL);
