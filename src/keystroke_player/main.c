@@ -53,13 +53,13 @@ int main(int argc, char** argv){
         switch(input_state){
             case IS_Start:
                 also_run=false;
-                printf("Type '/c' for config, '/b' to build file, '/r' to build and run file, or '/q' to quit: ");
+                printf("Type '\\c' for config, '\\b' to build file, '\\r' to build and run file, or '\\q' to quit: ");
                 fgets(input_str,INPUT_BUFFER_LEN+1,stdin);
                 //fgets_change(input_str,INPUT_BUFFER_LEN);//Remove '\n' if any.
-                if(!strcmp(input_str,"/q\n")) goto done;
-                if(!strcmp(input_str,"/c\n")) input_state=IS_EditConfig;
-                if(!strcmp(input_str,"/b\n")) input_state=IS_BuildFile;
-                if(!strcmp(input_str,"/r\n")) input_state=IS_RunFile;
+                if(!strcmp(input_str,"\\q\n")) goto done;
+                if(!strcmp(input_str,"\\c\n")) input_state=IS_EditConfig;
+                if(!strcmp(input_str,"\\b\n")) input_state=IS_BuildFile;
+                if(!strcmp(input_str,"\\r\n")) input_state=IS_RunFile;
                 break;
             case IS_EditConfig:
                 config=read_config_file();
@@ -89,11 +89,11 @@ int main(int argc, char** argv){
             case IS_BuildFile:
                 file_str=read_default_file();
                 printf("Set file path to open. Current file: %s\n",file_str?file_str:"(None)");
-                printf("(Press enter to skip): ");
+                printf("(Press enter to skip, type \\c to cancel.): ");
                 fgets(input_str,INPUT_BUFFER_LEN+1,stdin);
+                if(!strcmp(input_str,"\\c\n")){input_state=IS_Start; break;}
                 if(input_str[0]!='\n'){
                     if(fgets_change(input_str,INPUT_BUFFER_LEN)) printf("Warning: String has been truncated to "INPUT_BUFFER_LEN_STR" characters.\n");
-                    write_to_default_file(input_str);
                 }else{//Enter pressed.
                     if(!file_str){
                         printf("Needs a filepath (None given).\n");
@@ -105,6 +105,9 @@ int main(int argc, char** argv){
                 printf("Opening file %s\n",input_str);
                 free(file_str);//Free from read_default_file.
                 ProgramStatus ps=parse_file(input_str,read_config_file(),also_run);
+                if(ps!=PS_ReadError){//Don't rewrite default path if non-existent.
+                    write_to_default_file(input_str);
+                }
                 switch(ps){
                     case PS_RunSuccess: printf("Autoclicker script ran successfully.\n"); break;
                     case PS_CompileSuccess: printf("Autoclicker script compiled successfully.\n"); break;
