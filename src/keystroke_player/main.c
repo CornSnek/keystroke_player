@@ -238,11 +238,9 @@ void* mouse_check_listener(void* srs_v){
 }
 bool run_program(command_array_t* cmd_arr, Config config){
     xdo_t* xdo_obj=xdo_new(NULL);
-    Window focus_window;
+    Window focus_window;//Will be ignored.
     //command_array_print(cmd_arr);
     xdo_select_window_with_click(xdo_obj,&focus_window);
-    xdo_raise_window(xdo_obj,focus_window);
-    xdo_focus_window(xdo_obj,focus_window);
     int cmd_arr_len=command_array_count(cmd_arr);
     int cmd_arr_i=0;
     key_down_check_t* kdc=key_down_check_new();
