@@ -6,6 +6,8 @@
 int usleep(useconds_t usec);
 #include <xdo.h>
 #include <pthread.h>
+#include <X11/Xutil.h>
+
 //101 to include '\0'.
 #define INPUT_BUFFER_LEN 100
 
@@ -32,8 +34,9 @@ bool write_to_config(const Config config);
 Config read_config_file();
 char* read_default_file();
 bool write_to_default_file(const char* path);
-ProgramStatus parse_file(const char* path, Config config, bool and_run);
-bool run_program(command_array_t* cmd_arr, Config config);
+void get_pixel_color(Display* d, int x, int y, XColor* color);
+ProgramStatus parse_file(const char* path, xdo_t* xdo_obj, Config config, bool and_run);
+bool run_program(command_array_t* cmd_arr, Config config, xdo_t* xdo_obj);
 int main(int argc, char** argv){
     (void)argc;
     (void)argv;
@@ -41,10 +44,14 @@ int main(int argc, char** argv){
         printf("First time executing. Creating default binary config.bin file.\n");
         if(!write_to_config(InitConfig)) return EXIT_FAILURE;
     }
+    xdo_t* xdo_obj=xdo_new(NULL);
+    Window focus_window;//Will be ignored.
+    int x_mouse,y_mouse;
+    XColor pc;
     char* file_str=0;
     Config config;
     typedef enum{
-        IS_Start,IS_EditConfig,IS_BuildFile,IS_RunFile
+        IS_Start,IS_EditConfig,IS_BuildFile,IS_RunFile,IS_MouseCoords
     } InputState;
     char input_str[INPUT_BUFFER_LEN+1];
     InputState input_state=IS_Start;
@@ -53,13 +60,14 @@ int main(int argc, char** argv){
         switch(input_state){
             case IS_Start:
                 also_run=false;
-                printf("Type '\\c' for config, '\\b' to build file, '\\r' to build and run file, or '\\q' to quit: ");
+                printf("Type '\\c' for config, '\\b' to build file, '\\r' to build and run file, '\\m' to test coordinates of mouse and color, or '\\q' to quit: ");
                 fgets(input_str,INPUT_BUFFER_LEN+1,stdin);
                 //fgets_change(input_str,INPUT_BUFFER_LEN);//Remove '\n' if any.
                 if(!strcmp(input_str,"\\q\n")) goto done;
                 if(!strcmp(input_str,"\\c\n")) input_state=IS_EditConfig;
                 if(!strcmp(input_str,"\\b\n")) input_state=IS_BuildFile;
                 if(!strcmp(input_str,"\\r\n")) input_state=IS_RunFile;
+                if(!strcmp(input_str,"\\m\n")) input_state=IS_MouseCoords;
                 break;
             case IS_EditConfig:
                 config=read_config_file();
@@ -104,7 +112,7 @@ int main(int argc, char** argv){
                 }
                 printf("Opening file %s\n",input_str);
                 free(file_str);//Free from read_default_file.
-                ProgramStatus ps=parse_file(input_str,read_config_file(),also_run);
+                ProgramStatus ps=parse_file(input_str,xdo_obj,read_config_file(),also_run);
                 if(ps!=PS_ReadError){//Don't rewrite default path if non-existent.
                     write_to_default_file(input_str);
                 }
@@ -117,10 +125,22 @@ int main(int argc, char** argv){
                 }
                 input_state=IS_Start;
                 break;
+            case IS_MouseCoords:
+                printf("After pressing ENTER and waiting 1 second, click anywhere on the screen.\n");
+                fgets(input_str,INPUT_BUFFER_LEN+1,stdin);
+                usleep(1000000);
+                xdo_select_window_with_click(xdo_obj,&focus_window);
+                xdo_get_mouse_location(xdo_obj,&x_mouse,&y_mouse,0);
+                printf("You clicked at x:%d, y:%d\n",x_mouse,y_mouse);
+                get_pixel_color(xdo_obj->xdpy,x_mouse,y_mouse,&pc);
+                printf ("r:%u g:%u b:%u\n",pc.red>>8,pc.green>>8,pc.blue>>8);//Truncate to byte instead.
+                input_state=IS_Start;
+                break;
         }
         
     }
     done:
+    xdo_free(xdo_obj);
     return 0;
 }
 bool fgets_change(char* str,int buffer_len){//Remove '\n' (if any) and check if string buffer is full (returns bool). 
@@ -171,7 +191,15 @@ char* read_default_file(){
     fclose(f_obj);
     return df_str;
 }
-ProgramStatus parse_file(const char* path, Config config, bool and_run){
+//Code from https://rosettacode.org/wiki/Color_of_a_screen_pixel#C, but uses <X11/Xutil.h> as the library including -lX11
+void get_pixel_color(Display* d, int x, int y, XColor* color){
+  XImage* image;
+  image=XGetImage(d,RootWindow(d,DefaultScreen(d)),x,y,1,1,AllPlanes,XYPixmap);
+  color->pixel=XGetPixel(image,0,0);
+  XFree(image);
+  XQueryColor(d,DefaultColormap(d,DefaultScreen(d)),color);
+}
+ProgramStatus parse_file(const char* path, xdo_t* xdo_obj, Config config, bool and_run){
     FILE* f_obj;
     char* file_str;
     f_obj=fopen(path,"r");
@@ -191,7 +219,7 @@ ProgramStatus parse_file(const char* path, Config config, bool and_run){
         if(mb->token_i>mb->size) break;
     }
     if(!mb->parse_error&&and_run){
-        bool run_success=run_program(cmd_arr,config);
+        bool run_success=run_program(cmd_arr,config,xdo_obj);
         if(!run_success){
             repeat_id_manager_free(rim);
             command_array_free(cmd_arr);
@@ -235,8 +263,7 @@ void* mouse_check_listener(void* srs_v){
     pthread_mutex_unlock(&input_mutex);
     pthread_exit(NULL);
 }
-bool run_program(command_array_t* cmd_arr, Config config){
-    xdo_t* xdo_obj=xdo_new(NULL);
+bool run_program(command_array_t* cmd_arr, Config config, xdo_t* xdo_obj){
     Window focus_window;//Will be ignored.
     if(config.print_commands) command_array_print(cmd_arr);
     xdo_select_window_with_click(xdo_obj,&focus_window);
@@ -336,6 +363,5 @@ bool run_program(command_array_t* cmd_arr, Config config){
     pthread_join(input_t,NULL);
     key_down_check_key_up(kdc,xdo_obj,CURRENTWINDOW);
     key_down_check_free(kdc);
-    xdo_free(xdo_obj);
     return true;
 }

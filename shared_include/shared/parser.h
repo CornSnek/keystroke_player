@@ -15,8 +15,8 @@ typedef enum{
     RS_KeyState,
     RS_Delay,
     RS_DelayNum,
-    RS_MouseType,
-    RS_MouseState,
+    RS_MouseClickType,
+    RS_MouseClickState,
     RS_MouseMove,
 }ReadState;
 typedef enum{

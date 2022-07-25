@@ -61,3 +61,6 @@ Requires [xdotool library](https://github.com/jordansissel/xdotool).
 (Optional) Testing requires [Check library](https://github.com/libcheck/check).
 
 Note: This has been built using Visual Studio Code under Arch Linux. Repositories for xdotool and check is in Arch Linux. It may also be readily available in other distributions of Linux.
+
+# TODO
+Adding functionality of jumping towards different commands depending on the color of the pixel.

@@ -48,10 +48,10 @@ macro_buffer_t* macro_buffer_new(char*  str_owned, shared_string_manager* ssm, c
     *this=(macro_buffer_t){.token_i=0,.line_num=1,.char_num=1,.size=strlen(str_owned),.contents=str_owned,.ssm=ssm,.cmd_arr=cmd_arr,.rim=rim,.parse_error=false};
     return this;
 }
-void print_where_error_is(const char* contents,int begin_error,int error_offset){
-    char* str_to_print=(char*)malloc(sizeof(char)*(error_offset+2)); //+1 to count a character and +1 for '\0'.
-    strncpy(str_to_print,contents+begin_error,error_offset+1);
-    str_to_print[error_offset+1]='\0';
+void print_where_error_is(const char* contents,int begin_error,int end_error){
+    char* str_to_print=(char*)malloc(sizeof(char)*(end_error+2)); //+2 to count a character and for '\0'.
+    strncpy(str_to_print,contents+begin_error,end_error+1);
+    str_to_print[end_error+1]='\0';
     printf("%s < Command where error occured.\n",str_to_print);
     free(str_to_print);
 }
@@ -67,7 +67,7 @@ bool macro_buffer_process_next(macro_buffer_t* this,bool print_debug){//Returns 
     __uint64_t parsed_num2=0;
     bool added_keystate=false;
     int read_i=0; //Index to read.
-    int read_end_i=0; //Last character to read.
+    int read_end_i=0; //Last character to read by offset of read_i.
     bool maybe_mouse=false;
     bool mm_first_number=false;
     do{
@@ -226,14 +226,15 @@ bool macro_buffer_process_next(macro_buffer_t* this,bool print_debug){//Returns 
                     if(isdigit(current_char)){
                         read_i+=read_end_i;//No +1 to reread digit.
                         read_end_i=-1;
-                        read_state=RS_MouseType;
+                        read_state=RS_MouseClickType;
                         break;
-                    }else if(true){
+                    }else if(current_char=='M'||current_char=='m'){
                         read_i+=read_end_i+1;
                         read_end_i=-1;
                         read_state=RS_MouseMove;
                         break;
                     }
+                    maybe_mouse=false;
                 }
                 if(char_is_key(current_char)) break;
                 else if(current_char=='='){
@@ -329,7 +330,7 @@ bool macro_buffer_process_next(macro_buffer_t* this,bool print_debug){//Returns 
                 this->parse_error=true;
                 key_processed=true;
                 break;
-            case RS_MouseType:
+            case RS_MouseClickType:
                 if(isdigit(current_char)){
                     num_str[0]=current_char;
                     num_str[1]='\0';
@@ -337,7 +338,7 @@ bool macro_buffer_process_next(macro_buffer_t* this,bool print_debug){//Returns 
                 }else if(current_char=='='){
                     read_i+=2;//To read numbers.
                     read_end_i=-1;
-                    read_state=RS_MouseState;
+                    read_state=RS_MouseClickState;
                     break;
                 }
                 fprintf(stderr,"Current character not allowed '%c' at line %d char %d.\n",current_char,this->line_num,this->char_num);
@@ -345,7 +346,7 @@ bool macro_buffer_process_next(macro_buffer_t* this,bool print_debug){//Returns 
                 this->parse_error=true;
                 key_processed=true;
                 break;
-            case RS_MouseState:
+            case RS_MouseClickState:
                 if(char_is_keystate(current_char)){
                     if(added_keystate){
                         fprintf(stderr,"Cannot add more than 1 keystate at line %d char %d.\n",this->line_num,this->char_num);
