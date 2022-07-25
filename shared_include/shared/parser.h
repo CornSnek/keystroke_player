@@ -16,15 +16,16 @@ typedef enum{
     RS_Delay,
     RS_DelayNum,
     RS_MouseType,
-    RS_MouseState
+    RS_MouseState,
+    RS_MouseMove,
 }ReadState;
 typedef enum{
     IS_Down,IS_Up,IS_Click
 }InputState;
-typedef struct repeat_id_manager_s repeat_id_manager_t;
-typedef struct command_array_s command_array_t;
+typedef struct repeat_id_manager repeat_id_manager_t;
+typedef struct command_array command_array_t;
 typedef struct{
-    int parse_i;
+    int token_i;
     int line_num;
     int char_num;
     int size;
@@ -38,20 +39,22 @@ typedef struct{
     InputState key_state;
     char* key;
 }keystroke_t;
-typedef struct repeat_id_manager_s{//Get ids from created names.
+typedef struct repeat_id_manager{//Get ids from created names.
     int size;
     char** names;
     int* index;
     shared_string_manager* ssm;
 }repeat_id_manager_t;
 typedef __uint64_t delay_ns_t;
-typedef struct{
-    int counter;
-}repeat_start_t;
+typedef int repeat_start_t;
 typedef struct{
     int index;//Index refers to repeat_start_t's index.
     int counter_max;//0 means infinite loop.
 }repeat_end_t;
+typedef struct{
+    int x;
+    int y;
+}mouse_move_t;
 typedef struct{
     InputState mouse_state;
     int mouse_type;
@@ -61,16 +64,17 @@ typedef union{
     delay_ns_t delay;
     repeat_start_t repeat_start;
     repeat_end_t repeat_end;
-    mouse_click_t mouse;
+    mouse_click_t mouse_click;
+    mouse_move_t mouse_move;
 }command_union_t;
 typedef enum{
-    VT_KeyStroke,VT_Delay,VT_RepeatStart,VT_RepeatEnd,VT_MouseClick
+    VT_KeyStroke,VT_Delay,VT_RepeatStart,VT_RepeatEnd,VT_MouseClick,VT_MouseMove
 }CommandType;
 typedef struct{//Aggregating like for SDL events (enums and unions).
     CommandType type;
     command_union_t cmd;
 }command_t;
-typedef struct command_array_s{
+typedef struct command_array{
     int size;
     command_t* cmds;
     shared_string_manager* SSM;

@@ -25,7 +25,7 @@ typedef struct{
     bool print_commands;
 }Config;
 const Config InitConfig={
-    .init_delay=2000000,.mouse_check_delay=100000,.print_commands=false
+    .init_delay=2000000,.mouse_check_delay=100000,.print_commands=true
 };
 bool fgets_change(char* str,int buffer_len);
 bool write_to_config(const Config config);
@@ -188,7 +188,7 @@ ProgramStatus parse_file(const char* path, Config config, bool and_run){
     repeat_id_manager_t* rim=repeat_id_manager_new(ssm);
     macro_buffer_t* mb=macro_buffer_new(file_str,ssm,cmd_arr,rim);
     while(macro_buffer_process_next(mb)){
-        if(mb->parse_i>mb->size) break;
+        if(mb->token_i>mb->size) break;
     }
     if(!mb->parse_error&&and_run){
         bool run_success=run_program(cmd_arr,config);
@@ -219,16 +219,15 @@ typedef struct{
 pthread_mutex_t input_mutex;
 void* mouse_check_listener(void* srs_v){
     shared_rs* srs_p=(shared_rs*)srs_v;
-    int mouse_x_before,mouse_y_before,mouse_x_after,mouse_y_after;
+    int mouse_x_after,mouse_y_after;
     pthread_mutex_lock(&input_mutex);
     delay_ns_t mouse_check_delay=srs_p->mouse_check_delay;
-    mouse_x_before=srs_p->mouse.x; mouse_y_before=srs_p->mouse.y;//To use if mouse moved after autoclicker started.
     while(!srs_p->program_done){
         pthread_mutex_unlock(&input_mutex);
         usleep(mouse_check_delay);
         pthread_mutex_lock(&input_mutex);
         xdo_get_mouse_location(srs_p->xdo_obj,&mouse_x_after,&mouse_y_after,NULL);
-        if(mouse_x_before!=mouse_x_after||mouse_y_before!=mouse_y_after){
+        if(srs_p->mouse.x!=mouse_x_after||srs_p->mouse.y!=mouse_y_after){
             printf("Mouse moved. Stopping autoclicker.\n");
             srs_p->program_done=true;
         }
@@ -239,7 +238,7 @@ void* mouse_check_listener(void* srs_v){
 bool run_program(command_array_t* cmd_arr, Config config){
     xdo_t* xdo_obj=xdo_new(NULL);
     Window focus_window;//Will be ignored.
-    //command_array_print(cmd_arr);
+    if(config.print_commands) command_array_print(cmd_arr);
     xdo_select_window_with_click(xdo_obj,&focus_window);
     int cmd_arr_len=command_array_count(cmd_arr);
     int cmd_arr_i=0;
@@ -291,7 +290,7 @@ bool run_program(command_array_t* cmd_arr, Config config){
                 break;
             case(VT_RepeatEnd):
                 if(cmd_u.repeat_end.counter_max){//Counter has been set.
-                    rst_counter=&(cmd_arr->cmds[cmd_u.repeat_end.index].cmd.repeat_start.counter);
+                    rst_counter=&(cmd_arr->cmds[cmd_u.repeat_end.index].cmd.repeat_start);
                     if(print_commands) printf("Command %d/%d: Jump to Command #%d until counter %d reaches %d\n",cmd_arr_i+1,cmd_arr_len,cmd_u.repeat_end.index+2,++(*rst_counter),cmd_u.repeat_end.counter_max);
                     if(*rst_counter!=cmd_u.repeat_end.counter_max) cmd_arr_i=cmd_u.repeat_end.index;//Go back if not counter_max
                     else *rst_counter=0;//Reset to loop again.
@@ -300,28 +299,33 @@ bool run_program(command_array_t* cmd_arr, Config config){
                     cmd_arr_i=cmd_u.repeat_end.index;
                 }
                 break;
-            /*case(VT_RepeatStart):
-                if(print_commands) printf("Command %d/%d: This is a loop counter (%d).\n",cmd_arr_i+1,cmd_arr_len,cmd_u.repeat_start.counter);
-                break;*/
+            case(VT_RepeatStart):
+                //if(print_commands) printf("Command %d/%d: This is a loop counter (%d).\n",cmd_arr_i+1,cmd_arr_len,cmd_u.repeat_start.counter);
+                break;
             case(VT_MouseClick):
                 pthread_mutex_lock(&input_mutex);
-                switch(cmd_u.mouse.mouse_state){
+                switch(cmd_u.mouse_click.mouse_state){
                     case IS_Down:
-                        if(print_commands) printf("Command %d/%d: Mouse down (%d).\n",cmd_arr_i+1,cmd_arr_len,cmd_u.mouse.mouse_type);
-                        xdo_mouse_down(xdo_obj,CURRENTWINDOW,cmd_u.mouse.mouse_type);
+                        if(print_commands) printf("Command %d/%d: Mouse down (%d).\n",cmd_arr_i+1,cmd_arr_len,cmd_u.mouse_click.mouse_type);
+                        xdo_mouse_down(xdo_obj,CURRENTWINDOW,cmd_u.mouse_click.mouse_type);
                         break;
                     case IS_Up:
-                        if(print_commands) printf("Command %d/%d: Mouse up (%d).\n",cmd_arr_i+1,cmd_arr_len,cmd_u.mouse.mouse_type);
-                        xdo_mouse_up(xdo_obj,CURRENTWINDOW,cmd_u.mouse.mouse_type);
+                        if(print_commands) printf("Command %d/%d: Mouse up (%d).\n",cmd_arr_i+1,cmd_arr_len,cmd_u.mouse_click.mouse_type);
+                        xdo_mouse_up(xdo_obj,CURRENTWINDOW,cmd_u.mouse_click.mouse_type);
                         break;
                     case IS_Click:
-                        if(print_commands) printf("Command %d/%d: Mouse click (%d).\n",cmd_arr_i+1,cmd_arr_len,cmd_u.mouse.mouse_type);
-                        xdo_click_window(xdo_obj,CURRENTWINDOW,cmd_u.mouse.mouse_type);
+                        if(print_commands) printf("Command %d/%d: Mouse click (%d).\n",cmd_arr_i+1,cmd_arr_len,cmd_u.mouse_click.mouse_type);
+                        xdo_click_window(xdo_obj,CURRENTWINDOW,cmd_u.mouse_click.mouse_type);
                 }
                 pthread_mutex_unlock(&input_mutex);
                 break;
-            default:
-                break;
+            case(VT_MouseMove):
+                pthread_mutex_lock(&input_mutex);
+                if(print_commands) printf("Command %d/%d: Mouse move at (%d,%d).\n",cmd_arr_i+1,cmd_arr_len,cmd_u.mouse_move.x,cmd_u.mouse_move.y);
+                srs.mouse.x=cmd_u.mouse_move.x;
+                srs.mouse.y=cmd_u.mouse_move.y;//Update mouse movement for input_t thread loop.
+                xdo_move_mouse(xdo_obj,cmd_u.mouse_move.x,cmd_u.mouse_move.y,0);
+                pthread_mutex_unlock(&input_mutex);
         }
         pthread_mutex_lock(&input_mutex);
         if(++cmd_arr_i==cmd_arr_len){
