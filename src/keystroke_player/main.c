@@ -25,7 +25,7 @@ typedef struct{
     bool print_commands;
 }Config;
 const Config InitConfig={
-    .init_delay=2000000,.mouse_check_delay=100000,.print_commands=true
+    .init_delay=2000000,.mouse_check_delay=100000,.print_commands=false
 };
 bool fgets_change(char* str,int buffer_len);
 bool write_to_config(const Config config);
@@ -187,7 +187,7 @@ ProgramStatus parse_file(const char* path, Config config, bool and_run){
     command_array_t* cmd_arr=command_array_new(ssm);
     repeat_id_manager_t* rim=repeat_id_manager_new(ssm);
     macro_buffer_t* mb=macro_buffer_new(file_str,ssm,cmd_arr,rim);
-    while(macro_buffer_process_next(mb)){
+    while(macro_buffer_process_next(mb,config.print_commands)){
         if(mb->token_i>mb->size) break;
     }
     if(!mb->parse_error&&and_run){

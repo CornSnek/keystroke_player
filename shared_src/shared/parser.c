@@ -55,7 +55,7 @@ void print_where_error_is(const char* contents,int begin_error,int error_offset)
     printf("%s < Command where error occured.\n",str_to_print);
     free(str_to_print);
 }
-bool macro_buffer_process_next(macro_buffer_t* this){//Returns bool if processed successfully or not.
+bool macro_buffer_process_next(macro_buffer_t* this,bool print_debug){//Returns bool if processed successfully or not.
     ReadState read_state=RS_Start;
     bool key_processed=false;
     InputState input_state;
@@ -72,7 +72,7 @@ bool macro_buffer_process_next(macro_buffer_t* this){//Returns bool if processed
     bool mm_first_number=false;
     do{
         const char current_char=this->contents[this->token_i+read_i+read_end_i];
-        printf("'%c' token_i:%d read_end_i:%d read_i:%d State:%d Length:%d\n",current_char,this->token_i,read_end_i,read_i,(int)read_state,this->size);
+        if(print_debug) printf("'%c' token_i:%d read_end_i:%d read_i:%d State:%d Length:%d\n",current_char,this->token_i,read_end_i,read_i,(int)read_state,this->size);
         switch(read_state){
             case RS_Start:
                 if(char_is_key(current_char)){

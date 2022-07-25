@@ -82,7 +82,7 @@ typedef struct command_array{
 int trim_whitespace(char**  strptr_owner);
 void replace_str(char** strptr, const char* replace, const char* with);
 macro_buffer_t* macro_buffer_new(char*  str_owned, shared_string_manager* ssm, command_array_t* cmd_arr, repeat_id_manager_t* rim);//macro_buffer_new has ownership to char*.
-bool macro_buffer_process_next(macro_buffer_t* mb);
+bool macro_buffer_process_next(macro_buffer_t* mb,bool print_debug);
 void macro_buffer_free(macro_buffer_t* this);
 keystroke_t* keystroke_new(bool key_state, char*  key_owned);
 void keystroke_free(keystroke_t* this);
