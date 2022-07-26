@@ -3,14 +3,14 @@
 #include <string.h>
 #include <stdio.h>
 #include <stdlib.h>
-shared_string_manager* SSManager_new(void){
-    shared_string_manager* this=(shared_string_manager*)calloc(1,sizeof(shared_string_manager));
-    EXIT_IF_NULL(this,shared_string_manager*);
+shared_string_manager_t* SSManager_new(void){
+    shared_string_manager_t* this=(shared_string_manager_t*)calloc(1,sizeof(shared_string_manager_t));
+    EXIT_IF_NULL(this,shared_string_manager_t*);
     return this;
 }
-char* SSManager_add_string(shared_string_manager* this, char**  str_p_owned){//Returns freed pointer while it modifies into the new shared pointer.
+char* SSManager_add_string(shared_string_manager_t* this, char** str_p_owned){//Returns freed pointer while it modifies into the new shared pointer.
     for(int i=0;i<this->count;i++){
-        if(strcmp(*str_p_owned,this->c_strs[i])==0){
+        if(!strcmp(*str_p_owned,this->c_strs[i])){
             char* freed_pointer=*str_p_owned;
             if(*str_p_owned!=this->c_strs[i]) free(*str_p_owned);//Remove duplicate char* contents from strcmp==0.
             *str_p_owned=this->c_strs[i];
@@ -32,7 +32,7 @@ char* SSManager_add_string(shared_string_manager* this, char**  str_p_owned){//R
     this->c_str_rc[this->count-1]=1;
     return *str_p_owned;
 }
-int SSManager_count_string(const shared_string_manager* this, const char* str_cmp){
+int SSManager_count_string(const shared_string_manager_t* this, const char* str_cmp){
     for(int i=0;i<this->count;i++){
         if(strcmp(str_cmp,this->c_strs[i])==0){
             return this->c_str_rc[i];
@@ -40,12 +40,12 @@ int SSManager_count_string(const shared_string_manager* this, const char* str_cm
     }
     return 0;//Not initialized or no string found.
 }
-void SSManager_print_strings(const shared_string_manager* this){
+void SSManager_print_strings(const shared_string_manager_t* this){
     printf("shared_strings: {");
     for(int i=0;i<this->count;i++) printf("(\"%s\",x%d)%s",this->c_strs[i],this->c_str_rc[i],i<this->count-1?", ":"");
     printf("}\n");
 }
-void SSManager_free_string(shared_string_manager* this, const char* str_del){
+void SSManager_free_string(shared_string_manager_t* this, const char* str_del){
     for(int del_i=0;del_i<this->count;del_i++){
         if(strcmp(str_del,this->c_strs[del_i])==0){
             if(--this->c_str_rc[del_i]) return;//RC-1
@@ -70,7 +70,7 @@ void SSManager_free_string(shared_string_manager* this, const char* str_del){
     fprintf(stderr,"String '%s' doesn't exist in SSManager.",str_del);
     exit(EXIT_FAILURE);
 }
-void SSManager_free(shared_string_manager* this){
+void SSManager_free(shared_string_manager_t* this){
     for(int i=0;i<this->count;i++) free(this->c_strs[i]);
     free(this->c_str_rc);
     free(this->c_strs);

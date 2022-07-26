@@ -42,10 +42,10 @@ void replace_str(char**  strptr_owner, const char* replace, const char* with){//
     free(*strptr_owner);
     *strptr_owner=new_strptr;//Change freed pointer to new pointer.
 }
-macro_buffer_t* macro_buffer_new(char*  str_owned, shared_string_manager* ssm, command_array_t* cmd_arr, repeat_id_manager_t* rim){
+macro_buffer_t* macro_buffer_new(char* str_owned, command_array_t* cmd_arr, repeat_id_manager_t* rim){
     macro_buffer_t* this=(macro_buffer_t*)(malloc(sizeof(macro_buffer_t)));
     EXIT_IF_NULL(this,macro_buffer_t);
-    *this=(macro_buffer_t){.token_i=0,.line_num=1,.char_num=1,.size=strlen(str_owned),.contents=str_owned,.ssm=ssm,.cmd_arr=cmd_arr,.rim=rim,.parse_error=false};
+    *this=(macro_buffer_t){.token_i=0,.line_num=1,.char_num=1,.size=strlen(str_owned),.contents=str_owned,.cmd_arr=cmd_arr,.rim=rim,.parse_error=false};
     return this;
 }
 void print_where_error_is(const char* contents,int begin_error,int end_error){
@@ -75,8 +75,20 @@ bool macro_buffer_process_next(macro_buffer_t* this,bool print_debug){//Returns 
         if(print_debug) printf("'%c' token_i:%d read_end_i:%d read_i:%d State:%d Length:%d\n",current_char,this->token_i,read_end_i,read_i,(int)read_state,this->size);
         switch(read_state){
             case RS_Start:
+                if(current_char=='e'&&!strncmp(this->contents+this->token_i+read_i+read_end_i,"exit;",5)){
+                    command_array_add(this->cmd_arr,
+                        (command_t){.type=VT_Exit,
+                            .cmd={{0}}
+                        }
+                    );
+                    read_i+=4;//Exclude reading "xit;"
+                    key_processed=true;
+                    break;
+                }
                 if(char_is_key(current_char)){
-                    if(current_char=='m'||current_char=='M'){maybe_mouse=true;}
+                    if(current_char=='m'||current_char=='M'){
+                        maybe_mouse=true;
+                    }
                     read_state=RS_KeyOrMouse;
                     break;
                 }
@@ -156,7 +168,7 @@ bool macro_buffer_process_next(macro_buffer_t* this,bool print_debug){//Returns 
                     str_name=(char*)calloc(read_end_i+1,sizeof(char));
                     EXIT_IF_NULL(str_name,char);
                     strncpy(str_name,this->contents+this->token_i+read_i,read_end_i);
-                    const bool str_exists=(str_name!=SSManager_add_string(this->ssm,&str_name));
+                    const bool str_exists=(str_name!=SSManager_add_string(this->rim->ssm,&str_name));
                     if(str_exists){
                         read_i+=read_end_i+1;
                         read_end_i=-1;
@@ -172,7 +184,7 @@ bool macro_buffer_process_next(macro_buffer_t* this,bool print_debug){//Returns 
                     str_name=(char*)calloc(read_end_i+1,sizeof(char));
                     EXIT_IF_NULL(str_name,char);
                     strncpy(str_name,this->contents+this->token_i+read_i,read_end_i);
-                    const bool str_exists=(str_name!=SSManager_add_string(this->ssm,&str_name));
+                    const bool str_exists=(str_name!=SSManager_add_string(this->rim->ssm,&str_name));
                     if(str_exists){
                         command_array_add(this->cmd_arr,
                             (command_t){.type=VT_RepeatEnd,
@@ -266,12 +278,11 @@ bool macro_buffer_process_next(macro_buffer_t* this,bool print_debug){//Returns 
                 }else if(current_char==';'){
                     str_name=malloc(sizeof(char)*read_end_i-1);//-2 to exclude RS_KeyState modifiers, but -1 because null terminator.
                     strncpy(str_name,this->contents+this->token_i+read_i,read_end_i-2);
-                    str_name[read_end_i-2]='\0';
-                    SSManager_add_string(this->ssm,&str_name);
+                    str_name[read_end_i-2]='\0';\
                     command_array_add(this->cmd_arr,
                         (command_t){.type=VT_KeyStroke,
                             .cmd.ks=(keystroke_t){
-                                .key=str_name,//SSManager/keystroke_t owns char* key.
+                                .key=str_name,//SSManager/keystroke_t owns char* key via command_array_add.
                                 .key_state=input_state
                             }
                         }
@@ -430,20 +441,10 @@ void macro_buffer_free(macro_buffer_t* this){
     free(this->contents);
     free(this);
 }
-keystroke_t* keystroke_new(bool key_state, char* key_owned){//keystroke_t owns key string.
-    keystroke_t* this=(keystroke_t*)(malloc(sizeof(keystroke_t)));
-    EXIT_IF_NULL(this,macro_buffer_t);
-    *this=(keystroke_t){.key_state=key_state,.key=key_owned};
-    return this;
-}
-void keystroke_free(keystroke_t* this){
-    free(this->key);
-    free(this);
-}
-repeat_id_manager_t* repeat_id_manager_new(shared_string_manager* ssm){
+repeat_id_manager_t* repeat_id_manager_new(){
     repeat_id_manager_t* this=(repeat_id_manager_t*)(malloc(sizeof(repeat_id_manager_t)));
     EXIT_IF_NULL(this,repeat_id_manager_t);
-    *this=(repeat_id_manager_t){.size=0,.names=NULL,.index=NULL,.ssm=ssm};
+    *this=(repeat_id_manager_t){.size=0,.names=NULL,.index=NULL,.ssm=SSManager_new()};
     return this;
 }
 void repeat_id_manager_add_name(repeat_id_manager_t* this, char* str_owned, int index){
@@ -475,22 +476,24 @@ int repeat_id_manager_search_index(const repeat_id_manager_t* this,const char* s
     return -1;
 }
 void repeat_id_manager_free(repeat_id_manager_t* this){
+    SSManager_free(this->ssm);
     free(this->names);
     free(this->index);
     free(this);
 }
-command_array_t* command_array_new(shared_string_manager* ssm){
+command_array_t* command_array_new(){
     command_array_t* this=(command_array_t*)(malloc(sizeof(command_array_t)));
     EXIT_IF_NULL(this,command_array_t);
-    *this=(command_array_t){.size=0,.cmds=NULL,.SSM=ssm};
+    *this=(command_array_t){.size=0,.cmds=NULL,.SSM=SSManager_new()};
     return this;
 }
-void command_array_add(command_array_t* this, command_t cmd_arr){
+void command_array_add(command_array_t* this, command_t cmd){
     this->size++;
     if(this->cmds) this->cmds=(command_t*)realloc(this->cmds,sizeof(command_t)*(this->size));
     else this->cmds=(command_t*)malloc(sizeof(command_t));
     EXIT_IF_NULL(this->cmds,command_t*);
-    this->cmds[this->size-1]=cmd_arr;
+    if(cmd.type==VT_KeyStroke) SSManager_add_string(this->SSM,&cmd.cmd.ks.key);//Edit pointer for any shared strings first before placing in array.
+    this->cmds[this->size-1]=cmd;
 }
 int command_array_count(const command_array_t* this){
     return this->size;
@@ -517,20 +520,13 @@ void command_array_print(const command_array_t* this){
             case VT_MouseMove:
                 printf("(%d) MouseMove: x: %d y: %d\n",i,cmd.mouse_move.x,cmd.mouse_move.y);
                 break;
+            case VT_Exit:
+                printf("(%d) ExitProgram\n",i);
         }
     }
 }
 void command_array_free(command_array_t* this){
-    for(int i=0;i<this->size;i++){
-        const command_union_t cmd=this->cmds[i].cmd;
-        switch(this->cmds[i].type){
-            case VT_KeyStroke:
-                SSManager_free_string(this->SSM,cmd.ks.key);
-                break;
-            default:
-                break;
-        }
-    }
+    SSManager_free(this->SSM);
     free(this->cmds);
     free(this);
 }

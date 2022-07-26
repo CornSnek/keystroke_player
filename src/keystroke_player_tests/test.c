@@ -8,10 +8,9 @@ START_TEST(parse_from_string){
     char a_string_stack[]="(A;Ctrl+Alt+Delete=d;m1=u;.30;)A;";
     char* a_string_heap=(char*)malloc(sizeof(a_string_stack)/sizeof(char));
     strcpy(a_string_heap,a_string_stack);
-    shared_string_manager* ssm=SSManager_new();
-    command_array_t* cmd_arr=command_array_new(ssm);
-    repeat_id_manager_t* rim=repeat_id_manager_new(ssm);
-    macro_buffer_t* mb=macro_buffer_new(a_string_heap,ssm,cmd_arr,rim);
+    command_array_t* cmd_arr=command_array_new();
+    repeat_id_manager_t* rim=repeat_id_manager_new();
+    macro_buffer_t* mb=macro_buffer_new(a_string_heap,cmd_arr,rim);
     while(macro_buffer_process_next(mb,false)){
         if(mb->token_i>mb->size) break;
     }
@@ -19,14 +18,12 @@ START_TEST(parse_from_string){
     command_array_print(cmd_arr);
     repeat_id_manager_free(rim);
     command_array_free(cmd_arr);
-    SSManager_free(ssm);
     macro_buffer_free(mb);
 }
 END_TEST
 START_TEST(repeat_id_search_str_test){
     printf("Starting Test repeat_id_search_str_test\n");
-    shared_string_manager* ssm=SSManager_new();
-    repeat_id_manager_t* rim=repeat_id_manager_new(ssm);
+    repeat_id_manager_t* rim=repeat_id_manager_new();
     const int num_of_strings=3;
     const int string_size=6;
     const char* str0="AAA",* str1="BB",* str2="DDDD";
@@ -42,12 +39,11 @@ START_TEST(repeat_id_search_str_test){
     ck_assert_int_eq(repeat_id_manager_search_index(rim,"CCCCC"),-1);
     free(string_heaps);
     repeat_id_manager_free(rim);
-    SSManager_free(ssm);
 }
 END_TEST
 START_TEST(shared_string_test){
     printf("Starting Test shared_string_test\n");
-    shared_string_manager* ssm=SSManager_new();
+    shared_string_manager_t* ssm=SSManager_new();
     const char* str0="AAA",* str1="BBB",* str2="AAA";
     char** string_heaps=(char**)malloc(sizeof(char*)*3);
     for(int i=0;i<3;i++) string_heaps[i]=(char*)calloc(4,sizeof(char));

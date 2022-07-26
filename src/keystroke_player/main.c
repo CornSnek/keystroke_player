@@ -27,7 +27,7 @@ typedef struct{
     bool print_commands;
 }Config;
 const Config InitConfig={
-    .init_delay=2000000,.mouse_check_delay=100000,.print_commands=false
+    .init_delay=2000000,.mouse_check_delay=100000,.print_commands=true
 };
 bool fgets_change(char* str,int buffer_len);
 bool write_to_config(const Config config);
@@ -211,10 +211,9 @@ ProgramStatus parse_file(const char* path, xdo_t* xdo_obj, Config config, bool a
     fread(file_str,str_len,1,f_obj);
     file_str[str_len]='\0';
     fclose(f_obj);
-    shared_string_manager* ssm=SSManager_new();
-    command_array_t* cmd_arr=command_array_new(ssm);
-    repeat_id_manager_t* rim=repeat_id_manager_new(ssm);
-    macro_buffer_t* mb=macro_buffer_new(file_str,ssm,cmd_arr,rim);
+    command_array_t* cmd_arr=command_array_new();
+    repeat_id_manager_t* rim=repeat_id_manager_new();
+    macro_buffer_t* mb=macro_buffer_new(file_str,cmd_arr,rim);
     while(macro_buffer_process_next(mb,config.print_commands)){
         if(mb->token_i>mb->size) break;
     }
@@ -223,14 +222,12 @@ ProgramStatus parse_file(const char* path, xdo_t* xdo_obj, Config config, bool a
         if(!run_success){
             repeat_id_manager_free(rim);
             command_array_free(cmd_arr);
-            SSManager_free(ssm);
             macro_buffer_free(mb);
             return PS_ProgramError;
         }
     }
     repeat_id_manager_free(rim);
     command_array_free(cmd_arr);
-    SSManager_free(ssm);
     ProgramStatus ps=mb->parse_error?PS_ParseError:(and_run?PS_RunSuccess:PS_CompileSuccess);
     macro_buffer_free(mb); //Get parse_error bool before freeing.
     return ps;
@@ -352,6 +349,12 @@ bool run_program(command_array_t* cmd_arr, Config config, xdo_t* xdo_obj){
                 srs.mouse.x=cmd_u.mouse_move.x;
                 srs.mouse.y=cmd_u.mouse_move.y;//Update mouse movement for input_t thread loop.
                 xdo_move_mouse(xdo_obj,cmd_u.mouse_move.x,cmd_u.mouse_move.y,0);
+                pthread_mutex_unlock(&input_mutex);
+                break;
+            case(VT_Exit):
+                pthread_mutex_lock(&input_mutex);
+                if(print_commands) printf("Command %d/%d: Exit command issued. Exiting program now.\n",cmd_arr_i+1,cmd_arr_len);
+                srs.program_done=true;
                 pthread_mutex_unlock(&input_mutex);
         }
         pthread_mutex_lock(&input_mutex);
