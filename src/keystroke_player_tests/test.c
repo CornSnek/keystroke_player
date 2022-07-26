@@ -16,9 +16,9 @@ START_TEST(parse_from_string){
     }
     printf("%d\n",mb->parse_error);
     command_array_print(cmd_arr);
+    macro_buffer_free(mb);
     repeat_id_manager_free(rim);
     command_array_free(cmd_arr);
-    macro_buffer_free(mb);
 }
 END_TEST
 START_TEST(repeat_id_search_str_test){

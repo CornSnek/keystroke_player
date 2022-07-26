@@ -61,21 +61,21 @@ bool macro_buffer_process_next(macro_buffer_t* this,bool print_debug){//Returns 
     InputState input_state;
     char* str_name=0;
     __uint64_t delay_mult; 
-    char* num_str=(char*)malloc(sizeof(char)*2);
-    EXIT_IF_NULL(num_str,char*);
+    char* num_str=0;
     __uint64_t parsed_num=0;
     __uint64_t parsed_num2=0;
     bool added_keystate=false;
     int read_i=0; //Index to read.
-    int read_end_i=0; //Last character to read by offset of read_i.
+    int read_offset_i=0; //Last character to read by offset of read_i.
     bool maybe_mouse=false;
-    bool mm_first_number=false;
+    bool first_number=false;
     do{
-        const char current_char=this->contents[this->token_i+read_i+read_end_i];
-        if(print_debug) printf("'%c' token_i:%d read_end_i:%d read_i:%d State:%d Length:%d\n",current_char,this->token_i,read_end_i,read_i,(int)read_state,this->size);
+        const char current_char=this->contents[this->token_i+read_i+read_offset_i];
+        if(print_debug) printf("'%c' token_i:%d read_offset_i:%d read_i:%d State:%d Length:%d\n",current_char,this->token_i,read_offset_i,read_i,(int)read_state,this->size);
         switch(read_state){
             case RS_Start:
-                if(current_char=='e'&&!strncmp(this->contents+this->token_i+read_i+read_end_i,"exit;",5)){
+                first_number=false;
+                if(current_char=='e'&&!strncmp(this->contents+this->token_i+read_i+read_offset_i,"exit;",5)){
                     command_array_add(this->cmd_arr,
                         (command_t){.type=VT_Exit,
                             .cmd={{0}}
@@ -95,17 +95,17 @@ bool macro_buffer_process_next(macro_buffer_t* this,bool print_debug){//Returns 
                 switch(current_char){
                     case '.':
                         read_i+=1;
-                        read_end_i=-1;
+                        read_offset_i=-1;
                         read_state=RS_Delay;
                         break;
                     case '(':
                         read_i+=1;
-                        read_end_i=-1;
+                        read_offset_i=-1;
                         read_state=RS_RepeatStart;
                         break;
                     case ')':
                         read_i+=1;
-                        read_end_i=-1;
+                        read_offset_i=-1;
                         read_state=RS_RepeatEnd;
                         break;
                     case '\0':
@@ -113,7 +113,7 @@ bool macro_buffer_process_next(macro_buffer_t* this,bool print_debug){//Returns 
                         break;
                     case '\n':
                         read_i+=1;
-                        read_end_i=-1;
+                        read_offset_i=-1;
                         this->line_num++;
                         this->char_num=0;//1 after loop repeats.
                         break;
@@ -123,11 +123,11 @@ bool macro_buffer_process_next(macro_buffer_t* this,bool print_debug){//Returns 
                     case ' '://Fallthrough
                     case '\t'://Allow tabs and spaces before making comments.
                         read_i+=1;
-                        read_end_i=-1;
+                        read_offset_i=-1;
                         break;
                     default:
                         fprintf(stderr,"Current character not allowed '%c' at line %d char %d.\n",current_char,this->line_num,this->char_num);
-                        print_where_error_is(this->contents,this->token_i,read_i+read_end_i);
+                        print_where_error_is(this->contents,this->token_i,read_i+read_offset_i);
                         this->parse_error=true;
                         key_processed=true;
                         break;
@@ -135,8 +135,8 @@ bool macro_buffer_process_next(macro_buffer_t* this,bool print_debug){//Returns 
                 break;
             case RS_Comments:
                 if(current_char=='\n'){
-                    read_i+=read_end_i;
-                    read_end_i=-1;
+                    read_i+=read_offset_i;
+                    read_offset_i=-1;
                     this->line_num++;
                     this->char_num=0;//1 after loop repeats.
                     read_state=RS_Start;
@@ -145,9 +145,9 @@ bool macro_buffer_process_next(macro_buffer_t* this,bool print_debug){//Returns 
             case RS_RepeatStart:
                 if(char_is_key(current_char)) break;
                 if(current_char==';'){
-                    str_name=(char*)calloc(read_end_i+1,sizeof(char));
+                    str_name=(char*)calloc(read_offset_i+1,sizeof(char));
                     EXIT_IF_NULL(str_name,char);
-                    strncpy(str_name,this->contents+this->token_i+read_i,read_end_i);
+                    strncpy(str_name,this->contents+this->token_i+read_i,read_offset_i);
                     repeat_id_manager_add_name(this->rim,str_name,command_array_count(this->cmd_arr));
                     command_array_add(this->cmd_arr,
                         (command_t){.type=VT_RepeatStart,
@@ -158,20 +158,20 @@ bool macro_buffer_process_next(macro_buffer_t* this,bool print_debug){//Returns 
                     break;
                 }
                 fprintf(stderr,"Current character not allowed '%c' at line %d char %d.\n",current_char,this->line_num,this->char_num);
-                print_where_error_is(this->contents,this->token_i,read_i+read_end_i);
+                print_where_error_is(this->contents,this->token_i,read_i+read_offset_i);
                 this->parse_error=true;
                 key_processed=true;
                 break;
             case RS_RepeatEnd:
                 if(char_is_key(current_char)) break;
                 if(current_char=='='){
-                    str_name=(char*)calloc(read_end_i+1,sizeof(char));
+                    str_name=(char*)calloc(read_offset_i+1,sizeof(char));
                     EXIT_IF_NULL(str_name,char);
-                    strncpy(str_name,this->contents+this->token_i+read_i,read_end_i);
+                    strncpy(str_name,this->contents+this->token_i+read_i,read_offset_i);
                     const bool str_exists=(str_name!=SSManager_add_string(this->rim->ssm,&str_name));
                     if(str_exists){
-                        read_i+=read_end_i+1;
-                        read_end_i=-1;
+                        read_i+=read_offset_i+1;
+                        read_offset_i=-1;
                         read_state=RS_RepeatEndNumber;
                         break;
                     }
@@ -181,9 +181,9 @@ bool macro_buffer_process_next(macro_buffer_t* this,bool print_debug){//Returns 
                     break;
                 }
                 if(current_char==';'){
-                    str_name=(char*)calloc(read_end_i+1,sizeof(char));
+                    str_name=(char*)calloc(read_offset_i+1,sizeof(char));
                     EXIT_IF_NULL(str_name,char);
-                    strncpy(str_name,this->contents+this->token_i+read_i,read_end_i);
+                    strncpy(str_name,this->contents+this->token_i+read_i,read_offset_i);
                     const bool str_exists=(str_name!=SSManager_add_string(this->rim->ssm,&str_name));
                     if(str_exists){
                         command_array_add(this->cmd_arr,
@@ -198,51 +198,50 @@ bool macro_buffer_process_next(macro_buffer_t* this,bool print_debug){//Returns 
                         break;
                     }
                     fprintf(stderr,"String '%s' was not initially defined from a Loop Start at line %d char %d.\n",str_name,this->line_num,this->char_num);
-                    print_where_error_is(this->contents,this->token_i,read_i+read_end_i);
+                    print_where_error_is(this->contents,this->token_i,read_i+read_offset_i);
                     this->parse_error=true;
                     key_processed=true;
                     break;
                 }
                 fprintf(stderr,"Current character not allowed '%c' at line %d char %d.\n",current_char,this->line_num,this->char_num);
-                print_where_error_is(this->contents,this->token_i,read_i+read_end_i);
+                print_where_error_is(this->contents,this->token_i,read_i+read_offset_i);
                 this->parse_error=true;
                 key_processed=true;
                 break;
             case RS_RepeatEndNumber:
-                if(isdigit(current_char)){
-                    num_str[read_end_i]=current_char;
-                    num_str=(char*)realloc(num_str,sizeof(char)*(read_end_i+2));
+                if(isdigit(current_char)) break;
+                else if(current_char==';'){
+                    num_str=(char*)malloc(sizeof(char)*(read_offset_i+1));
                     EXIT_IF_NULL(num_str,char*);
-                    break;
-                }else if(current_char==';'){
-                    num_str[read_end_i]='\0';
-                    parsed_num=strtol(num_str,NULL,10);
+                    strncpy(num_str,this->contents+this->token_i+read_i,read_offset_i);
+                    num_str[read_offset_i]='\0';
                     command_array_add(this->cmd_arr,
                         (command_t){.type=VT_RepeatEnd,
                             .cmd.repeat_end=(repeat_end_t){
                                 .index=repeat_id_manager_search_index(this->rim,str_name),
-                                .counter_max=parsed_num
+                                .counter_max=strtol(num_str,NULL,10)
                             }
                         }
                     );
+                    free(num_str);
                     key_processed=true;
                     break;
                 }
                 fprintf(stderr,"Current character not allowed '%c' at line %d char %d.\n",current_char,this->line_num,this->char_num);
-                print_where_error_is(this->contents,this->token_i,read_i+read_end_i);
+                print_where_error_is(this->contents,this->token_i,read_i+read_offset_i);
                 this->parse_error=true;
                 key_processed=true;
                 break;
             case RS_KeyOrMouse:
                 if(maybe_mouse){
                     if(isdigit(current_char)){
-                        read_i+=read_end_i;//No +1 to reread digit.
-                        read_end_i=-1;
+                        read_i+=read_offset_i;//No +1 to reread digit.
+                        read_offset_i=-1;
                         read_state=RS_MouseClickType;
                         break;
                     }else if(current_char=='M'||current_char=='m'){
-                        read_i+=read_end_i+1;
-                        read_end_i=-1;
+                        read_i+=read_offset_i+1;
+                        read_offset_i=-1;
                         read_state=RS_MouseMove;
                         break;
                     }
@@ -255,7 +254,7 @@ bool macro_buffer_process_next(macro_buffer_t* this,bool print_debug){//Returns 
                     break;
                 }
                 fprintf(stderr,"Current character not allowed '%c' at line %d char %d.\n",current_char,this->line_num,this->char_num);
-                print_where_error_is(this->contents,this->token_i,read_i+read_end_i);
+                print_where_error_is(this->contents,this->token_i,read_i+read_offset_i);
                 this->parse_error=true;
                 key_processed=true;
                 break;
@@ -263,7 +262,7 @@ bool macro_buffer_process_next(macro_buffer_t* this,bool print_debug){//Returns 
                 if(char_is_keystate(current_char)){
                     if(added_keystate){
                         fprintf(stderr,"Cannot add more than 1 keystate at line %d char %d.\n",this->line_num,this->char_num);
-                        print_where_error_is(this->contents,this->token_i,read_i+read_end_i);
+                        print_where_error_is(this->contents,this->token_i,read_i+read_offset_i);
                         this->parse_error=true;
                         key_processed=true;
                         break;
@@ -276,9 +275,9 @@ bool macro_buffer_process_next(macro_buffer_t* this,bool print_debug){//Returns 
                     added_keystate=true;
                     break;
                 }else if(current_char==';'){
-                    str_name=malloc(sizeof(char)*read_end_i-1);//-2 to exclude RS_KeyState modifiers, but -1 because null terminator.
-                    strncpy(str_name,this->contents+this->token_i+read_i,read_end_i-2);
-                    str_name[read_end_i-2]='\0';\
+                    str_name=malloc(sizeof(char)*read_offset_i-1);//-2 to exclude RS_KeyState modifiers, but -1 because null terminator.
+                    strncpy(str_name,this->contents+this->token_i+read_i,read_offset_i-2);
+                    str_name[read_offset_i-2]='\0';\
                     command_array_add(this->cmd_arr,
                         (command_t){.type=VT_KeyStroke,
                             .cmd.ks=(keystroke_t){
@@ -291,7 +290,7 @@ bool macro_buffer_process_next(macro_buffer_t* this,bool print_debug){//Returns 
                     break;
                 }
                 fprintf(stderr,"Current character not allowed '%c' at line %d char %d.\n",current_char,this->line_num,this->char_num);
-                print_where_error_is(this->contents,this->token_i,read_i+read_end_i);
+                print_where_error_is(this->contents,this->token_i,read_i+read_offset_i);
                 this->parse_error=true;
                 key_processed=true;
                 break;
@@ -303,57 +302,56 @@ bool macro_buffer_process_next(macro_buffer_t* this,bool print_debug){//Returns 
                         case 'u': case 'U': delay_mult=1;
                     }
                     read_i+=1;
-                    read_end_i=-1;
+                    read_offset_i=-1;
                     read_state=RS_DelayNum;
                     break;
                 }else if(isdigit(current_char)){
                     delay_mult=1;//Default microseconds.
                     read_state=RS_DelayNum;
-                    num_str[read_end_i]=current_char;
-                    num_str=(char*)realloc(num_str,sizeof(char)*(read_end_i+2));
-                    EXIT_IF_NULL(num_str,char*);
                     break;
                 }
                 fprintf(stderr,"Current character not allowed '%c' at line %d char %d.\n",current_char,this->line_num,this->char_num);
-                print_where_error_is(this->contents,this->token_i,read_i+read_end_i);
+                print_where_error_is(this->contents,this->token_i,read_i+read_offset_i);
                 this->parse_error=true;
                 key_processed=true;
                 break;
             case RS_DelayNum:
-                if(isdigit(current_char)){
-                    num_str[read_end_i]=current_char;
-                    num_str=(char*)realloc(num_str,sizeof(char)*(read_end_i+2));
+                if(isdigit(current_char)) break;
+                else if(current_char==';'){
+                    num_str=(char*)malloc(sizeof(char)*(read_offset_i+1));
                     EXIT_IF_NULL(num_str,char*);
-                    break;
-                }else if(current_char==';'){
-                    num_str[read_end_i]='\0';
-                    parsed_num=strtol(num_str,NULL,10)*delay_mult;
-                    if(parsed_num) command_array_add(this->cmd_arr,
+                    strncpy(num_str,this->contents+this->token_i+read_i,read_offset_i);
+                    num_str[read_offset_i]='\0';
+                    command_array_add(this->cmd_arr,
                         (command_t){.type=VT_Delay,
-                            .cmd.delay=parsed_num
+                            .cmd.delay=strtol(num_str,NULL,10)*delay_mult
                         }
                     );
+                    free(num_str);
                     key_processed=true;
                     break;
                 }
                 fprintf(stderr,"Current character not allowed '%c' at line %d char %d.\n",current_char,this->line_num,this->char_num);
-                print_where_error_is(this->contents,this->token_i,read_i+read_end_i);
+                print_where_error_is(this->contents,this->token_i,read_i+read_offset_i);
                 this->parse_error=true;
                 key_processed=true;
                 break;
             case RS_MouseClickType:
-                if(isdigit(current_char)){
+                if(isdigit(current_char)&&!first_number){
+                    num_str=(char*)calloc(sizeof(char),2);
                     num_str[0]=current_char;
-                    num_str[1]='\0';
+                    parsed_num=strtol(num_str,NULL,10);
+                    free(num_str);
+                    first_number=true;
                     break;
-                }else if(current_char=='='){
+                }else if(current_char=='='&&first_number){
                     read_i+=2;//To read numbers.
-                    read_end_i=-1;
+                    read_offset_i=-1;
                     read_state=RS_MouseClickState;
                     break;
                 }
                 fprintf(stderr,"Current character not allowed '%c' at line %d char %d.\n",current_char,this->line_num,this->char_num);
-                print_where_error_is(this->contents,this->token_i,read_i+read_end_i);
+                print_where_error_is(this->contents,this->token_i,read_i+read_offset_i);
                 this->parse_error=true;
                 key_processed=true;
                 break;
@@ -361,7 +359,7 @@ bool macro_buffer_process_next(macro_buffer_t* this,bool print_debug){//Returns 
                 if(char_is_keystate(current_char)){
                     if(added_keystate){
                         fprintf(stderr,"Cannot add more than 1 keystate at line %d char %d.\n",this->line_num,this->char_num);
-                        print_where_error_is(this->contents,this->token_i,read_i+read_end_i);
+                        print_where_error_is(this->contents,this->token_i,read_i+read_offset_i);
                         this->parse_error=true;
                         key_processed=true;
                         break;
@@ -371,43 +369,45 @@ bool macro_buffer_process_next(macro_buffer_t* this,bool print_debug){//Returns 
                         case 'U': case 'u': input_state=IS_Up; break;
                         default: input_state=IS_Click;
                     }
-                    added_keystate=true;
                     command_array_add(this->cmd_arr,
                         (command_t){.type=VT_MouseClick,
                             .cmd.mouse_click=(mouse_click_t){.mouse_state=input_state,
-                                .mouse_type=strtol(num_str,NULL,10)
+                                .mouse_type=parsed_num
                             }
                         }
                     );
+                    added_keystate=true;
                     break;
                 }else if(current_char==';'){
                     key_processed=true;
                     break;
                 }
                 fprintf(stderr,"Current character not allowed '%c' at line %d char %d.\n",current_char,this->line_num,this->char_num);
-                print_where_error_is(this->contents,this->token_i,read_i+read_end_i);
+                print_where_error_is(this->contents,this->token_i,read_i+read_offset_i);
                 this->parse_error=true;
                 key_processed=true;
                 break;
             case RS_MouseMove:
                 if(isdigit(current_char)) break;
-                else if(current_char==','&&!mm_first_number){
-                    num_str=realloc(num_str,sizeof(char)*read_end_i+1);
+                else if(current_char==','&&!first_number){
+                    num_str=(char*)malloc(sizeof(char)*read_offset_i+1);
                     EXIT_IF_NULL(num_str,char*)
-                    strncpy(num_str,this->contents+this->token_i+read_i,read_end_i);
-                    num_str[read_end_i]='\0';
+                    strncpy(num_str,this->contents+this->token_i+read_i,read_offset_i);
+                    num_str[read_offset_i]='\0';
                     parsed_num=strtol(num_str,NULL,10);
-                    read_i+=read_end_i+1;//Read second string.
-                    read_end_i=-1;
-                    mm_first_number=true;
+                    free(num_str);
+                    read_i+=read_offset_i+1;//Read second string.
+                    read_offset_i=-1;
+                    first_number=true;
                     break;
                 }else if(current_char==';'){
-                    if(mm_first_number){
-                        num_str=realloc(num_str,sizeof(char)*read_end_i+1);
+                    if(first_number){
+                        num_str=(char*)malloc(sizeof(char)*read_offset_i+1);
                         EXIT_IF_NULL(num_str,char*)
-                        strncpy(num_str,this->contents+this->token_i+read_i,read_end_i);
-                        num_str[read_end_i]='\0';
+                        strncpy(num_str,this->contents+this->token_i+read_i,read_offset_i);
+                        num_str[read_offset_i]='\0';
                         parsed_num2=strtol(num_str,NULL,10);
+                        free(num_str);
                         command_array_add(this->cmd_arr,
                         (command_t){.type=VT_MouseMove,
                                 .cmd.mouse_move=(mouse_move_t){
@@ -419,22 +419,21 @@ bool macro_buffer_process_next(macro_buffer_t* this,bool print_debug){//Returns 
                         break;
                     }
                     fprintf(stderr,"2 numbers are needed (separated by comma) at line %d char %d.\n",this->line_num,this->char_num);
-                    print_where_error_is(this->contents,this->token_i,read_i+read_end_i);
+                    print_where_error_is(this->contents,this->token_i,read_i+read_offset_i);
                     this->parse_error=true;
                     key_processed=true;
                     break;
                 }
                 fprintf(stderr,"Current character not allowed '%c' at line %d char %d.\n",current_char,this->line_num,this->char_num);
-                print_where_error_is(this->contents,this->token_i,read_i+read_end_i);
+                print_where_error_is(this->contents,this->token_i,read_i+read_offset_i);
                 this->parse_error=true;
                 key_processed=true;
                 break;
         }
-        read_end_i++;
+        read_offset_i++;
         this->char_num++;
     }while(!key_processed);
-    this->token_i+=read_i+read_end_i;
-    free(num_str);//Free any arrays from parsing.
+    this->token_i+=read_i+read_offset_i;
     return !this->parse_error;
 }
 void macro_buffer_free(macro_buffer_t* this){

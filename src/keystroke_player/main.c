@@ -220,16 +220,16 @@ ProgramStatus parse_file(const char* path, xdo_t* xdo_obj, Config config, bool a
     if(!mb->parse_error&&and_run){
         bool run_success=run_program(cmd_arr,config,xdo_obj);
         if(!run_success){
+            macro_buffer_free(mb);
             repeat_id_manager_free(rim);
             command_array_free(cmd_arr);
-            macro_buffer_free(mb);
             return PS_ProgramError;
         }
     }
-    repeat_id_manager_free(rim);
-    command_array_free(cmd_arr);
     ProgramStatus ps=mb->parse_error?PS_ParseError:(and_run?PS_RunSuccess:PS_CompileSuccess);
     macro_buffer_free(mb); //Get parse_error bool before freeing.
+    repeat_id_manager_free(rim);
+    command_array_free(cmd_arr);
     return ps;
 }
 typedef struct{
