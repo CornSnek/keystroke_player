@@ -11,7 +11,7 @@
 /**
     This is to send xdo_send_keysequence_window_up events for any xdo_send_keysequence_window_down keys.
 */
-typedef struct{
+typedef struct key_down_check_s{
     const char** keys;
     int len;
 }key_down_check_t;

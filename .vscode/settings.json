@@ -33,7 +33,8 @@
         "shared_string.h": "c",
         "*.ipp": "c",
         "valarray": "c",
-        "xutil.h": "c"
+        "xutil.h": "c",
+        "cstdio": "c"
     },
     //"editor.autoClosingBrackets": "never",
     //"editor.autoClosingDelete": "never",

@@ -2,7 +2,7 @@
 #define _RC_STRING_H_
 #include "macros.h"
 #include <stdbool.h>
-typedef struct{//Container of strings that point to the same string with the same contents. To malloc only unique strings.
+typedef struct shared_string_manager_s{//Container of strings that point to the same string with the same contents. To malloc only unique strings.
     int count;
     char** c_strs;
     int* c_str_rc;//Reference count to destroy same pointer strings.

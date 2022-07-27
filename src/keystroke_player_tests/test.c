@@ -9,15 +9,13 @@ START_TEST(parse_from_string){
     char* a_string_heap=(char*)malloc(sizeof(a_string_stack)/sizeof(char));
     strcpy(a_string_heap,a_string_stack);
     command_array_t* cmd_arr=command_array_new();
-    repeat_id_manager_t* rim=repeat_id_manager_new();
-    macro_buffer_t* mb=macro_buffer_new(a_string_heap,cmd_arr,rim);
+    macro_buffer_t* mb=macro_buffer_new(a_string_heap,cmd_arr);
     while(macro_buffer_process_next(mb,false)){
         if(mb->token_i>mb->size) break;
     }
     printf("%d\n",mb->parse_error);
     command_array_print(cmd_arr);
     macro_buffer_free(mb);
-    repeat_id_manager_free(rim);
     command_array_free(cmd_arr);
 }
 END_TEST
@@ -35,8 +33,8 @@ START_TEST(repeat_id_search_str_test){
     repeat_id_manager_add_name(rim,string_heaps[0],10);
     repeat_id_manager_add_name(rim,string_heaps[1],20);
     repeat_id_manager_add_name(rim,string_heaps[2],69);
-    ck_assert_int_eq(repeat_id_manager_search_index(rim,string_heaps[2]),69);
-    ck_assert_int_eq(repeat_id_manager_search_index(rim,"CCCCC"),-1);
+    ck_assert_int_eq(repeat_id_manager_search_command_index(rim,string_heaps[2]),69);
+    ck_assert_int_eq(repeat_id_manager_search_command_index(rim,"CCCCC"),-1);
     free(string_heaps);
     repeat_id_manager_free(rim);
 }

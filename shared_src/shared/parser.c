@@ -2,6 +2,9 @@
 #include "macros.h"
 #include <string.h>
 #include <ctype.h>
+__ReadStateWithStringDef(__ReadStateEnums)
+const int JumpToNotFound=-1;
+const int JumpFromNotConnected=-2;
 int trim_whitespace(char** strptr){//For null-terminated strings only, and reedit pointer to resize for trimmed strings. Returns int to get total length of the trimmed string.
     int str_i=0;
     int whitespace_count=0;
@@ -15,7 +18,7 @@ int trim_whitespace(char** strptr){//For null-terminated strings only, and reedi
     return str_i-whitespace_count;
 }
 
-void replace_str(char**  strptr_owner, const char* replace, const char* with){//Assume all null-terminated.
+void replace_str(char** strptr_owner, const char* replace, const char* with){//Assume all null-terminated.
     char* new_strptr=(char*)(malloc(sizeof(char)*1));
     EXIT_IF_NULL(new_strptr,char*)
     int strptr_i=0;
@@ -42,10 +45,10 @@ void replace_str(char**  strptr_owner, const char* replace, const char* with){//
     free(*strptr_owner);
     *strptr_owner=new_strptr;//Change freed pointer to new pointer.
 }
-macro_buffer_t* macro_buffer_new(char* str_owned, command_array_t* cmd_arr, repeat_id_manager_t* rim){
+macro_buffer_t* macro_buffer_new(char* str_owned, command_array_t* cmd_arr){
     macro_buffer_t* this=(macro_buffer_t*)(malloc(sizeof(macro_buffer_t)));
     EXIT_IF_NULL(this,macro_buffer_t);
-    *this=(macro_buffer_t){.token_i=0,.line_num=1,.char_num=1,.size=strlen(str_owned),.contents=str_owned,.cmd_arr=cmd_arr,.rim=rim,.parse_error=false};
+    *this=(macro_buffer_t){.token_i=0,.line_num=1,.char_num=1,.size=strlen(str_owned),.contents=str_owned,.cmd_arr=cmd_arr,.rim=repeat_id_manager_new(),.jim=jump_id_manager_new(),.parse_error=false};
     return this;
 }
 void print_where_error_is(const char* contents,int begin_error,int end_error){
@@ -71,11 +74,11 @@ bool macro_buffer_process_next(macro_buffer_t* this,bool print_debug){//Returns 
     bool first_number=false;
     do{
         const char current_char=this->contents[this->token_i+read_i+read_offset_i];
-        if(print_debug) printf("'%c' token_i:%d read_offset_i:%d read_i:%d State:%d Length:%d\n",current_char,this->token_i,read_offset_i,read_i,(int)read_state,this->size);
+        if(print_debug) printf("'%c' token_i:%d read_offset_i:%d read_i:%d State:%s\n",current_char,this->token_i,read_offset_i,read_i,ReadStateStrings[read_state]);
         switch(read_state){
             case RS_Start:
                 first_number=false;
-                if(current_char=='e'&&!strncmp(this->contents+this->token_i+read_i+read_offset_i,"exit;",5)){
+                if(!strncmp(this->contents+this->token_i+read_i+read_offset_i,"exit;",5)){
                     command_array_add(this->cmd_arr,
                         (command_t){.type=VT_Exit,
                             .cmd={{0}}
@@ -83,6 +86,18 @@ bool macro_buffer_process_next(macro_buffer_t* this,bool print_debug){//Returns 
                     );
                     read_i+=4;//Exclude reading "xit;"
                     key_processed=true;
+                    break;
+                }
+                if(!strncmp(this->contents+this->token_i+read_i+read_offset_i,"JT(",3)){
+                    read_i+=3;
+                    read_offset_i=-1;
+                    read_state=RS_JumpTo;
+                    break;
+                }
+                if(!strncmp(this->contents+this->token_i+read_i+read_offset_i,"JF)",3)){
+                    read_i+=3;
+                    read_offset_i=-1;
+                    read_state=RS_JumpFrom;
                     break;
                 }
                 if(char_is_key(current_char)){
@@ -126,7 +141,7 @@ bool macro_buffer_process_next(macro_buffer_t* this,bool print_debug){//Returns 
                         read_offset_i=-1;
                         break;
                     default:
-                        fprintf(stderr,"Current character not allowed '%c' at line %d char %d.\n",current_char,this->line_num,this->char_num);
+                        fprintf(stderr,"Current character not allowed '%c' at line %d char %d state %s.\n",current_char,this->line_num,this->char_num,ReadStateStrings[read_state]);
                         print_where_error_is(this->contents,this->token_i,read_i+read_offset_i);
                         this->parse_error=true;
                         key_processed=true;
@@ -157,7 +172,7 @@ bool macro_buffer_process_next(macro_buffer_t* this,bool print_debug){//Returns 
                     key_processed=true;
                     break;
                 }
-                fprintf(stderr,"Current character not allowed '%c' at line %d char %d.\n",current_char,this->line_num,this->char_num);
+                fprintf(stderr,"Current character not allowed '%c' at line %d char %d state %s.\n",current_char,this->line_num,this->char_num,ReadStateStrings[read_state]);
                 print_where_error_is(this->contents,this->token_i,read_i+read_offset_i);
                 this->parse_error=true;
                 key_processed=true;
@@ -189,7 +204,7 @@ bool macro_buffer_process_next(macro_buffer_t* this,bool print_debug){//Returns 
                         command_array_add(this->cmd_arr,
                             (command_t){.type=VT_RepeatEnd,
                                 .cmd.repeat_end=(repeat_end_t){
-                                    .index=repeat_id_manager_search_index(this->rim,str_name),
+                                    .index=repeat_id_manager_search_command_index(this->rim,str_name),
                                     .counter_max=0
                                 }
                             }
@@ -203,7 +218,7 @@ bool macro_buffer_process_next(macro_buffer_t* this,bool print_debug){//Returns 
                     key_processed=true;
                     break;
                 }
-                fprintf(stderr,"Current character not allowed '%c' at line %d char %d.\n",current_char,this->line_num,this->char_num);
+                fprintf(stderr,"Current character not allowed '%c' at line %d char %d state %s.\n",current_char,this->line_num,this->char_num,ReadStateStrings[read_state]);
                 print_where_error_is(this->contents,this->token_i,read_i+read_offset_i);
                 this->parse_error=true;
                 key_processed=true;
@@ -218,7 +233,7 @@ bool macro_buffer_process_next(macro_buffer_t* this,bool print_debug){//Returns 
                     command_array_add(this->cmd_arr,
                         (command_t){.type=VT_RepeatEnd,
                             .cmd.repeat_end=(repeat_end_t){
-                                .index=repeat_id_manager_search_index(this->rim,str_name),
+                                .index=repeat_id_manager_search_command_index(this->rim,str_name),
                                 .counter_max=strtol(num_str,NULL,10)
                             }
                         }
@@ -227,7 +242,7 @@ bool macro_buffer_process_next(macro_buffer_t* this,bool print_debug){//Returns 
                     key_processed=true;
                     break;
                 }
-                fprintf(stderr,"Current character not allowed '%c' at line %d char %d.\n",current_char,this->line_num,this->char_num);
+                fprintf(stderr,"Current character not allowed '%c' at line %d char %d state %s.\n",current_char,this->line_num,this->char_num,ReadStateStrings[read_state]);
                 print_where_error_is(this->contents,this->token_i,read_i+read_offset_i);
                 this->parse_error=true;
                 key_processed=true;
@@ -253,7 +268,7 @@ bool macro_buffer_process_next(macro_buffer_t* this,bool print_debug){//Returns 
                     added_keystate=false;
                     break;
                 }
-                fprintf(stderr,"Current character not allowed '%c' at line %d char %d.\n",current_char,this->line_num,this->char_num);
+                fprintf(stderr,"Current character not allowed '%c' at line %d char %d state %s.\n",current_char,this->line_num,this->char_num,ReadStateStrings[read_state]);
                 print_where_error_is(this->contents,this->token_i,read_i+read_offset_i);
                 this->parse_error=true;
                 key_processed=true;
@@ -289,7 +304,7 @@ bool macro_buffer_process_next(macro_buffer_t* this,bool print_debug){//Returns 
                     key_processed=true;
                     break;
                 }
-                fprintf(stderr,"Current character not allowed '%c' at line %d char %d.\n",current_char,this->line_num,this->char_num);
+                fprintf(stderr,"Current character not allowed '%c' at line %d char %d state %s.\n",current_char,this->line_num,this->char_num,ReadStateStrings[read_state]);
                 print_where_error_is(this->contents,this->token_i,read_i+read_offset_i);
                 this->parse_error=true;
                 key_processed=true;
@@ -310,7 +325,7 @@ bool macro_buffer_process_next(macro_buffer_t* this,bool print_debug){//Returns 
                     read_state=RS_DelayNum;
                     break;
                 }
-                fprintf(stderr,"Current character not allowed '%c' at line %d char %d.\n",current_char,this->line_num,this->char_num);
+                fprintf(stderr,"Current character not allowed '%c' at line %d char %d state %s.\n",current_char,this->line_num,this->char_num,ReadStateStrings[read_state]);
                 print_where_error_is(this->contents,this->token_i,read_i+read_offset_i);
                 this->parse_error=true;
                 key_processed=true;
@@ -331,7 +346,7 @@ bool macro_buffer_process_next(macro_buffer_t* this,bool print_debug){//Returns 
                     key_processed=true;
                     break;
                 }
-                fprintf(stderr,"Current character not allowed '%c' at line %d char %d.\n",current_char,this->line_num,this->char_num);
+                fprintf(stderr,"Current character not allowed '%c' at line %d char %d state %s.\n",current_char,this->line_num,this->char_num,ReadStateStrings[read_state]);
                 print_where_error_is(this->contents,this->token_i,read_i+read_offset_i);
                 this->parse_error=true;
                 key_processed=true;
@@ -350,7 +365,7 @@ bool macro_buffer_process_next(macro_buffer_t* this,bool print_debug){//Returns 
                     read_state=RS_MouseClickState;
                     break;
                 }
-                fprintf(stderr,"Current character not allowed '%c' at line %d char %d.\n",current_char,this->line_num,this->char_num);
+                fprintf(stderr,"Current character not allowed '%c' at line %d char %d state %s.\n",current_char,this->line_num,this->char_num,ReadStateStrings[read_state]);
                 print_where_error_is(this->contents,this->token_i,read_i+read_offset_i);
                 this->parse_error=true;
                 key_processed=true;
@@ -382,7 +397,7 @@ bool macro_buffer_process_next(macro_buffer_t* this,bool print_debug){//Returns 
                     key_processed=true;
                     break;
                 }
-                fprintf(stderr,"Current character not allowed '%c' at line %d char %d.\n",current_char,this->line_num,this->char_num);
+                fprintf(stderr,"Current character not allowed '%c' at line %d char %d state %s.\n",current_char,this->line_num,this->char_num,ReadStateStrings[read_state]);
                 print_where_error_is(this->contents,this->token_i,read_i+read_offset_i);
                 this->parse_error=true;
                 key_processed=true;
@@ -424,10 +439,108 @@ bool macro_buffer_process_next(macro_buffer_t* this,bool print_debug){//Returns 
                     key_processed=true;
                     break;
                 }
-                fprintf(stderr,"Current character not allowed '%c' at line %d char %d.\n",current_char,this->line_num,this->char_num);
+                fprintf(stderr,"Current character not allowed '%c' at line %d char %d state %s.\n",current_char,this->line_num,this->char_num,ReadStateStrings[read_state]);
                 print_where_error_is(this->contents,this->token_i,read_i+read_offset_i);
                 this->parse_error=true;
                 key_processed=true;
+                break;
+            case RS_JumpTo:
+                if(char_is_key(current_char)) break;
+                if(current_char==';'){
+                    str_name=(char*)malloc(sizeof(char)*read_offset_i+1);
+                    strncpy(str_name,this->contents+this->token_i+read_i,read_offset_i);
+                    str_name[read_offset_i]='\0';
+                    int jid_cmd_i=jump_id_manager_search_command_index(this->jim,str_name);
+                    if(jid_cmd_i==-1){
+                        jump_id_manager_add_name(this->jim,str_name,JumpFromNotConnected,false);//-2 Because it's not a JumpFrom
+                        command_array_add(this->cmd_arr,
+                        (command_t){.type=VT_JumpTo,
+                                .cmd.jump_to=(jump_to_t){
+                                    .cmd_index=JumpFromNotConnected,//Will be edited from a VT_JumpFrom later.
+                                    .str_index=jump_id_manager_search_string_index(this->jim,str_name)
+                                }
+                            }
+                        );
+                        key_processed=true;
+                        break;
+                    }else{
+                        command_array_add(this->cmd_arr,
+                        (command_t){.type=VT_JumpTo,
+                                .cmd.jump_to=(jump_to_t){
+                                    .cmd_index=jid_cmd_i,
+                                    .str_index=jump_id_manager_search_string_index(this->jim,str_name)
+                                }
+                            }
+                        );
+                        key_processed=true;
+                        free(str_name);
+                        break;
+                    }
+                    fprintf(stderr,"Current character not allowed '%c' at line %d char %d state %s.\n",current_char,this->line_num,this->char_num,ReadStateStrings[read_state]);
+                    print_where_error_is(this->contents,this->token_i,read_i+read_offset_i);
+                    this->parse_error=true;
+                    key_processed=true;
+                    break;
+                }
+                fprintf(stderr,"Current character not allowed '%c' at line %d char %d state %s.\n",current_char,this->line_num,this->char_num,ReadStateStrings[read_state]);
+                print_where_error_is(this->contents,this->token_i,read_i+read_offset_i);
+                this->parse_error=true;
+                key_processed=true;
+                break;
+            case RS_JumpFrom:
+                if(char_is_key(current_char)) break;
+                if(current_char==';'){
+                    str_name=(char*)malloc(sizeof(char)*read_offset_i+1);
+                    strncpy(str_name,this->contents+this->token_i+read_i,read_offset_i);
+                    str_name[read_offset_i]='\0';
+                    int jid_cmd_i=jump_id_manager_search_command_index(this->jim,str_name);
+                    int jid_str_i=jump_id_manager_search_string_index(this->jim,str_name);
+                    int cmd_arr_count=command_array_count(this->cmd_arr);
+                    if(jid_cmd_i==-1){
+                        jump_id_manager_add_name(this->jim,str_name,cmd_arr_count,true);
+                        command_array_add(this->cmd_arr,
+                            (command_t){.type=VT_JumpFrom,
+                                .cmd.jump_from=(jump_from_t){
+                                    .str_index=jump_id_manager_search_string_index(this->jim,str_name)
+                                }
+                            }
+                        );
+                        key_processed=true;
+                        break;
+                    }else{
+                        bool unique=jump_id_manager_set_command_index_once(this->jim,jid_str_i,cmd_arr_count);
+                        if(unique){//No Second RS_JumpFrom
+                            command_array_add(this->cmd_arr,
+                                (command_t){.type=VT_JumpFrom,
+                                    .cmd.jump_from=(jump_from_t){
+                                        .str_index=jid_str_i
+                                    }
+                                }
+                            );
+                            for(int i=0;i<cmd_arr_count;i++){
+                                printf("%d WTF\n",i);
+                                command_t* this_cmd=this->cmd_arr->cmds+i;
+                                if(this_cmd->type==VT_JumpTo&&this_cmd->cmd.jump_to.str_index==jid_str_i){
+                                    this_cmd->cmd.jump_to.cmd_index=cmd_arr_count;//Set all JumpTo to this JumpFrom index.
+                                }
+                            }
+                            key_processed=true;
+                            break;
+                        }
+                        fprintf(stderr,"Cannot add a second JumpFrom with string '%s' at line %d char %d state %s.\n",str_name,this->line_num,this->char_num,ReadStateStrings[read_state]);
+                        free(str_name);
+                        print_where_error_is(this->contents,this->token_i,read_i+read_offset_i);
+                        this->parse_error=true;
+                        key_processed=true;
+                        break;
+                    }
+                }
+                fprintf(stderr,"Current character not allowed '%c' at line %d char %d state %s.\n",current_char,this->line_num,this->char_num,ReadStateStrings[read_state]);
+                print_where_error_is(this->contents,this->token_i,read_i+read_offset_i);
+                this->parse_error=true;
+                key_processed=true;
+                break;
+            case RS_Count://Nothing (Shouldn't be used).
                 break;
         }
         read_offset_i++;
@@ -437,6 +550,8 @@ bool macro_buffer_process_next(macro_buffer_t* this,bool print_debug){//Returns 
     return !this->parse_error;
 }
 void macro_buffer_free(macro_buffer_t* this){
+    repeat_id_manager_free(this->rim);
+    jump_id_manager_free(this->jim);
     free(this->contents);
     free(this);
 }
@@ -466,15 +581,73 @@ void repeat_id_manager_add_name(repeat_id_manager_t* this, char* str_owned, int 
     fprintf(stderr,"Repeat name '%s' has been used more than once.\n",str_owned);
     exit(EXIT_FAILURE);
 }
-int repeat_id_manager_search_index(const repeat_id_manager_t* this,const char* search_str){
+int repeat_id_manager_search_command_index(const repeat_id_manager_t* this,const char* search_str){
     for(int i=0;i<this->size;i++){
-        if(strcmp(search_str,this->names[i])==0){
+        if(!strcmp(search_str,this->names[i])){
             return this->index[i];
         }
     }
     return -1;
 }
 void repeat_id_manager_free(repeat_id_manager_t* this){
+    SSManager_free(this->ssm);
+    free(this->names);
+    free(this->index);
+    free(this);
+}
+jump_id_manager_t* jump_id_manager_new(){
+    jump_id_manager_t* this=(jump_id_manager_t*)(malloc(sizeof(jump_id_manager_t)));
+    EXIT_IF_NULL(this,jump_id_manager_t);
+    *this=(jump_id_manager_t){.size=0,.names=NULL,.index=NULL,.jump_from_added=NULL,.ssm=SSManager_new()};
+    return this;
+}
+void jump_id_manager_add_name(jump_id_manager_t* this, char* str_owned, int index, bool is_jump_from){
+    this->size++;
+    if(this->names){
+        this->names=(char**)realloc(this->names,sizeof(char*)*(this->size));
+        this->index=(int*)realloc(this->index,sizeof(int)*(this->size));
+        this->jump_from_added=(bool*)realloc(this->jump_from_added,sizeof(bool)*(this->size));
+    }else{
+        this->names=(char**)(malloc(sizeof(char*)));
+        this->index=(int*)(malloc(sizeof(int)));
+        this->jump_from_added=(bool*)(malloc(sizeof(bool)));
+    }
+    EXIT_IF_NULL(this->names,char**)
+    EXIT_IF_NULL(this->index,int*)
+    EXIT_IF_NULL(this->jump_from_added,bool*)
+    bool is_unique=(str_owned==SSManager_add_string(this->ssm,&str_owned));
+    if(is_unique){
+        this->names[this->size-1]=str_owned;
+        this->index[this->size-1]=index;
+        this->jump_from_added[this->size-1]=is_jump_from;
+        return;
+    }
+    fprintf(stderr,"Jump name '%s' has been used more than once.\n",str_owned);
+    exit(EXIT_FAILURE);
+}
+int jump_id_manager_search_command_index(const jump_id_manager_t* this,const char* search_str){
+    for(int i=0;i<this->size;i++){
+        if(!strcmp(search_str,this->names[i])){
+            return this->index[i];
+        }
+    }
+    return JumpToNotFound;
+}
+int jump_id_manager_search_string_index(const jump_id_manager_t* this,const char* search_str){//Searches index of string instead.
+    for(int i=0;i<this->size;i++){
+        if(!strcmp(search_str,this->names[i])){
+            return i;
+        }
+    }
+    return JumpToNotFound;
+}
+bool jump_id_manager_set_command_index_once(jump_id_manager_t* this, int index, int cmd_index){
+    if(this->jump_from_added[index]) return false;//If JumpFrom was already added before JumpTo
+    this->jump_from_added[index]=true;
+    this->index[index]=cmd_index;
+    return true;
+}
+void jump_id_manager_free(jump_id_manager_t* this){
     SSManager_free(this->ssm);
     free(this->names);
     free(this->index);
@@ -521,6 +694,13 @@ void command_array_print(const command_array_t* this){
                 break;
             case VT_Exit:
                 printf("(%d) ExitProgram\n",i);
+                break;
+            case VT_JumpTo:
+                printf("(%d) JumpTo cmd_i: %d str_i: %d\n",i,cmd.jump_to.cmd_index,cmd.jump_to.str_index);
+                break;
+            case VT_JumpFrom:
+                printf("(%d) JumpFrom str_i: %d\n",i,cmd.jump_from.str_index);
+                break;
         }
     }
 }
