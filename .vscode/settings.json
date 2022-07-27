@@ -34,7 +34,8 @@
         "*.ipp": "c",
         "valarray": "c",
         "xutil.h": "c",
-        "cstdio": "c"
+        "cstdio": "c",
+        "time_t.h": "c"
     },
     //"editor.autoClosingBrackets": "never",
     //"editor.autoClosingDelete": "never",

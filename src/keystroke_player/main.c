@@ -1,5 +1,7 @@
 #include "parser.h"
 #include "key_down_check.h"
+#include <time.h>
+int nanosleep(const struct timespec *req, struct timespec *rem);
 #include <string.h>
 #define __USE_XOPEN
 #include <unistd.h>
@@ -8,6 +10,7 @@ int usleep(useconds_t usec);
 #include <pthread.h>
 #include <X11/Xutil.h>
 
+#define NSEC_TO_SEC 1000000000
 //101 to include '\0'.
 #define INPUT_BUFFER_LEN 100
 
@@ -27,7 +30,7 @@ typedef struct{
     bool print_commands;
 }Config;
 const Config InitConfig={
-    .init_delay=2000000,.mouse_check_delay=100000,.print_commands=false
+    .init_delay=2000000,.mouse_check_delay=100000,.print_commands=true
 };
 bool fgets_change(char* str,int buffer_len);
 bool write_to_config(const Config config);
@@ -36,6 +39,7 @@ char* read_default_file();
 bool write_to_default_file(const char* path);
 void get_pixel_color(Display* d, int x, int y, XColor* color);
 ProgramStatus parse_file(const char* path, xdo_t* xdo_obj, Config config, bool and_run);
+void timespec_diff(const struct timespec* ts_begin,struct timespec* ts_diff);
 bool run_program(command_array_t* cmd_arr, Config config, xdo_t* xdo_obj);
 int main(int argc, char** argv){
     (void)argc;
@@ -257,6 +261,16 @@ void* mouse_check_listener(void* srs_v){
     pthread_mutex_unlock(&input_mutex);
     pthread_exit(NULL);
 }
+//Get time elapsed since ts_begin after calling this function. Returns time to ts_diff.
+void timespec_diff(const struct timespec* ts_begin,struct timespec* ts_diff){
+    struct timespec ts_end;
+    timespec_get(&ts_end,TIME_UTC);
+    const long nsec_diff=ts_end.tv_nsec-ts_begin->tv_nsec;
+    *ts_diff=(struct timespec){//Tertiary operators if ts_end has less nanoseconds, decrease by 1 sec and add NSEC_TO_SEC to nsec.
+        .tv_sec=ts_end.tv_sec-ts_begin->tv_sec-(nsec_diff<0l?1l:0l),
+        .tv_nsec=(nsec_diff<0l?NSEC_TO_SEC:0l)+nsec_diff,
+    };
+}
 bool run_program(command_array_t* cmd_arr, Config config, xdo_t* xdo_obj){
     Window focus_window;//Will be ignored.
     if(config.print_commands) command_array_print(cmd_arr);
@@ -278,74 +292,92 @@ bool run_program(command_array_t* cmd_arr, Config config, xdo_t* xdo_obj){
         xdo_free(xdo_obj);
         return false;
     }
+    struct timespec ts_begin,ts_diff,ts_usleep_before,ts_usleep_before_adj,ts_do_nanosleep=(struct timespec){0};
+    timespec_get(&ts_begin,TIME_UTC);
     pthread_mutex_lock(&input_mutex);
+    bool print_commands=config.print_commands;
+    typedef long nano_sec;
+    nano_sec time_after_last_usleep;
+    nano_sec real_delay=0;//Adjust delay depending on time after commands and after sleeping.
+    timespec_get(&ts_usleep_before,TIME_UTC);
     while(!srs.program_done){
         pthread_mutex_unlock(&input_mutex);
         command_union_t cmd_u=cmd_arr->cmds[cmd_arr_i].cmd;
         CommandType cmd_type=cmd_arr->cmds[cmd_arr_i].type;
         int* rst_counter=0;
-        bool print_commands=config.print_commands;
+        if(print_commands){
+            timespec_diff(&ts_begin,&ts_diff);
+            printf("[%ld.%09ld] - Command %d/%d: ",ts_diff.tv_sec,ts_diff.tv_nsec,cmd_arr_i+1,cmd_arr_len);
+        }
         switch(cmd_type){
             case(VT_KeyStroke):
                 switch(cmd_u.ks.key_state){
                     case IS_Down:
-                        if(print_commands) printf("Command %d/%d: Key down for %s\n",cmd_arr_i+1,cmd_arr_len,cmd_u.ks.key);
+                        if(print_commands) printf("Key down for %s\n",cmd_u.ks.key);
                         pthread_mutex_lock(&input_mutex);
                         xdo_send_keysequence_window_down(xdo_obj,CURRENTWINDOW,cmd_u.ks.key,0);
                         key_down_check_add(kdc,cmd_u.ks.key);
                         break;
                     case IS_Up:
-                        if(print_commands) printf("Command %d/%d: Key up for %s\n",cmd_arr_i+1,cmd_arr_len,cmd_u.ks.key);
+                        if(print_commands) printf("Key up for %s\n",cmd_u.ks.key);
                         pthread_mutex_lock(&input_mutex);
                         xdo_send_keysequence_window_up(xdo_obj,CURRENTWINDOW,cmd_u.ks.key,0);
                         key_down_check_remove(kdc,cmd_u.ks.key);
                         break;
                     case IS_Click:
-                        if(print_commands) printf("Command %d/%d: Key click for %s\n",cmd_arr_i+1,cmd_arr_len,cmd_u.ks.key);
+                        if(print_commands) printf("Key click for %s\n",cmd_u.ks.key);
                         pthread_mutex_lock(&input_mutex);
                         xdo_send_keysequence_window(xdo_obj,CURRENTWINDOW,cmd_u.ks.key,0);
                 }
                 pthread_mutex_unlock(&input_mutex);
                 break;
-            case(VT_Delay):
-                if(print_commands) printf("Command %d/%d: Sleeping for %ld microseconds\n",cmd_arr_i+1,cmd_arr_len,cmd_u.delay);
-                usleep(cmd_u.delay);
+            case(VT_Delay)://Using nanosleep to try to get "precise delays"
+                timespec_diff(&ts_usleep_before,&ts_diff);
+                timespec_get(&ts_usleep_before_adj,TIME_UTC);
+                time_after_last_usleep=ts_diff.tv_sec*NSEC_TO_SEC+ts_diff.tv_nsec;
+                if(print_commands) printf("Sleeping for %ld microseconds\n",cmd_u.delay);
+                real_delay+=cmd_u.delay*1000-time_after_last_usleep;
+                ts_do_nanosleep.tv_nsec=real_delay>0?((delay_ns_t)(real_delay)):0u;
+                nanosleep(&ts_do_nanosleep,0);
+                timespec_diff(&ts_usleep_before_adj,&ts_diff);
+                timespec_get(&ts_usleep_before,TIME_UTC);
+                real_delay-=ts_diff.tv_sec*NSEC_TO_SEC+ts_diff.tv_nsec;
                 break;
             case(VT_RepeatEnd):
                 if(cmd_u.repeat_end.counter_max){//Counter has been set.
                     rst_counter=&(cmd_arr->cmds[cmd_u.repeat_end.index].cmd.repeat_start);
-                    if(print_commands) printf("Command %d/%d: Jump to Command #%d until Counter %d/%d\n",cmd_arr_i+1,cmd_arr_len,cmd_u.repeat_end.index+2,++(*rst_counter),cmd_u.repeat_end.counter_max);
+                    if(print_commands) printf("Jump to Command #%d until Counter %d/%d\n",cmd_u.repeat_end.index+2,++(*rst_counter),cmd_u.repeat_end.counter_max);
                     if(*rst_counter!=cmd_u.repeat_end.counter_max) cmd_arr_i=cmd_u.repeat_end.index;//Go back if not counter_max
                     else *rst_counter=0;//Reset to loop again.
                 }else{//Loop forever otherwise.
-                    if(print_commands) printf("Command %d/%d: Jump to Command #%d (Loops forever)\n",cmd_arr_i+1,cmd_arr_len,cmd_u.repeat_end.index+2);
+                    if(print_commands) printf("Jump to Command #%d (Loops forever)\n",cmd_u.repeat_end.index+2);
                     cmd_arr_i=cmd_u.repeat_end.index;
                 }
                 break;
             case(VT_RepeatStart):
-                //if(print_commands) printf("Command %d/%d: This is a loop counter (%d).\n",cmd_arr_i+1,cmd_arr_len,cmd_u.repeat_start.counter);
+                if(print_commands) printf("This is a loop counter (%d).\n",cmd_u.repeat_start);
                 break;
             case(VT_MouseClick):
                 switch(cmd_u.mouse_click.mouse_state){
                     case IS_Down:
-                        if(print_commands) printf("Command %d/%d: Mouse down (%d).\n",cmd_arr_i+1,cmd_arr_len,cmd_u.mouse_click.mouse_type);
+                        if(print_commands) printf("Mouse down (%d).\n",cmd_u.mouse_click.mouse_type);
                         pthread_mutex_lock(&input_mutex);
                         xdo_mouse_down(xdo_obj,CURRENTWINDOW,cmd_u.mouse_click.mouse_type);
                         break;
                     case IS_Up:
-                        if(print_commands) printf("Command %d/%d: Mouse up (%d).\n",cmd_arr_i+1,cmd_arr_len,cmd_u.mouse_click.mouse_type);
+                        if(print_commands) printf("Mouse up (%d).\n",cmd_u.mouse_click.mouse_type);
                         pthread_mutex_lock(&input_mutex);
                         xdo_mouse_up(xdo_obj,CURRENTWINDOW,cmd_u.mouse_click.mouse_type);
                         break;
                     case IS_Click:
-                        if(print_commands) printf("Command %d/%d: Mouse click (%d).\n",cmd_arr_i+1,cmd_arr_len,cmd_u.mouse_click.mouse_type);
+                        if(print_commands) printf("Mouse click (%d).\n",cmd_u.mouse_click.mouse_type);
                         pthread_mutex_lock(&input_mutex);
                         xdo_click_window(xdo_obj,CURRENTWINDOW,cmd_u.mouse_click.mouse_type);
                 }
                 pthread_mutex_unlock(&input_mutex);
                 break;
             case(VT_MouseMove):
-                if(print_commands) printf("Command %d/%d: Mouse move at (%d,%d).\n",cmd_arr_i+1,cmd_arr_len,cmd_u.mouse_move.x,cmd_u.mouse_move.y);
+                if(print_commands) printf("Mouse move at (%d,%d).\n",cmd_u.mouse_move.x,cmd_u.mouse_move.y);
                 pthread_mutex_lock(&input_mutex);
                 srs.mouse.x=cmd_u.mouse_move.x;
                 srs.mouse.y=cmd_u.mouse_move.y;//Update mouse movement for input_t thread loop.
@@ -353,17 +385,17 @@ bool run_program(command_array_t* cmd_arr, Config config, xdo_t* xdo_obj){
                 pthread_mutex_unlock(&input_mutex);
                 break;
             case(VT_Exit):
-                if(print_commands) printf("Command %d/%d: Exit command issued. Exiting program now.\n",cmd_arr_i+1,cmd_arr_len);
+                if(print_commands) printf("Exit command issued. Exiting program now.\n");
                 pthread_mutex_lock(&input_mutex);
                 srs.program_done=true;
                 pthread_mutex_unlock(&input_mutex);
                 break;
-            case(VT_JumpTo)://TODO
-                if(print_commands) printf("Command %d/%d: Jump to Command #%d String ID#%d.\n",cmd_arr_i+1,cmd_arr_len,cmd_u.jump_to.cmd_index+2,cmd_u.jump_to.str_index);
+            case(VT_JumpTo):
+                if(print_commands) printf("Jump to Command #%d String ID#%d.\n",cmd_u.jump_to.cmd_index+2,cmd_u.jump_to.str_index);
                 cmd_arr_i=cmd_u.jump_to.cmd_index;
                 break;
             case(VT_JumpFrom):
-                if(print_commands) printf("Command %d/%d: Jump from command String ID#%d.\n",cmd_arr_i+1,cmd_arr_len,cmd_u.jump_from.str_index);
+                if(print_commands) printf("Jump from command String ID#%d.\n",cmd_u.jump_from.str_index);
                 break;
         }
         pthread_mutex_lock(&input_mutex);
@@ -371,6 +403,8 @@ bool run_program(command_array_t* cmd_arr, Config config, xdo_t* xdo_obj){
             srs.program_done=true;//To end the input_t thread loop as well.
         }
     }
+    timespec_diff(&ts_begin,&ts_diff);
+    printf("%ld.%09ld seconds since autoclicker started.\n",ts_diff.tv_sec,ts_diff.tv_nsec);
     pthread_mutex_unlock(&input_mutex);
     pthread_join(input_t,NULL);
     key_down_check_key_up(kdc,xdo_obj,CURRENTWINDOW);
