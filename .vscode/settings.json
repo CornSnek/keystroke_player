@@ -39,7 +39,8 @@
         "functional": "c",
         "mutex": "c",
         "tuple": "c",
-        "typeindex": "c"
+        "typeindex": "c",
+        "math.h": "c"
     },
     //"editor.autoClosingBrackets": "never",
     //"editor.autoClosingDelete": "never",

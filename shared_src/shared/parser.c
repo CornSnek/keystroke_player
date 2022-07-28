@@ -61,26 +61,26 @@ void print_where_error_is(const char* contents,int begin_error,int end_error){
 bool macro_buffer_process_next(macro_buffer_t* this,bool print_debug){//Returns bool if processed successfully or not.
     ReadState read_state=RS_Start;
     bool key_processed=false;
-    InputState input_state;
+    InputState input_state=IS_Down;
     char* str_name=0;
     __uint64_t delay_mult=0; 
     char* num_str=0;
-    __uint64_t parsed_num=0;
-    __uint64_t parsed_num2=0;
+    __uint64_t parsed_num[4]={0};
+    int parsed_num_i=0;
     bool added_keystate=false;
     int read_i=0; //Index to read.
     int read_offset_i=0; //Last character to read by offset of read_i.
     bool first_number=false;
+    bool is_query=false;
     bool mouse_absolute;
     do{
         const char current_char=this->contents[this->token_i+read_i+read_offset_i];
         if(print_debug) printf("'%c' token_i:%d read_offset_i:%d read_i:%d State:%s\n",current_char,this->token_i,read_offset_i,read_i,ReadStateStrings[read_state]);
         switch(read_state){
             case RS_Start:
-                first_number=false;
                 if(!strncmp(this->contents+this->token_i+read_i+read_offset_i,"exit;",5)){
                     command_array_add(this->cmd_arr,
-                        (command_t){.type=CMD_Exit,
+                        (command_t){.type=CMD_Exit,.is_query=is_query,
                             .cmd_u={{0}}
                         }
                     );
@@ -88,13 +88,13 @@ bool macro_buffer_process_next(macro_buffer_t* this,bool print_debug){//Returns 
                     key_processed=true;
                     break;
                 }
-                if(!strncmp(this->contents+this->token_i+read_i+read_offset_i,"JT(",3)){
+                if(!strncmp(this->contents+this->token_i+read_i+read_offset_i,"JT<",3)){
                     read_i+=3;
                     read_offset_i=-1;
                     read_state=RS_JumpTo;
                     break;
                 }
-                if(!strncmp(this->contents+this->token_i+read_i+read_offset_i,"JF)",3)){
+                if(!strncmp(this->contents+this->token_i+read_i+read_offset_i,"JF>",3)){
                     read_i+=3;
                     read_offset_i=-1;
                     read_state=RS_JumpFrom;
@@ -159,6 +159,11 @@ bool macro_buffer_process_next(macro_buffer_t* this,bool print_debug){//Returns 
                         read_i+=1;
                         read_offset_i=-1;
                         break;
+                    case '?':
+                        read_i+=1;
+                        read_offset_i=-1;
+                        read_state=RS_Query;
+                        break;
                     default:
                         fprintf(stderr,"Current character not allowed '%c' at line %d char %d state %s.\n",current_char,this->line_num,this->char_num,ReadStateStrings[read_state]);
                         print_where_error_is(this->contents,this->token_i,read_i+read_offset_i);
@@ -184,7 +189,7 @@ bool macro_buffer_process_next(macro_buffer_t* this,bool print_debug){//Returns 
                     strncpy(str_name,this->contents+this->token_i+read_i,read_offset_i);
                     repeat_id_manager_add_name(this->rim,str_name,command_array_count(this->cmd_arr));
                     command_array_add(this->cmd_arr,
-                        (command_t){.type=CMD_RepeatStart,
+                        (command_t){.type=CMD_RepeatStart,.is_query=is_query,
                             .cmd_u.repeat_start=(repeat_start_t){
                                 .counter=0,
                                 .str_index=repeat_id_manager_search_string_index(this->rim,str_name)
@@ -224,7 +229,7 @@ bool macro_buffer_process_next(macro_buffer_t* this,bool print_debug){//Returns 
                     const bool str_exists=(str_name!=SSManager_add_string(this->rim->ssm,&str_name));
                     if(str_exists){
                         command_array_add(this->cmd_arr,
-                            (command_t){.type=CMD_RepeatEnd,
+                            (command_t){.type=CMD_RepeatEnd,.is_query=is_query,
                                 .cmd_u.repeat_end=(repeat_end_t){
                                     .cmd_index=repeat_id_manager_search_command_index(this->rim,str_name),
                                     .str_index=repeat_id_manager_search_string_index(this->rim,str_name),
@@ -254,7 +259,7 @@ bool macro_buffer_process_next(macro_buffer_t* this,bool print_debug){//Returns 
                     strncpy(num_str,this->contents+this->token_i+read_i,read_offset_i);
                     num_str[read_offset_i]='\0';
                     command_array_add(this->cmd_arr,
-                        (command_t){.type=CMD_RepeatEnd,
+                        (command_t){.type=CMD_RepeatEnd,.is_query=is_query,
                             .cmd_u.repeat_end=(repeat_end_t){
                                 .cmd_index=repeat_id_manager_search_command_index(this->rim,str_name),
                                 .str_index=repeat_id_manager_search_string_index(this->rim,str_name),
@@ -299,12 +304,12 @@ bool macro_buffer_process_next(macro_buffer_t* this,bool print_debug){//Returns 
                     }
                     added_keystate=true;
                     break;
-                }else if(current_char==';'){
+                }else if(added_keystate&&current_char==';'){
                     str_name=malloc(sizeof(char)*read_offset_i-1);//-2 to exclude RS_KeyState modifiers, but -1 because null terminator.
                     strncpy(str_name,this->contents+this->token_i+read_i,read_offset_i-2);
                     str_name[read_offset_i-2]='\0';\
                     command_array_add(this->cmd_arr,
-                        (command_t){.type=CMD_KeyStroke,
+                        (command_t){.type=CMD_KeyStroke,.is_query=is_query,
                             .cmd_u.ks=(keystroke_t){
                                 .key=str_name,//SSManager/keystroke_t owns char* key via command_array_add.
                                 .key_state=input_state
@@ -348,7 +353,7 @@ bool macro_buffer_process_next(macro_buffer_t* this,bool print_debug){//Returns 
                     strncpy(num_str,this->contents+this->token_i+read_i,read_offset_i);
                     num_str[read_offset_i]='\0';
                     command_array_add(this->cmd_arr,
-                        (command_t){.type=CMD_Delay,
+                        (command_t){.type=CMD_Delay,.is_query=is_query,
                             .cmd_u.delay=strtol(num_str,NULL,10)*delay_mult
                         }
                     );
@@ -365,7 +370,7 @@ bool macro_buffer_process_next(macro_buffer_t* this,bool print_debug){//Returns 
                 if(isdigit(current_char)&&!first_number){
                     num_str=(char*)calloc(sizeof(char),2);
                     num_str[0]=current_char;
-                    parsed_num=strtol(num_str,NULL,10);
+                    parsed_num[0]=strtol(num_str,NULL,10);
                     free(num_str);
                     first_number=true;
                     break;
@@ -395,15 +400,15 @@ bool macro_buffer_process_next(macro_buffer_t* this,bool print_debug){//Returns 
                         default: input_state=IS_Click;
                     }
                     command_array_add(this->cmd_arr,
-                        (command_t){.type=CMD_MouseClick,
+                        (command_t){.type=CMD_MouseClick,.is_query=is_query,
                             .cmd_u.mouse_click=(mouse_click_t){.mouse_state=input_state,
-                                .mouse_type=parsed_num
+                                .mouse_type=parsed_num[0]
                             }
                         }
                     );
                     added_keystate=true;
                     break;
-                }else if(current_char==';'){
+                }else if(added_keystate&&current_char==';'){
                     key_processed=true;
                     break;
                 }
@@ -419,7 +424,7 @@ bool macro_buffer_process_next(macro_buffer_t* this,bool print_debug){//Returns 
                     EXIT_IF_NULL(num_str,char*)
                     strncpy(num_str,this->contents+this->token_i+read_i,read_offset_i);
                     num_str[read_offset_i]='\0';
-                    parsed_num=strtol(num_str,NULL,10);
+                    parsed_num[0]=strtol(num_str,NULL,10);
                     free(num_str);
                     read_i+=read_offset_i+1;//Read second string.
                     read_offset_i=-1;
@@ -431,12 +436,12 @@ bool macro_buffer_process_next(macro_buffer_t* this,bool print_debug){//Returns 
                         EXIT_IF_NULL(num_str,char*)
                         strncpy(num_str,this->contents+this->token_i+read_i,read_offset_i);
                         num_str[read_offset_i]='\0';
-                        parsed_num2=strtol(num_str,NULL,10);
+                        parsed_num[1]=strtol(num_str,NULL,10);
                         free(num_str);
                         command_array_add(this->cmd_arr,
-                        (command_t){.type=CMD_MouseMove,
+                        (command_t){.type=CMD_MouseMove,.is_query=is_query,
                                 .cmd_u.mouse_move=(mouse_move_t){
-                                    .x=parsed_num,.y=parsed_num2,.is_absolute=mouse_absolute
+                                    .x=parsed_num[0],.y=parsed_num[1],.is_absolute=mouse_absolute
                                 }
                             }
                         );
@@ -464,7 +469,7 @@ bool macro_buffer_process_next(macro_buffer_t* this,bool print_debug){//Returns 
                     if(jid_cmd_i==-1){
                         jump_id_manager_add_name(this->jim,str_name,JumpFromNotConnected,false);//-2 Because it's not a JumpFrom
                         command_array_add(this->cmd_arr,
-                        (command_t){.type=CMD_JumpTo,
+                        (command_t){.type=CMD_JumpTo,.is_query=is_query,
                                 .cmd_u.jump_to=(jump_to_t){
                                     .cmd_index=JumpFromNotConnected,//Will be edited from a CMD_JumpFrom later.
                                     .str_index=jump_id_manager_search_string_index(this->jim,str_name)
@@ -475,7 +480,7 @@ bool macro_buffer_process_next(macro_buffer_t* this,bool print_debug){//Returns 
                         break;
                     }else{
                         command_array_add(this->cmd_arr,
-                        (command_t){.type=CMD_JumpTo,
+                        (command_t){.type=CMD_JumpTo,.is_query=is_query,
                                 .cmd_u.jump_to=(jump_to_t){
                                     .cmd_index=jid_cmd_i,
                                     .str_index=jump_id_manager_search_string_index(this->jim,str_name)
@@ -509,7 +514,7 @@ bool macro_buffer_process_next(macro_buffer_t* this,bool print_debug){//Returns 
                     if(jid_cmd_i==-1){
                         jump_id_manager_add_name(this->jim,str_name,cmd_arr_count,true);
                         command_array_add(this->cmd_arr,
-                            (command_t){.type=CMD_JumpFrom,
+                            (command_t){.type=CMD_JumpFrom,.is_query=is_query,
                                 .cmd_u.jump_from=(jump_from_t){
                                     .str_index=jump_id_manager_search_string_index(this->jim,str_name)
                                 }
@@ -521,7 +526,7 @@ bool macro_buffer_process_next(macro_buffer_t* this,bool print_debug){//Returns 
                         bool unique=jump_id_manager_set_command_index_once(this->jim,jid_str_i,cmd_arr_count);
                         if(unique){//No Second RS_JumpFrom
                             command_array_add(this->cmd_arr,
-                                (command_t){.type=CMD_JumpFrom,
+                                (command_t){.type=CMD_JumpFrom,.is_query=is_query,
                                     .cmd_u.jump_from=(jump_from_t){
                                         .str_index=jid_str_i
                                     }
@@ -544,6 +549,83 @@ bool macro_buffer_process_next(macro_buffer_t* this,bool print_debug){//Returns 
                         key_processed=true;
                         break;
                     }
+                }
+                fprintf(stderr,"Current character not allowed '%c' at line %d char %d state %s.\n",current_char,this->line_num,this->char_num,ReadStateStrings[read_state]);
+                print_where_error_is(this->contents,this->token_i,read_i+read_offset_i);
+                this->parse_error=true;
+                key_processed=true;
+                break;
+            case RS_Query:
+                is_query=true;
+                if(!strncmp(this->contents+this->token_i+read_i+read_offset_i,"pxc=",4)){
+                    read_i+=4;
+                    read_offset_i=-1;
+                    read_state=RS_QueryPixelCompare;
+                    break;
+                }
+                fprintf(stderr,"Current character not allowed '%c' at line %d char %d state %s.\n",current_char,this->line_num,this->char_num,ReadStateStrings[read_state]);
+                print_where_error_is(this->contents,this->token_i,read_i+read_offset_i);
+                this->parse_error=true;
+                key_processed=true;
+                break;
+            case RS_QueryPixelCompare:
+                if(isdigit(current_char)) break;
+                if(current_char==','){
+                    if(parsed_num_i<3){
+                        num_str=(char*)malloc(sizeof(char)*read_offset_i+1);
+                        EXIT_IF_NULL(num_str,char*)
+                        strncpy(num_str,this->contents+this->token_i+read_i,read_offset_i);
+                        num_str[read_offset_i]='\0';
+                        parsed_num[parsed_num_i]=strtol(num_str,NULL,10);
+                        free(num_str);
+                        if(parsed_num[parsed_num_i]>255){
+                            fprintf(stderr,"Number should be between 0 and 255 at %d char %d state %s.\n",this->line_num,this->char_num,ReadStateStrings[read_state]);
+                            print_where_error_is(this->contents,this->token_i,read_i+read_offset_i);
+                            this->parse_error=true;
+                            key_processed=true;
+                            break;
+                        }
+                        parsed_num_i++;
+                        read_i+=read_offset_i+1;//Read other strings.
+                        read_offset_i=-1;
+                        break;
+                    }
+                    fprintf(stderr,"There should only be 4 numbers separated by 3 ',' at %d char %d state %s.\n",this->line_num,this->char_num,ReadStateStrings[read_state]);
+                    print_where_error_is(this->contents,this->token_i,read_i+read_offset_i);
+                    this->parse_error=true;
+                    key_processed=true;
+                    break;
+                }
+                if(current_char==';'){
+                    if(parsed_num_i==3){
+                        num_str=(char*)malloc(sizeof(char)*read_offset_i+1);
+                        EXIT_IF_NULL(num_str,char*)
+                        strncpy(num_str,this->contents+this->token_i+read_i,read_offset_i);
+                        num_str[read_offset_i]='\0';
+                        parsed_num[parsed_num_i]=strtol(num_str,NULL,10);
+                        free(num_str);
+                        if(parsed_num[parsed_num_i]>255){
+                            fprintf(stderr,"Number should be between 0 and 255 at %d char %d state %s.\n",this->line_num,this->char_num,ReadStateStrings[read_state]);
+                            print_where_error_is(this->contents,this->token_i,read_i+read_offset_i);
+                            this->parse_error=true;
+                            key_processed=true;
+                            break;
+                        }
+                        command_array_add(this->cmd_arr,
+                            (command_t){.type=CMD_QueryPixelCompare,.is_query=is_query,
+                                .cmd_u.pixel_compare=(pixel_compare_t){
+                                    .r=parsed_num[0],.g=parsed_num[1],.b=parsed_num[2],.thr=parsed_num[3]
+                                }
+                            }
+                        );
+                        key_processed=true;
+                        break;
+                    }
+                    fprintf(stderr,"There should only be 4 numbers separated by 3 ',' at %d char %d state %s.\n",this->line_num,this->char_num,ReadStateStrings[read_state]);
+                    print_where_error_is(this->contents,this->token_i,read_i+read_offset_i);
+                    this->parse_error=true;
+                    key_processed=true;
+                    break;
                 }
                 fprintf(stderr,"Current character not allowed '%c' at line %d char %d state %s.\n",current_char,this->line_num,this->char_num,ReadStateStrings[read_state]);
                 print_where_error_is(this->contents,this->token_i,read_i+read_offset_i);
@@ -588,6 +670,7 @@ void macro_buffer_str_id_check(macro_buffer_t* this){//Check if RepeatStart does
         }
     }
     free(id_check);
+    //TODO: Also check if JumpFrom has a command next to it and Query Commands have 2 commands next to it. Otherwise, parse error.
 }
 void macro_buffer_free(macro_buffer_t* this){
     repeat_id_manager_free(this->rim);
@@ -748,6 +831,9 @@ void command_array_print(const command_array_t* this){
                 break;
             case CMD_JumpFrom:
                 printf("(%d) JumpFrom str_i: %d\n",i,cmd.jump_from.str_index);
+                break;
+            case CMD_QueryPixelCompare:
+                printf("(%d) QueryPixelCompare r: %d g: %d b: %d threshold: %d\n",i,cmd.pixel_compare.r,cmd.pixel_compare.g,cmd.pixel_compare.b,cmd.pixel_compare.thr);
                 break;
         }
     }

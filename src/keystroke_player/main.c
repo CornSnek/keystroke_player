@@ -1,5 +1,6 @@
 #include "parser.h"
 #include "key_down_check.h"
+#include <math.h>
 #include <time.h>
 #include <string.h>
 #define __USE_XOPEN
@@ -127,9 +128,7 @@ int main(void){
                 input_state=IS_Start;
                 break;
             case IS_MouseCoords:
-                printf("After pressing ENTER and waiting 1 second, click anywhere on the screen.\n");
-                fgets(input_str,INPUT_BUFFER_LEN+1,stdin);
-                usleep(1000000);
+                printf("Click anywhere on the screen to see the color of a pixel and its mouse coordinates.\n");
                 xdo_select_window_with_click(xdo_obj,&focus_window);
                 xdo_get_mouse_location(xdo_obj,&x_mouse,&y_mouse,0);
                 printf("You clicked at x:%d, y:%d\n",x_mouse,y_mouse);
@@ -217,7 +216,7 @@ ProgramStatus parse_file(const char* path, xdo_t* xdo_obj, Config config, bool a
     while(macro_buffer_process_next(mb,config.print_commands)){
         if(mb->token_i>mb->str_size) break;
     }
-    macro_buffer_str_id_check(mb);
+    if(!mb->parse_error) macro_buffer_str_id_check(mb);
     if(!mb->parse_error&&and_run){
         bool run_success=run_program(cmd_arr,config,xdo_obj);
         if(!run_success){
@@ -298,9 +297,13 @@ bool run_program(command_array_t* cmd_arr, Config config, xdo_t* xdo_obj){
     nano_sec time_after_last_usleep;
     nano_sec real_delay=0;//Adjust delay depending on time after commands and after sleeping.
     delay_ns_t adj_usleep;
+    XColor pc;
+    int x_mouse,y_mouse;
+    bool query_is_true=false;
     timespec_get(&ts_usleep_before,TIME_UTC);
     while(!srs.program_done){
         pthread_mutex_unlock(&input_mutex);
+        command_t this_cmd=cmd_arr->cmds[cmd_arr_i];
         command_union_t cmd_u=cmd_arr->cmds[cmd_arr_i].cmd_u;
         CommandType cmd_type=cmd_arr->cmds[cmd_arr_i].type;
         int* rst_counter=0;
@@ -401,9 +404,28 @@ bool run_program(command_array_t* cmd_arr, Config config, xdo_t* xdo_obj){
             case(CMD_JumpFrom):
                 if(print_commands) printf("Jump from command String ID#%d.\n",cmd_u.jump_from.str_index);
                 break;
+            case(CMD_QueryPixelCompare):
+                if(print_commands) printf("Skip next command if pixel at mouse matches r,g,b=%d,%d,%d with threshold of %d. ",cmd_u.pixel_compare.r,cmd_u.pixel_compare.g,cmd_u.pixel_compare.b,cmd_u.pixel_compare.thr);
+                pthread_mutex_lock(&input_mutex);
+                xdo_get_mouse_location(xdo_obj,&x_mouse,&y_mouse,0);
+                get_pixel_color(xdo_obj->xdpy,x_mouse,y_mouse,&pc);
+                query_is_true=(abs((unsigned char)(pc.red>>8)-cmd_u.pixel_compare.r)<=cmd_u.pixel_compare.thr
+                    &&abs((unsigned char)(pc.green>>8)-cmd_u.pixel_compare.g)<=cmd_u.pixel_compare.thr
+                    &&abs((unsigned char)(pc.blue>>8)-cmd_u.pixel_compare.b)<=cmd_u.pixel_compare.thr
+                );
+                if(print_commands) printf("Pixel does%s match.\n",query_is_true?"":"n't");
+                pthread_mutex_unlock(&input_mutex);
+                break;
         }
         pthread_mutex_lock(&input_mutex);
-        if(++cmd_arr_i==cmd_arr_len){
+        if(!this_cmd.is_query) ++cmd_arr_i;
+        else{
+            if(query_is_true){
+                query_is_true=false;
+                cmd_arr_i++;
+            }else cmd_arr_i+=2;//Skip
+        }
+        if(cmd_arr_i==cmd_arr_len){
             srs.program_done=true;//To end the input_t thread loop as well.
         }
     }

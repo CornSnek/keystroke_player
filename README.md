@@ -24,13 +24,13 @@ Delay command = `.[ums]?[0-9]+;`
     u/m/s represents microseconds/milliseconds/seconds respectively. 
     Without prefix is defaulted to microseconds.
 
-LoopStart command = `\([A-Za-z0-9\+\_]+;`
+RepeatStart command = `\([A-Za-z0-9\+\_]+;`
 
-    ( with Loop name is used to jump back to this command from a LoopEnd. There can only be one.
+    ( with string name is used to jump back to this command from a RepeatEnd. There can only be one.
 
-LoopEnd command = `\)[A-Za-z0-9\+\_]+(=[0-9]+)?;`
+RepeatEnd command = `\)[A-Za-z0-9\+\_]+(=[0-9]+)?;`
 
-    ) with Loop name is used to jump back to a LoopStart.
+    ) with string name is used to jump back to a RepeatStart.
     Numbers represent how many loops it would do.
     0 or without (=[0-9]+)? means it will loop forever.
     There can only be one.
@@ -47,16 +47,30 @@ Exit command = `exit;`
     Will be used because of JumpTo and JumpFrom commands.
     That can always jump.
 
-JumpTo command = `JT([A-Za-z0-9\+\_]+;`
+JumpTo command = `JT<[A-Za-z0-9\+\_]+;`
 
     Will always jump to a JumpFrom.
     There can be more than one JumpTo and it can be before and/or after
     a JumpFrom.
 
-JumpFrom command = `JF)[A-Za-z0-9\+\_]+;`
+JumpFrom command = `JF>[A-Za-z0-9\+\_]+;`
 
     A JumpTo will jump to this command. There can be one and only one JumpFrom.
     Otherwise, the program will not compile if there are no JumpFroms or more than one with the same name.
+
+There are Query Commands that will skip the next command if false, or not skip if true. They are prefixed with a `?`. These should be used next to a JumpTo command. For example:
+
+`?(query_command);JT<ThisQueryIsTrue;(Commands here if false); ... JF>ThisQueryIsTrue;(Commands here if true);`
+
+QueryPixelCompare command = `?pxc=[0-9]+,[0-9]+,[0-9]+,[0-9]+;`
+
+    QueryPixelCompare checks if the pixel at it's current mouse position is true. Valid numbers should be from 0 to 255.
+    They are formatted by (rc,gc,bc,threshold) (Pixel to compare), where threshold will check any pixel colors close to rm,gm,bm (Pixel by mouse)
+    (Formula for query is true if abs(rc-rm)<=threshold&&abs(gc-gm)<=threshold&&abs(bc-bm)<=threshold)
+    For example:
+        If ?pxc=128,128,128,20; is the command, and
+        the mouse pixel is r,g,b=108,148,128 the query is true since 108, 148, and 128 is within 20.
+        If the mouse pixel is r,g,b=255,255,255, the query is false since 255 is not within 20.
 
 Comments/Tabs/Spaces/Newlines can be added after a semi-colon has been added to a command.
 
@@ -90,4 +104,4 @@ Requires X11 library.
 Note: This has been built using Visual Studio Code under Arch Linux. Repositories for these libraries are in Arch Linux. It may also be readily available in other distributions of Linux.
 
 # TODO
-Adding functionality of jumping towards different commands depending on the color of the pixel of a mouse.
+Adding more Command Queries.
