@@ -1,7 +1,6 @@
 #include "parser.h"
 #include "key_down_check.h"
 #include <time.h>
-int nanosleep(const struct timespec *req, struct timespec *rem);
 #include <string.h>
 #define __USE_XOPEN
 #include <unistd.h>
@@ -266,7 +265,7 @@ void timespec_diff(const struct timespec* ts_begin,struct timespec* ts_diff){
     struct timespec ts_end;
     timespec_get(&ts_end,TIME_UTC);
     const long nsec_diff=ts_end.tv_nsec-ts_begin->tv_nsec;
-    *ts_diff=(struct timespec){//Tertiary operators if ts_end has less nanoseconds, decrease by 1 sec and add NSEC_TO_SEC to nsec.
+    *ts_diff=(struct timespec){//Ternary operators if ts_end has less nanoseconds, decrease by 1 sec and add NSEC_TO_SEC to nsec.
         .tv_sec=ts_end.tv_sec-ts_begin->tv_sec-(nsec_diff<0l?1l:0l),
         .tv_nsec=(nsec_diff<0l?NSEC_TO_SEC:0l)+nsec_diff,
     };
@@ -292,13 +291,14 @@ bool run_program(command_array_t* cmd_arr, Config config, xdo_t* xdo_obj){
         xdo_free(xdo_obj);
         return false;
     }
-    struct timespec ts_begin,ts_diff,ts_usleep_before,ts_usleep_before_adj,ts_do_nanosleep=(struct timespec){0};
+    struct timespec ts_begin,ts_diff,ts_usleep_before,ts_usleep_before_adj;
     timespec_get(&ts_begin,TIME_UTC);
     pthread_mutex_lock(&input_mutex);
     bool print_commands=config.print_commands;
     typedef long nano_sec;
     nano_sec time_after_last_usleep;
     nano_sec real_delay=0;//Adjust delay depending on time after commands and after sleeping.
+    delay_ns_t adj_usleep;
     timespec_get(&ts_usleep_before,TIME_UTC);
     while(!srs.program_done){
         pthread_mutex_unlock(&input_mutex);
@@ -331,16 +331,16 @@ bool run_program(command_array_t* cmd_arr, Config config, xdo_t* xdo_obj){
                 }
                 pthread_mutex_unlock(&input_mutex);
                 break;
-            case(VT_Delay)://Using nanosleep to try to get "precise delays"
-                timespec_diff(&ts_usleep_before,&ts_diff);
+            case(VT_Delay)://Using timespec_get and timespec_diff (custom function) to try to get "precise delays"
                 timespec_get(&ts_usleep_before_adj,TIME_UTC);
+                timespec_diff(&ts_usleep_before,&ts_diff);
                 time_after_last_usleep=ts_diff.tv_sec*NSEC_TO_SEC+ts_diff.tv_nsec;
-                if(print_commands) printf("Sleeping for %ld microseconds\n",cmd_u.delay);
                 real_delay+=cmd_u.delay*1000-time_after_last_usleep;
-                ts_do_nanosleep.tv_nsec=real_delay>0?((delay_ns_t)(real_delay)):0u;
-                nanosleep(&ts_do_nanosleep,0);
-                timespec_diff(&ts_usleep_before_adj,&ts_diff);
+                adj_usleep=real_delay>0?((delay_ns_t)(real_delay/1000+(real_delay%1000>499?1:0))):0u;//0 and rounded nanoseconds.
+                if(print_commands) printf("Sleeping for %ld microseconds (Adjusted to %ld due to commands) \n",cmd_u.delay,adj_usleep);
+                usleep(adj_usleep);
                 timespec_get(&ts_usleep_before,TIME_UTC);
+                timespec_diff(&ts_usleep_before_adj,&ts_diff);
                 real_delay-=ts_diff.tv_sec*NSEC_TO_SEC+ts_diff.tv_nsec;
                 break;
             case(VT_RepeatEnd):
