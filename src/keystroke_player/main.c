@@ -332,15 +332,15 @@ bool run_program(command_array_t* cmd_arr, Config config, xdo_t* xdo_obj){
                 pthread_mutex_unlock(&input_mutex);
                 break;
             case(VT_Delay)://Using timespec_get and timespec_diff (custom function) to try to get "precise delays"
-                timespec_get(&ts_usleep_before_adj,TIME_UTC);
                 timespec_diff(&ts_usleep_before,&ts_diff);
+                timespec_get(&ts_usleep_before_adj,TIME_UTC);
                 time_after_last_usleep=ts_diff.tv_sec*NSEC_TO_SEC+ts_diff.tv_nsec;
                 real_delay+=cmd_u.delay*1000-time_after_last_usleep;
                 adj_usleep=real_delay>0?((delay_ns_t)(real_delay/1000+(real_delay%1000>499?1:0))):0u;//0 and rounded nanoseconds.
                 if(print_commands) printf("Sleeping for %ld microseconds (Adjusted to %ld due to commands) \n",cmd_u.delay,adj_usleep);
                 usleep(adj_usleep);
-                timespec_get(&ts_usleep_before,TIME_UTC);
                 timespec_diff(&ts_usleep_before_adj,&ts_diff);
+                timespec_get(&ts_usleep_before,TIME_UTC);
                 real_delay-=ts_diff.tv_sec*NSEC_TO_SEC+ts_diff.tv_nsec;
                 break;
             case(VT_RepeatEnd):
@@ -377,11 +377,15 @@ bool run_program(command_array_t* cmd_arr, Config config, xdo_t* xdo_obj){
                 pthread_mutex_unlock(&input_mutex);
                 break;
             case(VT_MouseMove):
-                if(print_commands) printf("Mouse move at (%d,%d).\n",cmd_u.mouse_move.x,cmd_u.mouse_move.y);
+                if(print_commands) printf("Mouse move at (%d,%d) (%s).",cmd_u.mouse_move.x,cmd_u.mouse_move.y,cmd_u.mouse_move.is_absolute?"absolute":"relative");
                 pthread_mutex_lock(&input_mutex);
-                srs.mouse.x=cmd_u.mouse_move.x;
-                srs.mouse.y=cmd_u.mouse_move.y;//Update mouse movement for input_t thread loop.
-                xdo_move_mouse(xdo_obj,cmd_u.mouse_move.x,cmd_u.mouse_move.y,0);
+                if(cmd_u.mouse_move.is_absolute) xdo_move_mouse(xdo_obj,cmd_u.mouse_move.x,cmd_u.mouse_move.y,0);
+                else xdo_move_mouse_relative(xdo_obj,cmd_u.mouse_move.x,cmd_u.mouse_move.y);
+                xdo_get_mouse_location(xdo_obj,&srs.mouse.x,&srs.mouse.y,0);//Update mouse movement for input_t thread loop.
+                if(print_commands){
+                    if(cmd_u.mouse_move.is_absolute) printf("\n");
+                    else printf(" Mouse now at (%d,%d).\n",srs.mouse.x,srs.mouse.y);
+                } 
                 pthread_mutex_unlock(&input_mutex);
                 break;
             case(VT_Exit):

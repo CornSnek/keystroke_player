@@ -35,9 +35,11 @@ LoopEnd command = `\)[A-Za-z0-9\+\_]+(=[0-9]+)?;`
     0 or without (=[0-9]+)? means it will loop forever.
     There can only be one.
 
-MouseMove command = `mm[0-9]+,[0-9]+;`
+MouseMove command = `mm[ar]=[0-9\-]+,[0-9\-]+;`
 
-    Moves mouse based on absolute value of the screen.
+    Moves mouse based on absolute (mma) or relative (mmr) of the screen.
+    Example: mmr=100,-50; Moves 100 pixels to the right and 50 pixels upwards
+    relative to the current location.
 
 Exit command = `exit;`
 

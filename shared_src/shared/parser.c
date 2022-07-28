@@ -70,8 +70,8 @@ bool macro_buffer_process_next(macro_buffer_t* this,bool print_debug){//Returns 
     bool added_keystate=false;
     int read_i=0; //Index to read.
     int read_offset_i=0; //Last character to read by offset of read_i.
-    bool maybe_mouse=false;
     bool first_number=false;
+    bool mouse_absolute;
     do{
         const char current_char=this->contents[this->token_i+read_i+read_offset_i];
         if(print_debug) printf("'%c' token_i:%d read_offset_i:%d read_i:%d State:%s\n",current_char,this->token_i,read_offset_i,read_i,ReadStateStrings[read_state]);
@@ -100,9 +100,28 @@ bool macro_buffer_process_next(macro_buffer_t* this,bool print_debug){//Returns 
                     read_state=RS_JumpFrom;
                     break;
                 }
+                if(!strncmp(this->contents+this->token_i+read_i+read_offset_i,"mma=",4)
+                    &&isdigit(this->contents[this->token_i+read_i+read_offset_i+4])){
+                    read_i+=4;
+                    read_offset_i=-1;
+                    mouse_absolute=true;
+                    read_state=RS_MouseMove;
+                    break;
+                }
+                if(!strncmp(this->contents+this->token_i+read_i+read_offset_i,"mmr=",4)
+                    &&isdigit(this->contents[this->token_i+read_i+read_offset_i+4])){
+                    read_i+=4;
+                    read_offset_i=-1;
+                    mouse_absolute=false;
+                    read_state=RS_MouseMove;
+                    break;
+                }
                 if(char_is_key(current_char)){
-                    if(current_char=='m'||current_char=='M'){
-                        maybe_mouse=true;
+                    if(current_char=='m'&&isdigit(this->contents[this->token_i+read_i+read_offset_i+1])){
+                        read_i+=1;
+                        read_offset_i=-1;
+                        read_state=RS_MouseClickType;
+                        break;
                     }
                     read_state=RS_KeyOrMouse;
                     break;
@@ -248,20 +267,6 @@ bool macro_buffer_process_next(macro_buffer_t* this,bool print_debug){//Returns 
                 key_processed=true;
                 break;
             case RS_KeyOrMouse:
-                if(maybe_mouse){
-                    if(isdigit(current_char)){
-                        read_i+=read_offset_i;//No +1 to reread digit.
-                        read_offset_i=-1;
-                        read_state=RS_MouseClickType;
-                        break;
-                    }else if(current_char=='M'||current_char=='m'){
-                        read_i+=read_offset_i+1;
-                        read_offset_i=-1;
-                        read_state=RS_MouseMove;
-                        break;
-                    }
-                    maybe_mouse=false;
-                }
                 if(char_is_key(current_char)) break;
                 else if(current_char=='='){
                     read_state=RS_KeyState;
@@ -403,7 +408,7 @@ bool macro_buffer_process_next(macro_buffer_t* this,bool print_debug){//Returns 
                 key_processed=true;
                 break;
             case RS_MouseMove:
-                if(isdigit(current_char)) break;
+                if(isdigit(current_char)||current_char=='-') break;
                 else if(current_char==','&&!first_number){
                     num_str=(char*)malloc(sizeof(char)*read_offset_i+1);
                     EXIT_IF_NULL(num_str,char*)
@@ -426,7 +431,7 @@ bool macro_buffer_process_next(macro_buffer_t* this,bool print_debug){//Returns 
                         command_array_add(this->cmd_arr,
                         (command_t){.type=VT_MouseMove,
                                 .cmd.mouse_move=(mouse_move_t){
-                                    .x=parsed_num,.y=parsed_num2
+                                    .x=parsed_num,.y=parsed_num2,.is_absolute=mouse_absolute
                                 }
                             }
                         );
@@ -690,7 +695,7 @@ void command_array_print(const command_array_t* this){
                 printf("(%d) MouseClick: MouseType: %d MouseState: %d\n",i,cmd.mouse_click.mouse_type,cmd.mouse_click.mouse_state);
                 break;
             case VT_MouseMove:
-                printf("(%d) MouseMove: x: %d y: %d\n",i,cmd.mouse_move.x,cmd.mouse_move.y);
+                printf("(%d) MouseMove: x: %d y: %d is_absolute: %d\n",i,cmd.mouse_move.x,cmd.mouse_move.y,cmd.mouse_move.is_absolute);
                 break;
             case VT_Exit:
                 printf("(%d) ExitProgram\n",i);

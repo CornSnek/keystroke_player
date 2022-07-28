@@ -73,6 +73,7 @@ typedef struct repeat_end_s{
 typedef struct mouse_move_s{
     int x;
     int y;
+    bool is_absolute;
 }mouse_move_t;
 typedef struct mouse_click_s{
     InputState mouse_state;

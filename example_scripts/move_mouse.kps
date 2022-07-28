@@ -1,3 +1,3 @@
 (A;
-mm200,400;.s1;mm600,800;.s1;exit;
+mma=200,400;.s1;mma=600,800;.s1;(B;mmr=100,-50;.m100;)B=15;
 )A=10;#Repeat 10 times until mouse is moved.
