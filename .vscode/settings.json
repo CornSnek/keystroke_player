@@ -35,7 +35,11 @@
         "valarray": "c",
         "xutil.h": "c",
         "cstdio": "c",
-        "time_t.h": "c"
+        "time_t.h": "c",
+        "functional": "c",
+        "mutex": "c",
+        "tuple": "c",
+        "typeindex": "c"
     },
     //"editor.autoClosingBrackets": "never",
     //"editor.autoClosingDelete": "never",

@@ -3,7 +3,7 @@
 #include <string.h>
 #include <ctype.h>
 __ReadStateWithStringDef(__ReadStateEnums)
-const int JumpToNotFound=-1;
+const int IndexNotFound=-1;
 const int JumpFromNotConnected=-2;
 int trim_whitespace(char** strptr){//For null-terminated strings only, and reedit pointer to resize for trimmed strings. Returns int to get total length of the trimmed string.
     int str_i=0;
@@ -48,7 +48,7 @@ void replace_str(char** strptr_owner, const char* replace, const char* with){//A
 macro_buffer_t* macro_buffer_new(char* str_owned, command_array_t* cmd_arr){
     macro_buffer_t* this=(macro_buffer_t*)(malloc(sizeof(macro_buffer_t)));
     EXIT_IF_NULL(this,macro_buffer_t);
-    *this=(macro_buffer_t){.token_i=0,.line_num=1,.char_num=1,.size=strlen(str_owned),.contents=str_owned,.cmd_arr=cmd_arr,.rim=repeat_id_manager_new(),.jim=jump_id_manager_new(),.parse_error=false};
+    *this=(macro_buffer_t){.token_i=0,.line_num=1,.char_num=1,.str_size=strlen(str_owned),.contents=str_owned,.cmd_arr=cmd_arr,.rim=repeat_id_manager_new(),.jim=jump_id_manager_new(),.parse_error=false};
     return this;
 }
 void print_where_error_is(const char* contents,int begin_error,int end_error){
@@ -63,7 +63,7 @@ bool macro_buffer_process_next(macro_buffer_t* this,bool print_debug){//Returns 
     bool key_processed=false;
     InputState input_state;
     char* str_name=0;
-    __uint64_t delay_mult; 
+    __uint64_t delay_mult=0; 
     char* num_str=0;
     __uint64_t parsed_num=0;
     __uint64_t parsed_num2=0;
@@ -80,8 +80,8 @@ bool macro_buffer_process_next(macro_buffer_t* this,bool print_debug){//Returns 
                 first_number=false;
                 if(!strncmp(this->contents+this->token_i+read_i+read_offset_i,"exit;",5)){
                     command_array_add(this->cmd_arr,
-                        (command_t){.type=VT_Exit,
-                            .cmd={{0}}
+                        (command_t){.type=CMD_Exit,
+                            .cmd_u={{0}}
                         }
                     );
                     read_i+=4;//Exclude reading "xit;"
@@ -184,8 +184,11 @@ bool macro_buffer_process_next(macro_buffer_t* this,bool print_debug){//Returns 
                     strncpy(str_name,this->contents+this->token_i+read_i,read_offset_i);
                     repeat_id_manager_add_name(this->rim,str_name,command_array_count(this->cmd_arr));
                     command_array_add(this->cmd_arr,
-                        (command_t){.type=VT_RepeatStart,
-                            .cmd.repeat_start=0
+                        (command_t){.type=CMD_RepeatStart,
+                            .cmd_u.repeat_start=(repeat_start_t){
+                                .counter=0,
+                                .str_index=repeat_id_manager_search_string_index(this->rim,str_name)
+                            }
                         }
                     );
                     key_processed=true;
@@ -221,9 +224,10 @@ bool macro_buffer_process_next(macro_buffer_t* this,bool print_debug){//Returns 
                     const bool str_exists=(str_name!=SSManager_add_string(this->rim->ssm,&str_name));
                     if(str_exists){
                         command_array_add(this->cmd_arr,
-                            (command_t){.type=VT_RepeatEnd,
-                                .cmd.repeat_end=(repeat_end_t){
-                                    .index=repeat_id_manager_search_command_index(this->rim,str_name),
+                            (command_t){.type=CMD_RepeatEnd,
+                                .cmd_u.repeat_end=(repeat_end_t){
+                                    .cmd_index=repeat_id_manager_search_command_index(this->rim,str_name),
+                                    .str_index=repeat_id_manager_search_string_index(this->rim,str_name),
                                     .counter_max=0
                                 }
                             }
@@ -250,9 +254,10 @@ bool macro_buffer_process_next(macro_buffer_t* this,bool print_debug){//Returns 
                     strncpy(num_str,this->contents+this->token_i+read_i,read_offset_i);
                     num_str[read_offset_i]='\0';
                     command_array_add(this->cmd_arr,
-                        (command_t){.type=VT_RepeatEnd,
-                            .cmd.repeat_end=(repeat_end_t){
-                                .index=repeat_id_manager_search_command_index(this->rim,str_name),
+                        (command_t){.type=CMD_RepeatEnd,
+                            .cmd_u.repeat_end=(repeat_end_t){
+                                .cmd_index=repeat_id_manager_search_command_index(this->rim,str_name),
+                                .str_index=repeat_id_manager_search_string_index(this->rim,str_name),
                                 .counter_max=strtol(num_str,NULL,10)
                             }
                         }
@@ -299,8 +304,8 @@ bool macro_buffer_process_next(macro_buffer_t* this,bool print_debug){//Returns 
                     strncpy(str_name,this->contents+this->token_i+read_i,read_offset_i-2);
                     str_name[read_offset_i-2]='\0';\
                     command_array_add(this->cmd_arr,
-                        (command_t){.type=VT_KeyStroke,
-                            .cmd.ks=(keystroke_t){
+                        (command_t){.type=CMD_KeyStroke,
+                            .cmd_u.ks=(keystroke_t){
                                 .key=str_name,//SSManager/keystroke_t owns char* key via command_array_add.
                                 .key_state=input_state
                             }
@@ -343,8 +348,8 @@ bool macro_buffer_process_next(macro_buffer_t* this,bool print_debug){//Returns 
                     strncpy(num_str,this->contents+this->token_i+read_i,read_offset_i);
                     num_str[read_offset_i]='\0';
                     command_array_add(this->cmd_arr,
-                        (command_t){.type=VT_Delay,
-                            .cmd.delay=strtol(num_str,NULL,10)*delay_mult
+                        (command_t){.type=CMD_Delay,
+                            .cmd_u.delay=strtol(num_str,NULL,10)*delay_mult
                         }
                     );
                     free(num_str);
@@ -390,8 +395,8 @@ bool macro_buffer_process_next(macro_buffer_t* this,bool print_debug){//Returns 
                         default: input_state=IS_Click;
                     }
                     command_array_add(this->cmd_arr,
-                        (command_t){.type=VT_MouseClick,
-                            .cmd.mouse_click=(mouse_click_t){.mouse_state=input_state,
+                        (command_t){.type=CMD_MouseClick,
+                            .cmd_u.mouse_click=(mouse_click_t){.mouse_state=input_state,
                                 .mouse_type=parsed_num
                             }
                         }
@@ -429,8 +434,8 @@ bool macro_buffer_process_next(macro_buffer_t* this,bool print_debug){//Returns 
                         parsed_num2=strtol(num_str,NULL,10);
                         free(num_str);
                         command_array_add(this->cmd_arr,
-                        (command_t){.type=VT_MouseMove,
-                                .cmd.mouse_move=(mouse_move_t){
+                        (command_t){.type=CMD_MouseMove,
+                                .cmd_u.mouse_move=(mouse_move_t){
                                     .x=parsed_num,.y=parsed_num2,.is_absolute=mouse_absolute
                                 }
                             }
@@ -459,9 +464,9 @@ bool macro_buffer_process_next(macro_buffer_t* this,bool print_debug){//Returns 
                     if(jid_cmd_i==-1){
                         jump_id_manager_add_name(this->jim,str_name,JumpFromNotConnected,false);//-2 Because it's not a JumpFrom
                         command_array_add(this->cmd_arr,
-                        (command_t){.type=VT_JumpTo,
-                                .cmd.jump_to=(jump_to_t){
-                                    .cmd_index=JumpFromNotConnected,//Will be edited from a VT_JumpFrom later.
+                        (command_t){.type=CMD_JumpTo,
+                                .cmd_u.jump_to=(jump_to_t){
+                                    .cmd_index=JumpFromNotConnected,//Will be edited from a CMD_JumpFrom later.
                                     .str_index=jump_id_manager_search_string_index(this->jim,str_name)
                                 }
                             }
@@ -470,8 +475,8 @@ bool macro_buffer_process_next(macro_buffer_t* this,bool print_debug){//Returns 
                         break;
                     }else{
                         command_array_add(this->cmd_arr,
-                        (command_t){.type=VT_JumpTo,
-                                .cmd.jump_to=(jump_to_t){
+                        (command_t){.type=CMD_JumpTo,
+                                .cmd_u.jump_to=(jump_to_t){
                                     .cmd_index=jid_cmd_i,
                                     .str_index=jump_id_manager_search_string_index(this->jim,str_name)
                                 }
@@ -504,8 +509,8 @@ bool macro_buffer_process_next(macro_buffer_t* this,bool print_debug){//Returns 
                     if(jid_cmd_i==-1){
                         jump_id_manager_add_name(this->jim,str_name,cmd_arr_count,true);
                         command_array_add(this->cmd_arr,
-                            (command_t){.type=VT_JumpFrom,
-                                .cmd.jump_from=(jump_from_t){
+                            (command_t){.type=CMD_JumpFrom,
+                                .cmd_u.jump_from=(jump_from_t){
                                     .str_index=jump_id_manager_search_string_index(this->jim,str_name)
                                 }
                             }
@@ -516,8 +521,8 @@ bool macro_buffer_process_next(macro_buffer_t* this,bool print_debug){//Returns 
                         bool unique=jump_id_manager_set_command_index_once(this->jim,jid_str_i,cmd_arr_count);
                         if(unique){//No Second RS_JumpFrom
                             command_array_add(this->cmd_arr,
-                                (command_t){.type=VT_JumpFrom,
-                                    .cmd.jump_from=(jump_from_t){
+                                (command_t){.type=CMD_JumpFrom,
+                                    .cmd_u.jump_from=(jump_from_t){
                                         .str_index=jid_str_i
                                     }
                                 }
@@ -525,8 +530,8 @@ bool macro_buffer_process_next(macro_buffer_t* this,bool print_debug){//Returns 
                             for(int i=0;i<cmd_arr_count;i++){
                                 printf("%d WTF\n",i);
                                 command_t* this_cmd=this->cmd_arr->cmds+i;
-                                if(this_cmd->type==VT_JumpTo&&this_cmd->cmd.jump_to.str_index==jid_str_i){
-                                    this_cmd->cmd.jump_to.cmd_index=cmd_arr_count;//Set all JumpTo to this JumpFrom index.
+                                if(this_cmd->type==CMD_JumpTo&&this_cmd->cmd_u.jump_to.str_index==jid_str_i){
+                                    this_cmd->cmd_u.jump_to.cmd_index=cmd_arr_count;//Set all JumpTo to this JumpFrom index.
                                 }
                             }
                             key_processed=true;
@@ -554,13 +559,43 @@ bool macro_buffer_process_next(macro_buffer_t* this,bool print_debug){//Returns 
     this->token_i+=read_i+read_offset_i;
     return !this->parse_error;
 }
+void macro_buffer_str_id_check(macro_buffer_t* this){//Check if RepeatStart doesn't have a respective RepeatEnd, or if there are no JumpFroms.
+    bool* id_check=calloc(this->rim->size,sizeof(bool));
+    for(int i=0;i<this->rim->size;i++){
+        for(int j=0;j<this->cmd_arr->size;j++){
+            const command_t cmd=this->cmd_arr->cmds[j];
+            if(cmd.type==CMD_RepeatEnd&&cmd.cmd_u.repeat_end.str_index==i){id_check[i]=true;}
+        }
+    }
+    for(int i=0;i<this->rim->size;i++){
+        if(!id_check[i]){
+            fprintf(stderr,"RepeatEnd command missing for string '%s'\n",this->rim->names[i]);
+            this->parse_error=true;
+        }
+    }
+    free(id_check);
+    id_check=calloc(this->jim->size,sizeof(bool));
+    for(int i=0;i<this->jim->size;i++){
+        for(int j=0;j<this->cmd_arr->size;j++){
+            const command_t cmd=this->cmd_arr->cmds[j];
+            if(cmd.type==CMD_JumpFrom&&cmd.cmd_u.jump_from.str_index==i){id_check[i]=true;}
+        }
+    }
+    for(int i=0;i<this->jim->size;i++){
+        if(!id_check[i]){
+            fprintf(stderr,"JumpFrom command missing for string '%s'\n",this->jim->names[i]);
+            this->parse_error=true;
+        }
+    }
+    free(id_check);
+}
 void macro_buffer_free(macro_buffer_t* this){
     repeat_id_manager_free(this->rim);
     jump_id_manager_free(this->jim);
     free(this->contents);
     free(this);
 }
-repeat_id_manager_t* repeat_id_manager_new(){
+repeat_id_manager_t* repeat_id_manager_new(void){
     repeat_id_manager_t* this=(repeat_id_manager_t*)(malloc(sizeof(repeat_id_manager_t)));
     EXIT_IF_NULL(this,repeat_id_manager_t);
     *this=(repeat_id_manager_t){.size=0,.names=NULL,.index=NULL,.ssm=SSManager_new()};
@@ -592,7 +627,15 @@ int repeat_id_manager_search_command_index(const repeat_id_manager_t* this,const
             return this->index[i];
         }
     }
-    return -1;
+    return IndexNotFound;
+}
+int repeat_id_manager_search_string_index(const repeat_id_manager_t* this,const char* search_str){
+    for(int i=0;i<this->size;i++){
+        if(!strcmp(search_str,this->names[i])){
+            return i;
+        }
+    }
+    return IndexNotFound;
 }
 void repeat_id_manager_free(repeat_id_manager_t* this){
     SSManager_free(this->ssm);
@@ -600,7 +643,7 @@ void repeat_id_manager_free(repeat_id_manager_t* this){
     free(this->index);
     free(this);
 }
-jump_id_manager_t* jump_id_manager_new(){
+jump_id_manager_t* jump_id_manager_new(void){
     jump_id_manager_t* this=(jump_id_manager_t*)(malloc(sizeof(jump_id_manager_t)));
     EXIT_IF_NULL(this,jump_id_manager_t);
     *this=(jump_id_manager_t){.size=0,.names=NULL,.index=NULL,.jump_from_added=NULL,.ssm=SSManager_new()};
@@ -636,7 +679,7 @@ int jump_id_manager_search_command_index(const jump_id_manager_t* this,const cha
             return this->index[i];
         }
     }
-    return JumpToNotFound;
+    return IndexNotFound;
 }
 int jump_id_manager_search_string_index(const jump_id_manager_t* this,const char* search_str){//Searches index of string instead.
     for(int i=0;i<this->size;i++){
@@ -644,7 +687,7 @@ int jump_id_manager_search_string_index(const jump_id_manager_t* this,const char
             return i;
         }
     }
-    return JumpToNotFound;
+    return IndexNotFound;
 }
 bool jump_id_manager_set_command_index_once(jump_id_manager_t* this, int index, int cmd_index){
     if(this->jump_from_added[index]) return false;//If JumpFrom was already added before JumpTo
@@ -658,7 +701,7 @@ void jump_id_manager_free(jump_id_manager_t* this){
     free(this->index);
     free(this);
 }
-command_array_t* command_array_new(){
+command_array_t* command_array_new(void){
     command_array_t* this=(command_array_t*)(malloc(sizeof(command_array_t)));
     EXIT_IF_NULL(this,command_array_t);
     *this=(command_array_t){.size=0,.cmds=NULL,.SSM=SSManager_new()};
@@ -669,7 +712,7 @@ void command_array_add(command_array_t* this, command_t cmd){
     if(this->cmds) this->cmds=(command_t*)realloc(this->cmds,sizeof(command_t)*(this->size));
     else this->cmds=(command_t*)malloc(sizeof(command_t));
     EXIT_IF_NULL(this->cmds,command_t*);
-    if(cmd.type==VT_KeyStroke) SSManager_add_string(this->SSM,&cmd.cmd.ks.key);//Edit pointer for any shared strings first before placing in array.
+    if(cmd.type==CMD_KeyStroke) SSManager_add_string(this->SSM,&cmd.cmd_u.ks.key);//Edit pointer for any shared strings first before placing in array.
     this->cmds[this->size-1]=cmd;
 }
 int command_array_count(const command_array_t* this){
@@ -677,33 +720,33 @@ int command_array_count(const command_array_t* this){
 }
 void command_array_print(const command_array_t* this){
     for(int i=0;i<this->size;i++){
-        const command_union_t cmd=this->cmds[i].cmd;
+        const command_union_t cmd=this->cmds[i].cmd_u;
         switch(this->cmds[i].type){
-            case VT_KeyStroke:
+            case CMD_KeyStroke:
                 printf("(%d) Key: %s KeyState: %d\n",i,cmd.ks.key,cmd.ks.key_state);
                 break;
-            case VT_Delay:
+            case CMD_Delay:
                 printf("(%d) Delay: %lu\n",i,cmd.delay);
                 break;
-            case VT_RepeatStart:
-                printf("(%d) RepeatStart: Counter: %d\n",i,cmd.repeat_start);
+            case CMD_RepeatStart:
+                printf("(%d) RepeatStart: Counter: %d str_i: %d\n",i,cmd.repeat_start.counter,cmd.repeat_start.str_index);
                 break;
-            case VT_RepeatEnd:
-                printf("(%d) RepeatEnd: RepeatAtIndex: %d MaxCounter: %d\n",i,cmd.repeat_end.index,cmd.repeat_end.counter_max);
+            case CMD_RepeatEnd:
+                printf("(%d) RepeatEnd: RepeatAtIndex: %d MaxCounter: %d str_i: %d\n",i,cmd.repeat_end.cmd_index,cmd.repeat_end.counter_max,cmd.repeat_start.str_index);
                 break;
-            case VT_MouseClick:
+            case CMD_MouseClick:
                 printf("(%d) MouseClick: MouseType: %d MouseState: %d\n",i,cmd.mouse_click.mouse_type,cmd.mouse_click.mouse_state);
                 break;
-            case VT_MouseMove:
+            case CMD_MouseMove:
                 printf("(%d) MouseMove: x: %d y: %d is_absolute: %d\n",i,cmd.mouse_move.x,cmd.mouse_move.y,cmd.mouse_move.is_absolute);
                 break;
-            case VT_Exit:
+            case CMD_Exit:
                 printf("(%d) ExitProgram\n",i);
                 break;
-            case VT_JumpTo:
+            case CMD_JumpTo:
                 printf("(%d) JumpTo cmd_i: %d str_i: %d\n",i,cmd.jump_to.cmd_index,cmd.jump_to.str_index);
                 break;
-            case VT_JumpFrom:
+            case CMD_JumpFrom:
                 printf("(%d) JumpFrom str_i: %d\n",i,cmd.jump_from.str_index);
                 break;
         }

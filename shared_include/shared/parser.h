@@ -40,7 +40,7 @@ typedef struct macro_buffer_s{
     int token_i;
     int line_num;
     int char_num;
-    int size;
+    int str_size;
     char* contents;
     command_array_t* cmd_arr;
     repeat_id_manager_t* rim;
@@ -65,9 +65,13 @@ typedef struct jump_id_manager_s{
     shared_string_manager_t* ssm;
 }jump_id_manager_t;
 typedef __uint64_t delay_ns_t;
-typedef int repeat_start_t;
+typedef struct repeat_start_s{
+    int counter;
+    int str_index;
+}repeat_start_t;
 typedef struct repeat_end_s{
-    int index;//Index refers to repeat_start_t's index.
+    int cmd_index;//Index refers to repeat_start_t's index.
+    int str_index;
     int counter_max;//0 means infinite loop.
 }repeat_end_t;
 typedef struct mouse_move_s{
@@ -83,7 +87,7 @@ typedef struct jump_to_s{
     int cmd_index;
     int str_index;
 }jump_to_t;
-extern const int JumpToNotFound;
+extern const int IndexNotFound;
 extern const int JumpFromNotConnected;
 typedef struct jump_from_s{
     int str_index;
@@ -99,11 +103,11 @@ typedef union command_union{
     jump_from_t jump_from;
 }command_union_t;
 typedef enum _CommandType{
-    VT_KeyStroke,VT_Delay,VT_RepeatStart,VT_RepeatEnd,VT_MouseClick,VT_MouseMove,VT_Exit,VT_JumpTo,VT_JumpFrom
+    CMD_KeyStroke,CMD_Delay,CMD_RepeatStart,CMD_RepeatEnd,CMD_MouseClick,CMD_MouseMove,CMD_Exit,CMD_JumpTo,CMD_JumpFrom
 }CommandType;
 typedef struct command_s{//Aggregating like for SDL events (enums and unions).
     CommandType type;
-    command_union_t cmd;
+    command_union_t cmd_u;
 }command_t;
 typedef struct command_array_s{
     int size;
@@ -113,19 +117,21 @@ typedef struct command_array_s{
 int trim_whitespace(char**  strptr_owner);
 void replace_str(char** strptr, const char* replace, const char* with);
 macro_buffer_t* macro_buffer_new(char* str_owned, command_array_t* cmd_arr);
-bool macro_buffer_process_next(macro_buffer_t* mb,bool print_debug);
+bool macro_buffer_process_next(macro_buffer_t* this,bool print_debug);
+void macro_buffer_str_id_check(macro_buffer_t* this);
 void macro_buffer_free(macro_buffer_t* this);
-repeat_id_manager_t* repeat_id_manager_new();
+repeat_id_manager_t* repeat_id_manager_new(void);
 void repeat_id_manager_add_name(repeat_id_manager_t* this, char* str_owned, int index);
 int repeat_id_manager_search_command_index(const repeat_id_manager_t* this,const char* search_str);
+int repeat_id_manager_search_string_index(const repeat_id_manager_t* this,const char* search_str);
 void repeat_id_manager_free(repeat_id_manager_t* this);
-jump_id_manager_t* jump_id_manager_new();
+jump_id_manager_t* jump_id_manager_new(void);
 void jump_id_manager_add_name(jump_id_manager_t* this, char* str_owned, int index, bool is_jump_from);
 int jump_id_manager_search_command_index(const jump_id_manager_t* this,const char* search_str);
 int jump_id_manager_search_string_index(const jump_id_manager_t* this,const char* search_str);
 bool jump_id_manager_set_command_index_once(jump_id_manager_t* this, int index, int cmd_index);
 void jump_id_manager_free(jump_id_manager_t* this);
-command_array_t* command_array_new();
+command_array_t* command_array_new(void);
 void command_array_add(command_array_t* this, command_t cmd);
 int command_array_count(const command_array_t* this);
 void command_array_print(const command_array_t* this);
