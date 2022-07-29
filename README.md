@@ -1,7 +1,7 @@
 # keystroke_player
 Linux X11 Macro program with script support. This is inspired by click4ever from https://github.com/daniel-araujo/click4ever. I just added keyboard support and scripting support for personal scripting uses.
 # Usage
-Run the program. It is command line program where you can edit configs, and compile/run scripts.
+Run the program. It is a command line program where you can edit configs, and compile/run scripts.
 It runs macro scripts that can stop executing the program completely if the mouse moves, it reaches the end, or it exits via `exit;`
 .
 # Script
