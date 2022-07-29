@@ -107,9 +107,9 @@ int main(void){
             case IS_BuildFile:
                 file_str=read_default_file();
                 printf("Set file path to open. Current file: %s\n",file_str?file_str:"(None)");
-                printf("(Press enter to skip, type \\c to cancel.): ");
+                printf("(Press enter to skip, type c to cancel.): ");
                 fgets(input_str,INPUT_BUFFER_LEN+1,stdin);
-                if(!strcmp(input_str,"\\c\n")){input_state=IS_Start; break;}
+                if(!strcmp(input_str,"c\n")){input_state=IS_Start; break;}
                 if(input_str[0]!='\n'){
                     if(fgets_change(input_str,INPUT_BUFFER_LEN)) printf("Warning: String has been truncated to "INPUT_BUFFER_LEN_STR" characters.\n");
                 }else{//Enter pressed.

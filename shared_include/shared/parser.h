@@ -159,8 +159,6 @@ typedef struct command_array_s{
     command_t* cmds;
     shared_string_manager_t* SSM;
 }command_array_t;
-int trim_whitespace(char**  strptr_owner);
-void replace_str(char** strptr, const char* replace, const char* with);
 macro_buffer_t* macro_buffer_new(char* str_owned, command_array_t* cmd_arr);
 bool macro_buffer_process_next(macro_buffer_t* this,bool print_debug);
 void macro_buffer_str_id_check(macro_buffer_t* this);
@@ -181,8 +179,4 @@ void command_array_add(command_array_t* this, command_t cmd);
 int command_array_count(const command_array_t* this);
 void command_array_print(const command_array_t* this);
 void command_array_free(command_array_t* this);
-bool char_is_key(char c);
-bool char_is_keystate(char c);
-bool char_is_whitespace(char c);
-bool char_is_delay(char c);
 #endif
