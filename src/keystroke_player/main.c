@@ -301,7 +301,6 @@ bool run_program(command_array_t* cmd_arr, Config config, xdo_t* xdo_obj){
     delay_ns_t adj_usleep;
     XColor pc;
     int x_mouse,y_mouse;
-    int mouse_compare;
     bool query_is_true;
     timespec_get(&ts_usleep_before,TIME_UTC);
     while(!srs.program_done){
@@ -424,8 +423,7 @@ bool run_program(command_array_t* cmd_arr, Config config, xdo_t* xdo_obj){
                 pthread_mutex_lock(&input_mutex);
                 xdo_get_mouse_location(xdo_obj,&x_mouse,&y_mouse,0);
                 pthread_mutex_unlock(&input_mutex);
-                if((cc&CMP_Y)==CMP_Y) mouse_compare=y_mouse;
-                else mouse_compare=x_mouse;
+                ;const int mouse_compare=(cc&CMP_Y)==CMP_Y?y_mouse:x_mouse;
                 if((cc&CMP_GT)==CMP_GT) query_is_true=(cc&CMP_W_EQ)==CMP_W_EQ?mouse_compare>=cmd_u.compare_coords.var:mouse_compare>cmd_u.compare_coords.var;
                 else query_is_true=(cc&CMP_W_EQ)==CMP_W_EQ?mouse_compare<=cmd_u.compare_coords.var:mouse_compare<cmd_u.compare_coords.var;
                 if(print_commands) printf("Compare is %s.\n",query_is_true?"true":"false");

@@ -902,7 +902,7 @@ void command_array_print(const command_array_t* this){
                 break;
             case CMD_QueryCompareCoords:
                 ;const CompareCoords cc=cmd.compare_coords.cmp_flags;
-                printf("(%d) QueryCompareCoords cmp_flags: %c,%c,%s var:%d\n",i,(cc&CMP_Y)==CMP_Y?'y':'x',(cc&CMP_GT)==CMP_GT?'>':'<',(cc&CMP_W_EQ)==CMP_W_EQ?"=,":",",cmd.compare_coords.var);
+                printf("(%d) QueryCompareCoords cmp_flags: '%c,%c%s' var:%d\n",i,(cc&CMP_Y)==CMP_Y?'y':'x',(cc&CMP_GT)==CMP_GT?'>':'<',(cc&CMP_W_EQ)==CMP_W_EQ?",=":"",cmd.compare_coords.var);
                 break;
         }
     }
