@@ -32,6 +32,14 @@ typedef struct{
 const Config InitConfig={
     .init_delay=2000000,.mouse_check_delay=100000,.print_commands=true
 };
+typedef struct mouse_c_s{
+    int x;
+    int y;
+}mouse_c_t;
+int* cmd_i_stack=0;//TODO: Add Command that pops Command Index to jump back to a JumpToStore like a function.
+int cmd_i_size=0;
+void store_cmd_index(int i);
+bool pop_cmd_index(int* cmd_i);
 bool fgets_change(char* str,int buffer_len);
 bool write_to_config(const Config config);
 Config read_config_file(void);
@@ -62,14 +70,14 @@ int main(void){
         switch(input_state){
             case IS_Start:
                 also_run=false;
-                printf("\\c for Config\n\\b to Build File\n\\r to Build and Run File\n\\m to Test coordinates of mouse and color\n\\q to Quit\nType to continue: ");
+                printf("Type c for Config\nType b to Build File\nType r to Build and Run File\nType t to Test coordinates of mouse and color\nType q to Quit\nType to continue: ");
                 fgets(input_str,INPUT_BUFFER_LEN+1,stdin);
                 //fgets_change(input_str,INPUT_BUFFER_LEN);//Remove '\n' if any.
-                if(!strcmp(input_str,"\\q\n")) goto done;
-                if(!strcmp(input_str,"\\c\n")) input_state=IS_EditConfig;
-                if(!strcmp(input_str,"\\b\n")) input_state=IS_BuildFile;
-                if(!strcmp(input_str,"\\r\n")) input_state=IS_RunFile;
-                if(!strcmp(input_str,"\\m\n")) input_state=IS_MouseCoords;
+                if(!strcmp(input_str,"q\n")) goto done;
+                if(!strcmp(input_str,"c\n")) input_state=IS_EditConfig;
+                if(!strcmp(input_str,"b\n")) input_state=IS_BuildFile;
+                if(!strcmp(input_str,"r\n")) input_state=IS_RunFile;
+                if(!strcmp(input_str,"t\n")) input_state=IS_MouseCoords;
                 break;
             case IS_EditConfig:
                 config=read_config_file();
@@ -131,9 +139,9 @@ int main(void){
                 printf("Click anywhere on the screen to see the color of a pixel and its mouse coordinates.\n");
                 xdo_select_window_with_click(xdo_obj,&focus_window);
                 xdo_get_mouse_location(xdo_obj,&x_mouse,&y_mouse,0);
-                printf("You clicked at x:%d, y:%d\n",x_mouse,y_mouse);
+                printf("You clicked at x:%d y:%d",x_mouse,y_mouse);
                 get_pixel_color(xdo_obj->xdpy,x_mouse,y_mouse,&pc);
-                printf ("r:%u g:%u b:%u\n",pc.red>>8,pc.green>>8,pc.blue>>8);//Truncate to byte instead.
+                printf (" with r:%u g:%u b:%u\n",pc.red>>8,pc.green>>8,pc.blue>>8);//Truncate to byte instead.
                 input_state=IS_Start;
                 break;
         }
@@ -142,6 +150,30 @@ int main(void){
     done:
     xdo_free(xdo_obj);
     return 0;
+}
+void store_cmd_index(int i){
+    cmd_i_size++;
+    if(cmd_i_stack) cmd_i_stack=(int*)realloc(cmd_i_stack,sizeof(int)*cmd_i_size);
+    else cmd_i_stack=(int*)malloc(sizeof(int));
+    EXIT_IF_NULL(cmd_i_stack,int)
+    cmd_i_stack[cmd_i_size-1]=i;
+}
+bool pop_cmd_index(int* cmd_i){
+    if(cmd_i_stack){
+        int popped_cmd_i=cmd_i_stack[--cmd_i_size];
+        if(cmd_i_size){
+            cmd_i_stack=(int*)realloc(cmd_i_stack,sizeof(int)*cmd_i_size);
+            EXIT_IF_NULL(cmd_i_stack,int)
+        }else{
+            free(cmd_i_stack);
+            cmd_i_stack=0;
+        }
+        *cmd_i=popped_cmd_i;
+        return true;
+    }else{
+        *cmd_i=0;
+        return false;
+    }
 }
 bool fgets_change(char* str,int buffer_len){//Remove '\n' (if any) and check if string buffer is full (returns bool). 
     int real_len=strlen(str);
@@ -237,10 +269,7 @@ typedef struct{
     xdo_t* xdo_obj;
     bool program_done;
     delay_ns_t mouse_check_delay;
-    struct{
-        int x;
-        int y;
-    }mouse;
+    mouse_c_t mouse_c;
 }shared_rs;
 pthread_mutex_t input_mutex;
 void* mouse_check_listener(void* srs_v){
@@ -253,7 +282,7 @@ void* mouse_check_listener(void* srs_v){
         usleep(mouse_check_delay);
         pthread_mutex_lock(&input_mutex);
         xdo_get_mouse_location(srs_p->xdo_obj,&mouse_x_after,&mouse_y_after,NULL);
-        if(srs_p->mouse.x!=mouse_x_after||srs_p->mouse.y!=mouse_y_after){
+        if(srs_p->mouse_c.x!=mouse_x_after||srs_p->mouse_c.y!=mouse_y_after){
             printf("Mouse moved. Stopping autoclicker.\n");
             srs_p->program_done=true;
         }
@@ -279,11 +308,11 @@ bool run_program(command_array_t* cmd_arr, Config config, xdo_t* xdo_obj){
     int cmd_arr_len=command_array_count(cmd_arr);
     int cmd_arr_i=0;
     key_down_check_t* kdc=key_down_check_new();
-    shared_rs srs=(shared_rs){.xdo_obj=xdo_obj,.program_done=false,.mouse={0},.mouse_check_delay=config.mouse_check_delay};
+    shared_rs srs=(shared_rs){.xdo_obj=xdo_obj,.program_done=false,.mouse_c={0},.mouse_check_delay=config.mouse_check_delay};
     printf("Starting script in %ld microseconds (%f seconds)\n",config.init_delay,(float)config.init_delay/1000000);
     usleep(config.init_delay);
     printf("Running.\n");
-    xdo_get_mouse_location(xdo_obj,&srs.mouse.x,&srs.mouse.y,NULL);
+    xdo_get_mouse_location(xdo_obj,&srs.mouse_c.x,&srs.mouse_c.y,NULL);
     pthread_t input_t;
     pthread_mutex_init(&input_mutex,NULL);
     int ret=pthread_create(&input_t,NULL,mouse_check_listener,&srs);
@@ -387,10 +416,10 @@ bool run_program(command_array_t* cmd_arr, Config config, xdo_t* xdo_obj){
                 pthread_mutex_lock(&input_mutex);
                 if(cmd_u.mouse_move.is_absolute) xdo_move_mouse(xdo_obj,cmd_u.mouse_move.x,cmd_u.mouse_move.y,0);
                 else xdo_move_mouse_relative(xdo_obj,cmd_u.mouse_move.x,cmd_u.mouse_move.y);
-                xdo_get_mouse_location(xdo_obj,&srs.mouse.x,&srs.mouse.y,0);//Update mouse movement for input_t thread loop.
+                xdo_get_mouse_location(xdo_obj,&srs.mouse_c.x,&srs.mouse_c.y,0);//Update mouse movement for input_t thread loop.
                 if(print_commands){
                     if(cmd_u.mouse_move.is_absolute) printf("\n");
-                    else printf(" Mouse now at (%d,%d).\n",srs.mouse.x,srs.mouse.y);
+                    else printf(" Mouse now at (%d,%d).\n",srs.mouse_c.x,srs.mouse_c.y);
                 } 
                 pthread_mutex_unlock(&input_mutex);
                 break;
@@ -404,8 +433,12 @@ bool run_program(command_array_t* cmd_arr, Config config, xdo_t* xdo_obj){
                 if(print_commands) printf("Pass command (does nothing).\n");
                 break;
             case CMD_JumpTo:
-                if(print_commands) printf("Jump to Command #%d String ID#%d.\n",cmd_u.jump_to.cmd_index+2,cmd_u.jump_to.str_index);
+                if(print_commands) printf("Jump to Command #%d String ID#%d. %s\n",cmd_u.jump_to.cmd_index+2,cmd_u.jump_to.str_index,cmd_u.jump_to.store_index?"Will also store this command's index.":"");
                 cmd_arr_i=cmd_u.jump_to.cmd_index;
+                if(cmd_u.jump_to.store_index){
+                    if(print_commands) printf(" Storing next command index to jump later (#%d)",cmd_arr_i+2);
+                    store_cmd_index(cmd_arr_i);
+                }
                 break;
             case CMD_JumpFrom:
                 if(print_commands) printf("Jump from command String ID#%d.\n",cmd_u.jump_from.str_index);
@@ -421,7 +454,7 @@ bool run_program(command_array_t* cmd_arr, Config config, xdo_t* xdo_obj){
                 if(print_commands) printf("Moving to stored mouse coordinates x: %d y: %d\n",x_mouse_store,y_mouse_store);
                 pthread_mutex_lock(&input_mutex);
                 xdo_move_mouse(xdo_obj,x_mouse_store,y_mouse_store,0);
-                xdo_get_mouse_location(xdo_obj,&srs.mouse.x,&srs.mouse.y,0);//Update mouse movement for input_t thread loop.
+                xdo_get_mouse_location(xdo_obj,&srs.mouse_c.x,&srs.mouse_c.y,0);//Update mouse movement for input_t thread loop.
                 pthread_mutex_unlock(&input_mutex);
                 break;
             case CMD_QueryComparePixel:
@@ -434,7 +467,7 @@ bool run_program(command_array_t* cmd_arr, Config config, xdo_t* xdo_obj){
                     &&abs((unsigned char)(pc.green>>8)-cmd_u.pixel_compare.g)<=cmd_u.pixel_compare.thr
                     &&abs((unsigned char)(pc.blue>>8)-cmd_u.pixel_compare.b)<=cmd_u.pixel_compare.thr
                 );
-                if(print_commands) printf("Pixel does%s match.\n",query_is_true?"":"n't");
+                if(print_commands) printf("Pixel does%s match (r,g,b=%d,%d,%d).\n",query_is_true?"":"n't",pc.red>>8,pc.green>>8,pc.blue>>8);
                 break;
             case CMD_QueryCompareCoords:
                 ;const CompareCoords cc=cmd_u.compare_coords.cmp_flags;
@@ -449,7 +482,7 @@ bool run_program(command_array_t* cmd_arr, Config config, xdo_t* xdo_obj){
                 break;
             case CMD_QueryCoordsWithin:
                 ;const coords_within_t coords_within=cmd_u.coords_within;
-                if(print_commands) printf("Don't skip next command if mouse is within TopLeft x:%d y:%d Bottom Right x:%d y:%d. ",coords_within.xl,coords_within.yl,coords_within.xh,coords_within.yh);
+                if(print_commands) printf("Don't skip next command if mouse is within Top Left x:%d y:%d Bottom Right x:%d y:%d. ",coords_within.xl,coords_within.yl,coords_within.xh,coords_within.yh);
                 pthread_mutex_lock(&input_mutex);
                 xdo_get_mouse_location(xdo_obj,&x_mouse,&y_mouse,0);
                 pthread_mutex_unlock(&input_mutex);

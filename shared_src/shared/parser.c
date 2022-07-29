@@ -48,7 +48,7 @@ void replace_str(char** strptr_owner, const char* replace, const char* with){//A
 macro_buffer_t* macro_buffer_new(char* str_owned, command_array_t* cmd_arr){
     macro_buffer_t* this=(macro_buffer_t*)(malloc(sizeof(macro_buffer_t)));
     EXIT_IF_NULL(this,macro_buffer_t);
-    *this=(macro_buffer_t){.token_i=0,.line_num=1,.char_num=1,.str_size=strlen(str_owned),.contents=str_owned,.cmd_arr=cmd_arr,.rim=repeat_id_manager_new(),.jim=jump_id_manager_new(),.parse_error=false};
+    *this=(macro_buffer_t){.token_i=0,.last_total_read_i=0,.line_num=1,.char_num=1,.str_size=strlen(str_owned),.contents=str_owned,.cmd_arr=cmd_arr,.rim=repeat_id_manager_new(),.jim=jump_id_manager_new(),.parse_error=false};
     return this;
 }
 void print_where_error_is(const char* contents,int begin_error,int end_error){
@@ -72,12 +72,15 @@ bool macro_buffer_process_next(macro_buffer_t* this,bool print_debug){//Returns 
     int read_offset_i=0; //Last character to read by offset of read_i.
     bool first_number=false;
     bool is_query=false;
+    bool store_index=false;
     CompareCoords cmp_flags=CMP_NULL;
     bool mouse_absolute;
     do{
+        this->char_num+=this->token_i+read_i+read_offset_i-this->last_total_read_i;
+        this->last_total_read_i=this->token_i+read_i+read_offset_i;
         const char current_char=this->contents[this->token_i+read_i+read_offset_i];
         const char* current_char_p=this->contents+this->token_i+read_i+read_offset_i;
-        if(print_debug) printf("'%c' token_i:%d read_offset_i:%d read_i:%d State:%s\n",current_char,this->token_i,read_offset_i,read_i,ReadStateStrings[read_state]);
+        if(print_debug) printf("'%c' line: %d char: %d token_i:%d read_offset_i:%d read_i:%d State:%s\n",current_char,this->line_num,this->char_num,this->token_i,read_offset_i,read_i,ReadStateStrings[read_state]);
         switch(read_state){
             case RS_Start:
                 if(!strncmp(current_char_p,"exit;",5)){
@@ -86,7 +89,7 @@ bool macro_buffer_process_next(macro_buffer_t* this,bool print_debug){//Returns 
                             .cmd_u={{0}}
                         }
                     );
-                    read_i+=4;//Exclude reading "exit;" The +1 for ';' is from read_offset_i++
+                    read_i+=4; //Exclude reading "exit;" The +1 for ';' is from read_offset_i++
                     key_processed=true;
                     break;
                 }
@@ -123,6 +126,13 @@ bool macro_buffer_process_next(macro_buffer_t* this,bool print_debug){//Returns 
                 if(!strncmp(current_char_p,"JT<",3)){
                     read_i+=3;
                     read_offset_i=-1;
+                    read_state=RS_JumpTo;
+                    break;
+                }
+                if(!strncmp(current_char_p,"JTS<",4)){
+                    read_i+=4;
+                    read_offset_i=-1;
+                    store_index=true;
                     read_state=RS_JumpTo;
                     break;
                 }
@@ -195,7 +205,7 @@ bool macro_buffer_process_next(macro_buffer_t* this,bool print_debug){//Returns 
                         read_state=RS_Query;
                         break;
                     default:
-                        fprintf(stderr,"Current character not allowed '%c' at line %d char %d state %s.\n",current_char,this->line_num,this->char_num,ReadStateStrings[read_state]);
+                        fprintf(stderr,"Unexpected character '%c' at line %d char %d state %s.\n",current_char,this->line_num,this->char_num,ReadStateStrings[read_state]);
                         print_where_error_is(this->contents,this->token_i,read_i+read_offset_i);
                         this->parse_error=true;
                         key_processed=true;
@@ -204,7 +214,7 @@ bool macro_buffer_process_next(macro_buffer_t* this,bool print_debug){//Returns 
                 break;
             case RS_Comments:
                 if(current_char=='\n'){
-                    read_i+=read_offset_i;
+                    read_i+=read_offset_i+1;
                     read_offset_i=-1;
                     this->line_num++;
                     this->char_num=0;//1 after loop repeats.
@@ -229,7 +239,7 @@ bool macro_buffer_process_next(macro_buffer_t* this,bool print_debug){//Returns 
                     key_processed=true;
                     break;
                 }
-                fprintf(stderr,"Current character not allowed '%c' at line %d char %d state %s.\n",current_char,this->line_num,this->char_num,ReadStateStrings[read_state]);
+                fprintf(stderr,"Unexpected character '%c' at line %d char %d state %s.\n",current_char,this->line_num,this->char_num,ReadStateStrings[read_state]);
                 print_where_error_is(this->contents,this->token_i,read_i+read_offset_i);
                 this->parse_error=true;
                 key_processed=true;
@@ -276,7 +286,7 @@ bool macro_buffer_process_next(macro_buffer_t* this,bool print_debug){//Returns 
                     key_processed=true;
                     break;
                 }
-                fprintf(stderr,"Current character not allowed '%c' at line %d char %d state %s.\n",current_char,this->line_num,this->char_num,ReadStateStrings[read_state]);
+                fprintf(stderr,"Unexpected character '%c' at line %d char %d state %s.\n",current_char,this->line_num,this->char_num,ReadStateStrings[read_state]);
                 print_where_error_is(this->contents,this->token_i,read_i+read_offset_i);
                 this->parse_error=true;
                 key_processed=true;
@@ -301,7 +311,7 @@ bool macro_buffer_process_next(macro_buffer_t* this,bool print_debug){//Returns 
                     key_processed=true;
                     break;
                 }
-                fprintf(stderr,"Current character not allowed '%c' at line %d char %d state %s.\n",current_char,this->line_num,this->char_num,ReadStateStrings[read_state]);
+                fprintf(stderr,"Unexpected character '%c' at line %d char %d state %s.\n",current_char,this->line_num,this->char_num,ReadStateStrings[read_state]);
                 print_where_error_is(this->contents,this->token_i,read_i+read_offset_i);
                 this->parse_error=true;
                 key_processed=true;
@@ -313,7 +323,7 @@ bool macro_buffer_process_next(macro_buffer_t* this,bool print_debug){//Returns 
                     added_keystate=false;
                     break;
                 }
-                fprintf(stderr,"Current character not allowed '%c' at line %d char %d state %s.\n",current_char,this->line_num,this->char_num,ReadStateStrings[read_state]);
+                fprintf(stderr,"Unexpected character '%c' at line %d char %d state %s.\n",current_char,this->line_num,this->char_num,ReadStateStrings[read_state]);
                 print_where_error_is(this->contents,this->token_i,read_i+read_offset_i);
                 this->parse_error=true;
                 key_processed=true;
@@ -349,7 +359,7 @@ bool macro_buffer_process_next(macro_buffer_t* this,bool print_debug){//Returns 
                     key_processed=true;
                     break;
                 }
-                fprintf(stderr,"Current character not allowed '%c' at line %d char %d state %s.\n",current_char,this->line_num,this->char_num,ReadStateStrings[read_state]);
+                fprintf(stderr,"Unexpected character '%c' at line %d char %d state %s.\n",current_char,this->line_num,this->char_num,ReadStateStrings[read_state]);
                 print_where_error_is(this->contents,this->token_i,read_i+read_offset_i);
                 this->parse_error=true;
                 key_processed=true;
@@ -370,7 +380,7 @@ bool macro_buffer_process_next(macro_buffer_t* this,bool print_debug){//Returns 
                     read_state=RS_DelayNum;
                     break;
                 }
-                fprintf(stderr,"Current character not allowed '%c' at line %d char %d state %s.\n",current_char,this->line_num,this->char_num,ReadStateStrings[read_state]);
+                fprintf(stderr,"Unexpected character '%c' at line %d char %d state %s.\n",current_char,this->line_num,this->char_num,ReadStateStrings[read_state]);
                 print_where_error_is(this->contents,this->token_i,read_i+read_offset_i);
                 this->parse_error=true;
                 key_processed=true;
@@ -391,7 +401,7 @@ bool macro_buffer_process_next(macro_buffer_t* this,bool print_debug){//Returns 
                     key_processed=true;
                     break;
                 }
-                fprintf(stderr,"Current character not allowed '%c' at line %d char %d state %s.\n",current_char,this->line_num,this->char_num,ReadStateStrings[read_state]);
+                fprintf(stderr,"Unexpected character '%c' at line %d char %d state %s.\n",current_char,this->line_num,this->char_num,ReadStateStrings[read_state]);
                 print_where_error_is(this->contents,this->token_i,read_i+read_offset_i);
                 this->parse_error=true;
                 key_processed=true;
@@ -410,7 +420,7 @@ bool macro_buffer_process_next(macro_buffer_t* this,bool print_debug){//Returns 
                     read_state=RS_MouseClickState;
                     break;
                 }
-                fprintf(stderr,"Current character not allowed '%c' at line %d char %d state %s.\n",current_char,this->line_num,this->char_num,ReadStateStrings[read_state]);
+                fprintf(stderr,"Unexpected character '%c' at line %d char %d state %s.\n",current_char,this->line_num,this->char_num,ReadStateStrings[read_state]);
                 print_where_error_is(this->contents,this->token_i,read_i+read_offset_i);
                 this->parse_error=true;
                 key_processed=true;
@@ -442,7 +452,7 @@ bool macro_buffer_process_next(macro_buffer_t* this,bool print_debug){//Returns 
                     key_processed=true;
                     break;
                 }
-                fprintf(stderr,"Current character not allowed '%c' at line %d char %d state %s.\n",current_char,this->line_num,this->char_num,ReadStateStrings[read_state]);
+                fprintf(stderr,"Unexpected character '%c' at line %d char %d state %s.\n",current_char,this->line_num,this->char_num,ReadStateStrings[read_state]);
                 print_where_error_is(this->contents,this->token_i,read_i+read_offset_i);
                 this->parse_error=true;
                 key_processed=true;
@@ -484,7 +494,7 @@ bool macro_buffer_process_next(macro_buffer_t* this,bool print_debug){//Returns 
                     key_processed=true;
                     break;
                 }
-                fprintf(stderr,"Current character not allowed '%c' at line %d char %d state %s.\n",current_char,this->line_num,this->char_num,ReadStateStrings[read_state]);
+                fprintf(stderr,"Unexpected character '%c' at line %d char %d state %s.\n",current_char,this->line_num,this->char_num,ReadStateStrings[read_state]);
                 print_where_error_is(this->contents,this->token_i,read_i+read_offset_i);
                 this->parse_error=true;
                 key_processed=true;
@@ -502,7 +512,8 @@ bool macro_buffer_process_next(macro_buffer_t* this,bool print_debug){//Returns 
                         (command_t){.type=CMD_JumpTo,.is_query=is_query,
                                 .cmd_u.jump_to=(jump_to_t){
                                     .cmd_index=JumpFromNotConnected,//Will be edited from a CMD_JumpFrom later.
-                                    .str_index=jump_id_manager_search_string_index(this->jim,str_name)
+                                    .str_index=jump_id_manager_search_string_index(this->jim,str_name),
+                                    .store_index=store_index
                                 }
                             }
                         );
@@ -521,13 +532,13 @@ bool macro_buffer_process_next(macro_buffer_t* this,bool print_debug){//Returns 
                         free(str_name);
                         break;
                     }
-                    fprintf(stderr,"Current character not allowed '%c' at line %d char %d state %s.\n",current_char,this->line_num,this->char_num,ReadStateStrings[read_state]);
+                    fprintf(stderr,"Unexpected character '%c' at line %d char %d state %s.\n",current_char,this->line_num,this->char_num,ReadStateStrings[read_state]);
                     print_where_error_is(this->contents,this->token_i,read_i+read_offset_i);
                     this->parse_error=true;
                     key_processed=true;
                     break;
                 }
-                fprintf(stderr,"Current character not allowed '%c' at line %d char %d state %s.\n",current_char,this->line_num,this->char_num,ReadStateStrings[read_state]);
+                fprintf(stderr,"Unexpected character '%c' at line %d char %d state %s.\n",current_char,this->line_num,this->char_num,ReadStateStrings[read_state]);
                 print_where_error_is(this->contents,this->token_i,read_i+read_offset_i);
                 this->parse_error=true;
                 key_processed=true;
@@ -579,7 +590,7 @@ bool macro_buffer_process_next(macro_buffer_t* this,bool print_debug){//Returns 
                         break;
                     }
                 }
-                fprintf(stderr,"Current character not allowed '%c' at line %d char %d state %s.\n",current_char,this->line_num,this->char_num,ReadStateStrings[read_state]);
+                fprintf(stderr,"Unexpected character '%c' at line %d char %d state %s.\n",current_char,this->line_num,this->char_num,ReadStateStrings[read_state]);
                 print_where_error_is(this->contents,this->token_i,read_i+read_offset_i);
                 this->parse_error=true;
                 key_processed=true;
@@ -613,7 +624,7 @@ bool macro_buffer_process_next(macro_buffer_t* this,bool print_debug){//Returns 
                     read_state=RS_QueryCoordsWithin;
                     break;
                 }
-                fprintf(stderr,"Current character not allowed '%c' at line %d char %d state %s.\n",current_char,this->line_num,this->char_num,ReadStateStrings[read_state]);
+                fprintf(stderr,"Unexpected character '%c' at line %d char %d state %s.\n",current_char,this->line_num,this->char_num,ReadStateStrings[read_state]);
                 print_where_error_is(this->contents,this->token_i,read_i+read_offset_i);
                 this->parse_error=true;
                 key_processed=true;
@@ -677,7 +688,7 @@ bool macro_buffer_process_next(macro_buffer_t* this,bool print_debug){//Returns 
                     key_processed=true;
                     break;
                 }
-                fprintf(stderr,"Current character not allowed '%c' at line %d char %d state %s.\n",current_char,this->line_num,this->char_num,ReadStateStrings[read_state]);
+                fprintf(stderr,"Unexpected character '%c' at line %d char %d state %s.\n",current_char,this->line_num,this->char_num,ReadStateStrings[read_state]);
                 print_where_error_is(this->contents,this->token_i,read_i+read_offset_i);
                 this->parse_error=true;
                 key_processed=true;
@@ -703,7 +714,7 @@ bool macro_buffer_process_next(macro_buffer_t* this,bool print_debug){//Returns 
                     read_state=RS_QueryCoordsVar;
                     break;
                 }
-                fprintf(stderr,"Current character not allowed '%c' at line %d char %d state %s.\n",current_char,this->line_num,this->char_num,ReadStateStrings[read_state]);
+                fprintf(stderr,"Unexpected character '%c' at line %d char %d state %s.\n",current_char,this->line_num,this->char_num,ReadStateStrings[read_state]);
                 print_where_error_is(this->contents,this->token_i,read_i+read_offset_i);
                 this->parse_error=true;
                 key_processed=true;
@@ -727,7 +738,7 @@ bool macro_buffer_process_next(macro_buffer_t* this,bool print_debug){//Returns 
                     key_processed=true;
                     break;
                 }
-                fprintf(stderr,"Current character not allowed '%c' at line %d char %d state %s.\n",current_char,this->line_num,this->char_num,ReadStateStrings[read_state]);
+                fprintf(stderr,"Unexpected character '%c' at line %d char %d state %s.\n",current_char,this->line_num,this->char_num,ReadStateStrings[read_state]);
                 print_where_error_is(this->contents,this->token_i,read_i+read_offset_i);
                 this->parse_error=true;
                 key_processed=true;
@@ -777,7 +788,7 @@ bool macro_buffer_process_next(macro_buffer_t* this,bool print_debug){//Returns 
                     key_processed=true;
                     break;
                 }
-                fprintf(stderr,"Current character not allowed '%c' at line %d char %d state %s.\n",current_char,this->line_num,this->char_num,ReadStateStrings[read_state]);
+                fprintf(stderr,"Unexpected character '%c' at line %d char %d state %s.\n",current_char,this->line_num,this->char_num,ReadStateStrings[read_state]);
                 print_where_error_is(this->contents,this->token_i,read_i+read_offset_i);
                 this->parse_error=true;
                 key_processed=true;
@@ -786,7 +797,6 @@ bool macro_buffer_process_next(macro_buffer_t* this,bool print_debug){//Returns 
                 break;
         }
         read_offset_i++;
-        this->char_num++;
     }while(!key_processed);
     this->token_i+=read_i+read_offset_i;
     return !this->parse_error;
@@ -821,9 +831,13 @@ void macro_buffer_str_id_check(macro_buffer_t* this){//Check if RepeatStart does
     }
     free(id_check);
     int check_i=this->cmd_arr->size-1;
-    const command_t is_jf_cmd=this->cmd_arr->cmds[check_i];
-    if(is_jf_cmd.type==CMD_JumpFrom){
-        fprintf(stderr,"JumpFrom found without command next to it. Error command found at end of file.\n");
+    const command_t any_cmd=this->cmd_arr->cmds[check_i];
+    if(any_cmd.type==CMD_JumpFrom){
+        fprintf(stderr,"JumpFrom found without a command next to it. Error command found at end of file.\n");
+        this->parse_error=true;
+    }
+    if(any_cmd.type==CMD_JumpTo&&any_cmd.cmd_u.jump_to.store_index){
+        fprintf(stderr,"JumpTo with store_index enabled found without a command next to it. Error command found at end of file.\n");
         this->parse_error=true;
     }
     if(this->cmd_arr->cmds[check_i--].is_query){//Check twice.
@@ -992,7 +1006,7 @@ void command_array_print(const command_array_t* this){
                 printf("(%d) Pass\n",i);
                 break;
             case CMD_JumpTo:
-                printf("(%d) JumpTo cmd_i: %d str_i: %d\n",i,cmd.jump_to.cmd_index,cmd.jump_to.str_index);
+                printf("(%d) JumpTo cmd_i: %d str_i: %d store_index %d\n",i,cmd.jump_to.cmd_index,cmd.jump_to.str_index,cmd.jump_to.store_index);
                 break;
             case CMD_JumpFrom:
                 printf("(%d) JumpFrom str_i: %d\n",i,cmd.jump_from.str_index);

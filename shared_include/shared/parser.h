@@ -44,6 +44,7 @@ typedef struct jump_id_manager_s jump_id_manager_t;
 typedef struct command_array_s command_array_t;
 typedef struct macro_buffer_s{
     int token_i;
+    int last_total_read_i;//To make char_num read the correct character/column in a text file despite skipping characters.
     int line_num;
     int char_num;
     int str_size;
@@ -92,6 +93,7 @@ typedef struct mouse_click_s{
 typedef struct jump_to_s{
     int cmd_index;
     int str_index;
+    bool store_index;
 }jump_to_t;
 extern const int IndexNotFound;
 extern const int JumpFromNotConnected;
