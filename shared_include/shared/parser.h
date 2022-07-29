@@ -6,8 +6,8 @@
 #include <stdlib.h>
 #include <stdbool.h>
 //Hackish way of stringifying enums separately. Add e(number) for a new state.
-#define __STR_READ_ENUMS(e1,e2,e3,e4,e5,e6,e7,e8,e9,e10,e11,e12,e13,e14,e15,e16,ecount)\
-#e1,#e2,#e3,#e4,#e5,#e6,#e7,#e8,#e9,#e10,#e11,#e12,#e13,#e14,#e15,#e16
+#define __STR_READ_ENUMS(e1,e2,e3,e4,e5,e6,e7,e8,e9,e10,e11,e12,e13,e14,e15,e16,e17,e18,ecount)\
+#e1,#e2,#e3,#e4,#e5,#e6,#e7,#e8,#e9,#e10,#e11,#e12,#e13,#e14,#e15,#e16,#e17,#e18
 //For .h file.
 #define __ReadStateWithStringDec(...) typedef enum _ReadState{__VA_ARGS__}ReadState;\
 extern const char* ReadStateStrings[RS_Count];
@@ -30,10 +30,12 @@ extern const char* ReadStateStrings[RS_Count];
     RS_JumpTo,\
     RS_JumpFrom,\
     RS_Query,\
-    RS_QueryPixelCompare,\
+    RS_QueryComparePixel,\
+    RS_QueryCoordsType,\
+    RS_QueryCoordsVar,\
     RS_Count
 __ReadStateWithStringDec(__ReadStateEnums)
-typedef enum{
+typedef enum _InputState{
     IS_Down,IS_Up,IS_Click
 }InputState;
 typedef struct repeat_id_manager_s repeat_id_manager_t;
@@ -98,6 +100,19 @@ typedef struct jump_from_s{
 typedef struct pixel_compare_s{
     unsigned char r,g,b,thr;
 }pixel_compare_t;
+typedef enum _CompareCoords{
+    CMP_NULL=0,
+    CMP_X=0,
+    CMP_Y=1,
+    CMP_LT=0,
+    CMP_GT=2,
+    CMP_NO_EQ=0,
+    CMP_W_EQ=4
+}CompareCoords;//Bitflags to compare. 0 or 0b000 is "compare if x is less than variable". 7 or 0b111 is "compare if y is greater than or equal than variable"
+typedef struct compare_coords_s{
+    CompareCoords cmp_flags;
+    int var;
+}compare_coords_t;
 typedef union command_union{
     keystroke_t ks;
     delay_ns_t delay;
@@ -108,6 +123,7 @@ typedef union command_union{
     jump_to_t jump_to;
     jump_from_t jump_from;
     pixel_compare_t pixel_compare;
+    compare_coords_t compare_coords;
 }command_union_t;
 typedef enum _CommandType{
     CMD_KeyStroke,
@@ -119,7 +135,8 @@ typedef enum _CommandType{
     CMD_Exit,
     CMD_JumpTo,
     CMD_JumpFrom,
-    CMD_QueryPixelCompare
+    CMD_QueryComparePixel,
+    CMD_QueryCompareCoords
 }CommandType;
 typedef struct command_s{//Aggregating like for SDL events (enums and unions).
     CommandType type;

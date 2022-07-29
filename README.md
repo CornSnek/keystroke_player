@@ -6,7 +6,7 @@ It runs autoclicker scripts that can stop executing the program completely if th
 .
 # Script
 Some examples of the script commands are shown in example_scripts.
-Syntax is as follows (In RegExp-ish form). Note that all commands must be terminated with a semicolon.
+Syntax is as follows (In RegExp-ish form). Note that most commands terminate with a semicolon `;`.
 
 Keystroke command = `[A-Za-z0-9\+\_]+=[UuDdCc];`
     
@@ -58,19 +58,26 @@ JumpFrom command = `JF>[A-Za-z0-9\+\_]+;`
     A JumpTo will jump to this command. There can be one and only one JumpFrom.
     Otherwise, the program will not compile if there are no JumpFroms or more than one with the same name.
 
-There are Query Commands that will skip the next command if false, or not skip if true. They are prefixed with a `?`. These should be used next to a JumpTo command. For example:
+There are Query Commands that will skip the next command if false, or not skip if true. They are prefixed with a `?` and end with a `?`. These should be used next to a JumpTo command. For example:
 
-`?(query_command);JT<ThisQueryIsTrue;(Commands here if false); ... JF>ThisQueryIsTrue;(Commands here if true);`
+`?(query_command)?JT<ThisQueryIsTrue;(Commands here if false); ... JF>ThisQueryIsTrue;(Commands here if true);`
 
-QueryPixelCompare command = `?pxc=[0-9]+,[0-9]+,[0-9]+,[0-9]+;`
+QueryComparePixel command = `?pxc=[0-9]+,[0-9]+,[0-9]+,[0-9]+?`
 
-    QueryPixelCompare checks if the pixel at it's current mouse position is true. Valid numbers should be from 0 to 255.
+    QueryComparePixel checks if the pixel at it's current mouse position is true. Valid numbers should be from 0 to 255.
     They are formatted by (rc,gc,bc,threshold) (Pixel to compare), where threshold will check any pixel colors close to rm,gm,bm (Pixel by mouse)
     (Formula for query is true if abs(rc-rm)<=threshold&&abs(gc-gm)<=threshold&&abs(bc-bm)<=threshold)
     For example:
         If ?pxc=128,128,128,20; is the command, and
         the mouse pixel is r,g,b=108,148,128 the query is true since 108, 148, and 128 is within 20.
         If the mouse pixel is r,g,b=255,255,255, the query is false since 255 is not within 20.
+
+QueryCompareCoords command = `?coords:[xy][<>]=?[0-9]?`
+
+    Compares either the x or y coordinate of the mouse. Supports
+    >, >=, <, and <= only.
+        Examples: ?coords:x>=100? compares if x is greater than or equal to 100.
+        ?coords:y<500? compares if y is less than 500.
 
 Comments/Tabs/Spaces/Newlines can be added after a semi-colon has been added to a command.
 

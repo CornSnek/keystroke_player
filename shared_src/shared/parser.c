@@ -72,6 +72,7 @@ bool macro_buffer_process_next(macro_buffer_t* this,bool print_debug){//Returns 
     int read_offset_i=0; //Last character to read by offset of read_i.
     bool first_number=false;
     bool is_query=false;
+    CompareCoords cmp_flags=CMP_NULL;
     bool mouse_absolute;
     do{
         const char current_char=this->contents[this->token_i+read_i+read_offset_i];
@@ -100,16 +101,14 @@ bool macro_buffer_process_next(macro_buffer_t* this,bool print_debug){//Returns 
                     read_state=RS_JumpFrom;
                     break;
                 }
-                if(!strncmp(this->contents+this->token_i+read_i+read_offset_i,"mma=",4)
-                    &&isdigit(this->contents[this->token_i+read_i+read_offset_i+4])){
+                if(!strncmp(this->contents+this->token_i+read_i+read_offset_i,"mma=",4)){
                     read_i+=4;
                     read_offset_i=-1;
                     mouse_absolute=true;
                     read_state=RS_MouseMove;
                     break;
                 }
-                if(!strncmp(this->contents+this->token_i+read_i+read_offset_i,"mmr=",4)
-                    &&isdigit(this->contents[this->token_i+read_i+read_offset_i+4])){
+                if(!strncmp(this->contents+this->token_i+read_i+read_offset_i,"mmr=",4)){
                     read_i+=4;
                     read_offset_i=-1;
                     mouse_absolute=false;
@@ -118,7 +117,7 @@ bool macro_buffer_process_next(macro_buffer_t* this,bool print_debug){//Returns 
                 }
                 if(char_is_key(current_char)){
                     if(current_char=='m'&&isdigit(this->contents[this->token_i+read_i+read_offset_i+1])){
-                        read_i+=1;
+                        read_i++;
                         read_offset_i=-1;
                         read_state=RS_MouseClickType;
                         break;
@@ -128,17 +127,17 @@ bool macro_buffer_process_next(macro_buffer_t* this,bool print_debug){//Returns 
                 }
                 switch(current_char){
                     case '.':
-                        read_i+=1;
+                        read_i++;
                         read_offset_i=-1;
                         read_state=RS_Delay;
                         break;
                     case '(':
-                        read_i+=1;
+                        read_i++;
                         read_offset_i=-1;
                         read_state=RS_RepeatStart;
                         break;
                     case ')':
-                        read_i+=1;
+                        read_i++;
                         read_offset_i=-1;
                         read_state=RS_RepeatEnd;
                         break;
@@ -146,7 +145,7 @@ bool macro_buffer_process_next(macro_buffer_t* this,bool print_debug){//Returns 
                         key_processed=true;
                         break;
                     case '\n':
-                        read_i+=1;
+                        read_i++;
                         read_offset_i=-1;
                         this->line_num++;
                         this->char_num=0;//1 after loop repeats.
@@ -156,11 +155,11 @@ bool macro_buffer_process_next(macro_buffer_t* this,bool print_debug){//Returns 
                         break;
                     case ' '://Fallthrough
                     case '\t'://Allow tabs and spaces before making comments.
-                        read_i+=1;
+                        read_i++;
                         read_offset_i=-1;
                         break;
                     case '?':
-                        read_i+=1;
+                        read_i++;
                         read_offset_i=-1;
                         read_state=RS_Query;
                         break;
@@ -331,7 +330,7 @@ bool macro_buffer_process_next(macro_buffer_t* this,bool print_debug){//Returns 
                         case 'm': case 'M': delay_mult=1000; break;
                         case 'u': case 'U': delay_mult=1;
                     }
-                    read_i+=1;
+                    read_i++;
                     read_offset_i=-1;
                     read_state=RS_DelayNum;
                     break;
@@ -560,15 +559,30 @@ bool macro_buffer_process_next(macro_buffer_t* this,bool print_debug){//Returns 
                 if(!strncmp(this->contents+this->token_i+read_i+read_offset_i,"pxc=",4)){
                     read_i+=4;
                     read_offset_i=-1;
-                    read_state=RS_QueryPixelCompare;
+                    read_state=RS_QueryComparePixel;
                     break;
+                }
+                if(!strncmp(this->contents+this->token_i+read_i+read_offset_i,"coords:",7)){
+                    if(this->contents[this->token_i+read_i+read_offset_i+7]=='x'){
+                        cmp_flags|=CMP_X;
+                        read_i+=8;
+                        read_offset_i=-1;
+                        read_state=RS_QueryCoordsType;
+                        break;
+                    }else if(this->contents[this->token_i+read_i+read_offset_i+7]=='y'){
+                        cmp_flags|=CMP_Y;
+                        read_i+=8;
+                        read_offset_i=-1;
+                        read_state=RS_QueryCoordsType;
+                        break;
+                    }
                 }
                 fprintf(stderr,"Current character not allowed '%c' at line %d char %d state %s.\n",current_char,this->line_num,this->char_num,ReadStateStrings[read_state]);
                 print_where_error_is(this->contents,this->token_i,read_i+read_offset_i);
                 this->parse_error=true;
                 key_processed=true;
                 break;
-            case RS_QueryPixelCompare:
+            case RS_QueryComparePixel:
                 if(isdigit(current_char)) break;
                 if(current_char==','){
                     if(parsed_num_i<3){
@@ -596,7 +610,7 @@ bool macro_buffer_process_next(macro_buffer_t* this,bool print_debug){//Returns 
                     key_processed=true;
                     break;
                 }
-                if(current_char==';'){
+                if(current_char=='?'){
                     if(parsed_num_i==3){
                         num_str=(char*)malloc(sizeof(char)*read_offset_i+1);
                         EXIT_IF_NULL(num_str,char*)
@@ -612,7 +626,7 @@ bool macro_buffer_process_next(macro_buffer_t* this,bool print_debug){//Returns 
                             break;
                         }
                         command_array_add(this->cmd_arr,
-                            (command_t){.type=CMD_QueryPixelCompare,.is_query=is_query,
+                            (command_t){.type=CMD_QueryComparePixel,.is_query=is_query,
                                 .cmd_u.pixel_compare=(pixel_compare_t){
                                     .r=parsed_num[0],.g=parsed_num[1],.b=parsed_num[2],.thr=parsed_num[3]
                                 }
@@ -624,6 +638,57 @@ bool macro_buffer_process_next(macro_buffer_t* this,bool print_debug){//Returns 
                     fprintf(stderr,"There should only be 4 numbers separated by 3 ',' at %d char %d state %s.\n",this->line_num,this->char_num,ReadStateStrings[read_state]);
                     print_where_error_is(this->contents,this->token_i,read_i+read_offset_i);
                     this->parse_error=true;
+                    key_processed=true;
+                    break;
+                }
+                fprintf(stderr,"Current character not allowed '%c' at line %d char %d state %s.\n",current_char,this->line_num,this->char_num,ReadStateStrings[read_state]);
+                print_where_error_is(this->contents,this->token_i,read_i+read_offset_i);
+                this->parse_error=true;
+                key_processed=true;
+                break;
+            case RS_QueryCoordsType:
+                if(current_char=='>'){
+                    cmp_flags|=CMP_GT;
+                    if(this->contents[this->token_i+read_i+read_offset_i+1]=='='){
+                        read_i++; cmp_flags|=CMP_W_EQ;
+                    }
+                    read_i++;
+                    read_offset_i=-1;
+                    read_state=RS_QueryCoordsVar;
+                    break;
+                }
+                if(current_char=='<'){
+                    cmp_flags|=CMP_LT;
+                    if(this->contents[this->token_i+read_i+read_offset_i+1]=='='){
+                        read_i++; cmp_flags|=CMP_W_EQ;
+                    }
+                    read_i++;
+                    read_offset_i=-1;
+                    read_state=RS_QueryCoordsVar;
+                    break;
+                }
+                fprintf(stderr,"Current character not allowed '%c' at line %d char %d state %s.\n",current_char,this->line_num,this->char_num,ReadStateStrings[read_state]);
+                print_where_error_is(this->contents,this->token_i,read_i+read_offset_i);
+                this->parse_error=true;
+                key_processed=true;
+                break;
+            case RS_QueryCoordsVar:
+                if(isdigit(current_char)) break;
+                if(current_char=='?'){
+                    num_str=(char*)malloc(sizeof(char)*read_offset_i+1);
+                    EXIT_IF_NULL(num_str,char*)
+                    strncpy(num_str,this->contents+this->token_i+read_i,read_offset_i);
+                    num_str[read_offset_i]='\0';
+                    parsed_num[0]=strtol(num_str,NULL,10);
+                    free(num_str);
+                    printf("TODO %lu\n",parsed_num[0]);
+                    command_array_add(this->cmd_arr,
+                        (command_t){.type=CMD_QueryCompareCoords,.is_query=is_query,
+                            .cmd_u.compare_coords=(compare_coords_t){
+                                .cmp_flags=cmp_flags,.var=parsed_num[0]
+                            }
+                        }
+                    );
                     key_processed=true;
                     break;
                 }
@@ -832,8 +897,12 @@ void command_array_print(const command_array_t* this){
             case CMD_JumpFrom:
                 printf("(%d) JumpFrom str_i: %d\n",i,cmd.jump_from.str_index);
                 break;
-            case CMD_QueryPixelCompare:
-                printf("(%d) QueryPixelCompare r: %d g: %d b: %d threshold: %d\n",i,cmd.pixel_compare.r,cmd.pixel_compare.g,cmd.pixel_compare.b,cmd.pixel_compare.thr);
+            case CMD_QueryComparePixel:
+                printf("(%d) QueryComparePixel r: %d g: %d b: %d threshold: %d\n",i,cmd.pixel_compare.r,cmd.pixel_compare.g,cmd.pixel_compare.b,cmd.pixel_compare.thr);
+                break;
+            case CMD_QueryCompareCoords:
+                ;const CompareCoords cc=cmd.compare_coords.cmp_flags;
+                printf("(%d) QueryCompareCoords cmp_flags: %c,%c,%s var:%d\n",i,(cc&CMP_Y)==CMP_Y?'y':'x',(cc&CMP_GT)==CMP_GT?'>':'<',(cc&CMP_W_EQ)==CMP_W_EQ?"=,":",",cmd.compare_coords.var);
                 break;
         }
     }
