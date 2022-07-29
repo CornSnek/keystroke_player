@@ -90,6 +90,12 @@ QueryCompareCoords command = `?coords:[xy][<>]=?[0-9]?`
         Examples: ?coords:x>=100? compares if x is greater than or equal to 100.
         ?coords:y<500? compares if y is less than 500.
 
+QueryCoordsWithin command = `?within:[0-9]+,[0-9]+,[0-9]+,[0-9]+?`
+
+    Check if mouse is within the boxed coordinates xl,yl,xh,yh.
+    xl,yl are the top left coordinates.
+    xh,yh are the bottom right coordinates.
+
 Comments/Tabs/Spaces/Newlines can be added after a semi-colon has been added to a command.
 
 Here is an example script from example_scripts/autoclicker.kps:

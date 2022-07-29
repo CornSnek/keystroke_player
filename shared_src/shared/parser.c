@@ -607,6 +607,12 @@ bool macro_buffer_process_next(macro_buffer_t* this,bool print_debug){//Returns 
                         break;
                     }
                 }
+                if(!strncmp(current_char_p,"within:",7)){
+                    read_i+=7;
+                    read_offset_i=-1;
+                    read_state=RS_QueryCoordsWithin;
+                    break;
+                }
                 fprintf(stderr,"Current character not allowed '%c' at line %d char %d state %s.\n",current_char,this->line_num,this->char_num,ReadStateStrings[read_state]);
                 print_where_error_is(this->contents,this->token_i,read_i+read_offset_i);
                 this->parse_error=true;
@@ -718,6 +724,56 @@ bool macro_buffer_process_next(macro_buffer_t* this,bool print_debug){//Returns 
                             }
                         }
                     );
+                    key_processed=true;
+                    break;
+                }
+                fprintf(stderr,"Current character not allowed '%c' at line %d char %d state %s.\n",current_char,this->line_num,this->char_num,ReadStateStrings[read_state]);
+                print_where_error_is(this->contents,this->token_i,read_i+read_offset_i);
+                this->parse_error=true;
+                key_processed=true;
+                break;
+            case RS_QueryCoordsWithin:
+                if(isdigit(current_char)) break;
+                if(current_char==','){
+                    if(parsed_num_i<3){
+                        num_str=(char*)malloc(sizeof(char)*read_offset_i+1);
+                        EXIT_IF_NULL(num_str,char*)
+                        strncpy(num_str,this->contents+this->token_i+read_i,read_offset_i);
+                        num_str[read_offset_i]='\0';
+                        parsed_num[parsed_num_i]=strtol(num_str,NULL,10);
+                        free(num_str);
+                        parsed_num_i++;
+                        read_i+=read_offset_i+1;//Read other strings.
+                        read_offset_i=-1;
+                        break;
+                    }
+                    fprintf(stderr,"There should only be 4 numbers separated by 3 ',' at %d char %d state %s.\n",this->line_num,this->char_num,ReadStateStrings[read_state]);
+                    print_where_error_is(this->contents,this->token_i,read_i+read_offset_i);
+                    this->parse_error=true;
+                    key_processed=true;
+                    break;
+                }
+                if(current_char=='?'){
+                    if(parsed_num_i==3){
+                        num_str=(char*)malloc(sizeof(char)*read_offset_i+1);
+                        EXIT_IF_NULL(num_str,char*)
+                        strncpy(num_str,this->contents+this->token_i+read_i,read_offset_i);
+                        num_str[read_offset_i]='\0';
+                        parsed_num[parsed_num_i]=strtol(num_str,NULL,10);
+                        free(num_str);
+                        command_array_add(this->cmd_arr,
+                            (command_t){.type=CMD_QueryCoordsWithin,.is_query=is_query,
+                                .cmd_u.coords_within=(coords_within_t){
+                                    .xl=parsed_num[0],.yl=parsed_num[1],.xh=parsed_num[2],.yh=parsed_num[3]
+                                }
+                            }
+                        );
+                        key_processed=true;
+                        break;
+                    }
+                    fprintf(stderr,"There should only be 4 numbers separated by 3 ',' at %d char %d state %s.\n",this->line_num,this->char_num,ReadStateStrings[read_state]);
+                    print_where_error_is(this->contents,this->token_i,read_i+read_offset_i);
+                    this->parse_error=true;
                     key_processed=true;
                     break;
                 }
@@ -953,6 +1009,9 @@ void command_array_print(const command_array_t* this){
             case CMD_QueryCompareCoords:
                 ;const CompareCoords cc=cmd.compare_coords.cmp_flags;
                 printf("(%d) QueryCompareCoords cmp_flags: '%c,%c%s' var:%d\n",i,(cc&CMP_Y)==CMP_Y?'y':'x',(cc&CMP_GT)==CMP_GT?'>':'<',(cc&CMP_W_EQ)==CMP_W_EQ?",=":"",cmd.compare_coords.var);
+                break;
+            case CMD_QueryCoordsWithin:
+                printf("(%d) QueryCoordsWithin xl: %d yl: %d xh: %d yh: %d\n",i,cmd.coords_within.xl,cmd.coords_within.yl,cmd.coords_within.xh,cmd.coords_within.yh);
                 break;
         }
     }

@@ -6,8 +6,8 @@
 #include <stdlib.h>
 #include <stdbool.h>
 //Hackish way of stringifying enums separately. Add e(number) for a new state.
-#define __STR_READ_ENUMS(e1,e2,e3,e4,e5,e6,e7,e8,e9,e10,e11,e12,e13,e14,e15,e16,e17,e18,ecount)\
-#e1,#e2,#e3,#e4,#e5,#e6,#e7,#e8,#e9,#e10,#e11,#e12,#e13,#e14,#e15,#e16,#e17,#e18
+#define __STR_READ_ENUMS(e1,e2,e3,e4,e5,e6,e7,e8,e9,e10,e11,e12,e13,e14,e15,e16,e17,e18,e19,ecount)\
+#e1,#e2,#e3,#e4,#e5,#e6,#e7,#e8,#e9,#e10,#e11,#e12,#e13,#e14,#e15,#e16,#e17,#e18,#e19
 //For .h file.
 #define __ReadStateWithStringDec(...) typedef enum _ReadState{__VA_ARGS__}ReadState;\
 extern const char* ReadStateStrings[RS_Count];
@@ -33,6 +33,7 @@ extern const char* ReadStateStrings[RS_Count];
     RS_QueryComparePixel,\
     RS_QueryCoordsType,\
     RS_QueryCoordsVar,\
+    RS_QueryCoordsWithin,\
     RS_Count
 __ReadStateWithStringDec(__ReadStateEnums)
 typedef enum _InputState{
@@ -113,6 +114,9 @@ typedef struct compare_coords_s{
     CompareCoords cmp_flags;
     int var;
 }compare_coords_t;
+typedef struct coords_within_s{
+    int xl,yl,xh,yh;
+}coords_within_t;
 typedef union command_union{
     keystroke_t ks;
     delay_ns_t delay;
@@ -124,6 +128,7 @@ typedef union command_union{
     jump_from_t jump_from;
     pixel_compare_t pixel_compare;
     compare_coords_t compare_coords;
+    coords_within_t coords_within;
 }command_union_t;
 typedef enum _CommandType{
     CMD_KeyStroke,
@@ -139,7 +144,8 @@ typedef enum _CommandType{
     CMD_SaveMouseCoords,
     CMD_LoadMouseCoords,
     CMD_QueryComparePixel,
-    CMD_QueryCompareCoords
+    CMD_QueryCompareCoords,
+    CMD_QueryCoordsWithin
 }CommandType;
 typedef struct command_s{//Aggregating like for SDL events (enums and unions).
     CommandType type;

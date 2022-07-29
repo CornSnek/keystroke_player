@@ -317,7 +317,7 @@ bool run_program(command_array_t* cmd_arr, Config config, xdo_t* xdo_obj){
             printf("[%ld.%09ld] - Command %d/%d: ",ts_diff.tv_sec,ts_diff.tv_nsec,cmd_arr_i+1,cmd_arr_len);
         }
         switch(cmd_type){
-            case(CMD_KeyStroke):
+            case CMD_KeyStroke:
                 switch(cmd_u.ks.key_state){
                     case IS_Down:
                         if(print_commands) printf("Key down for %s\n",cmd_u.ks.key);
@@ -338,7 +338,7 @@ bool run_program(command_array_t* cmd_arr, Config config, xdo_t* xdo_obj){
                 }
                 pthread_mutex_unlock(&input_mutex);
                 break;
-            case(CMD_Delay)://Using timespec_get and timespec_diff (custom function) to try to get "precise delays"
+            case CMD_Delay://Using timespec_get and timespec_diff (custom function) to try to get "precise delays"
                 timespec_diff(&ts_usleep_before,&ts_usleep_before_adj,&ts_diff);
                 time_after_last_usleep=ts_diff.tv_sec*NSEC_TO_SEC+ts_diff.tv_nsec;
                 real_delay+=cmd_u.delay*1000-time_after_last_usleep;
@@ -348,7 +348,7 @@ bool run_program(command_array_t* cmd_arr, Config config, xdo_t* xdo_obj){
                 timespec_diff(&ts_usleep_before_adj,&ts_usleep_before,&ts_diff);
                 real_delay-=ts_diff.tv_sec*NSEC_TO_SEC+ts_diff.tv_nsec;
                 break;
-            case(CMD_RepeatEnd):
+            case CMD_RepeatEnd:
                 if(cmd_u.repeat_end.counter_max){//Max counter non-zero.
                     rst_counter=&(cmd_arr->cmds[cmd_u.repeat_end.cmd_index].cmd_u.repeat_start.counter);
                     if(print_commands)
@@ -360,10 +360,10 @@ bool run_program(command_array_t* cmd_arr, Config config, xdo_t* xdo_obj){
                     cmd_arr_i=cmd_u.repeat_end.cmd_index;
                 }
                 break;
-            case(CMD_RepeatStart):
+            case CMD_RepeatStart:
                 if(print_commands) printf("This is a loop counter (%d) String ID#%d\n",cmd_u.repeat_start.counter,cmd_u.repeat_start.str_index);
                 break;
-            case(CMD_MouseClick):
+            case CMD_MouseClick:
                 switch(cmd_u.mouse_click.mouse_state){
                     case IS_Down:
                         if(print_commands) printf("Mouse down (%d).\n",cmd_u.mouse_click.mouse_type);
@@ -382,7 +382,7 @@ bool run_program(command_array_t* cmd_arr, Config config, xdo_t* xdo_obj){
                 }
                 pthread_mutex_unlock(&input_mutex);
                 break;
-            case(CMD_MoveMouse):
+            case CMD_MoveMouse:
                 if(print_commands) printf("Mouse move at (%d,%d) (%s).",cmd_u.mouse_move.x,cmd_u.mouse_move.y,cmd_u.mouse_move.is_absolute?"absolute":"relative");
                 pthread_mutex_lock(&input_mutex);
                 if(cmd_u.mouse_move.is_absolute) xdo_move_mouse(xdo_obj,cmd_u.mouse_move.x,cmd_u.mouse_move.y,0);
@@ -394,38 +394,38 @@ bool run_program(command_array_t* cmd_arr, Config config, xdo_t* xdo_obj){
                 } 
                 pthread_mutex_unlock(&input_mutex);
                 break;
-            case(CMD_Exit):
+            case CMD_Exit:
                 if(print_commands) printf("Exit command issued. Exiting program now.\n");
                 pthread_mutex_lock(&input_mutex);
                 srs.program_done=true;
                 pthread_mutex_unlock(&input_mutex);
                 break;
-            case(CMD_Pass):
+            case CMD_Pass:
                 if(print_commands) printf("Pass command (does nothing).\n");
                 break;
-            case(CMD_JumpTo):
+            case CMD_JumpTo:
                 if(print_commands) printf("Jump to Command #%d String ID#%d.\n",cmd_u.jump_to.cmd_index+2,cmd_u.jump_to.str_index);
                 cmd_arr_i=cmd_u.jump_to.cmd_index;
                 break;
-            case(CMD_JumpFrom):
+            case CMD_JumpFrom:
                 if(print_commands) printf("Jump from command String ID#%d.\n",cmd_u.jump_from.str_index);
                 break;
-            case(CMD_SaveMouseCoords):
+            case CMD_SaveMouseCoords:
                 if(print_commands) printf("Saving current mouse coordinates.");
                 pthread_mutex_lock(&input_mutex);
                 xdo_get_mouse_location(xdo_obj,&x_mouse_store,&y_mouse_store,0);
                 pthread_mutex_unlock(&input_mutex);
                 if(print_commands) printf(" x: %d y: %d\n",x_mouse_store,y_mouse_store);
                 break;
-            case(CMD_LoadMouseCoords):
+            case CMD_LoadMouseCoords:
                 if(print_commands) printf("Moving to stored mouse coordinates x: %d y: %d\n",x_mouse_store,y_mouse_store);
                 pthread_mutex_lock(&input_mutex);
                 xdo_move_mouse(xdo_obj,x_mouse_store,y_mouse_store,0);
                 xdo_get_mouse_location(xdo_obj,&srs.mouse.x,&srs.mouse.y,0);//Update mouse movement for input_t thread loop.
                 pthread_mutex_unlock(&input_mutex);
                 break;
-            case(CMD_QueryComparePixel):
-                if(print_commands) printf("Skip next command if pixel at mouse matches r,g,b=%d,%d,%d with threshold of %d. ",cmd_u.pixel_compare.r,cmd_u.pixel_compare.g,cmd_u.pixel_compare.b,cmd_u.pixel_compare.thr);
+            case CMD_QueryComparePixel:
+                if(print_commands) printf("Don't skip next command if pixel at mouse matches r,g,b=%d,%d,%d with threshold of %d. ",cmd_u.pixel_compare.r,cmd_u.pixel_compare.g,cmd_u.pixel_compare.b,cmd_u.pixel_compare.thr);
                 pthread_mutex_lock(&input_mutex);
                 xdo_get_mouse_location(xdo_obj,&x_mouse,&y_mouse,0);
                 get_pixel_color(xdo_obj->xdpy,x_mouse,y_mouse,&pc);
@@ -436,9 +436,9 @@ bool run_program(command_array_t* cmd_arr, Config config, xdo_t* xdo_obj){
                 );
                 if(print_commands) printf("Pixel does%s match.\n",query_is_true?"":"n't");
                 break;
-            case(CMD_QueryCompareCoords):
+            case CMD_QueryCompareCoords:
                 ;const CompareCoords cc=cmd_u.compare_coords.cmp_flags;
-                if(print_commands) printf("Skip next command if mouse coordinate %c%c%s%d. ",(cc&CMP_Y)==CMP_Y?'y':'x',(cc&CMP_GT)==CMP_GT?'>':'<',(cc&CMP_W_EQ)==CMP_W_EQ?"=":"",cmd_u.compare_coords.var);
+                if(print_commands) printf("Don't skip next command if mouse coordinate %c%c%s%d. ",(cc&CMP_Y)==CMP_Y?'y':'x',(cc&CMP_GT)==CMP_GT?'>':'<',(cc&CMP_W_EQ)==CMP_W_EQ?"=":"",cmd_u.compare_coords.var);
                 pthread_mutex_lock(&input_mutex);
                 xdo_get_mouse_location(xdo_obj,&x_mouse,&y_mouse,0);
                 pthread_mutex_unlock(&input_mutex);
@@ -446,6 +446,15 @@ bool run_program(command_array_t* cmd_arr, Config config, xdo_t* xdo_obj){
                 if((cc&CMP_GT)==CMP_GT) query_is_true=(cc&CMP_W_EQ)==CMP_W_EQ?mouse_compare>=cmd_u.compare_coords.var:mouse_compare>cmd_u.compare_coords.var;
                 else query_is_true=(cc&CMP_W_EQ)==CMP_W_EQ?mouse_compare<=cmd_u.compare_coords.var:mouse_compare<cmd_u.compare_coords.var;
                 if(print_commands) printf("Compare is %s.\n",query_is_true?"true":"false");
+                break;
+            case CMD_QueryCoordsWithin:
+                ;const coords_within_t coords_within=cmd_u.coords_within;
+                if(print_commands) printf("Don't skip next command if mouse is within TopLeft x:%d y:%d Bottom Right x:%d y:%d. ",coords_within.xl,coords_within.yl,coords_within.xh,coords_within.yh);
+                pthread_mutex_lock(&input_mutex);
+                xdo_get_mouse_location(xdo_obj,&x_mouse,&y_mouse,0);
+                pthread_mutex_unlock(&input_mutex);
+                query_is_true=x_mouse>=coords_within.xl&&x_mouse<=coords_within.xh&&y_mouse>=coords_within.yl&&y_mouse<=coords_within.yh;
+                if(print_commands) printf("It is %s within the box.\n",query_is_true?"":"not");
                 break;
         }
         pthread_mutex_lock(&input_mutex);
