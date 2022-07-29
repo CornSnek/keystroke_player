@@ -532,7 +532,6 @@ bool macro_buffer_process_next(macro_buffer_t* this,bool print_debug){//Returns 
                                 }
                             );
                             for(int i=0;i<cmd_arr_count;i++){
-                                printf("%d WTF\n",i);
                                 command_t* this_cmd=this->cmd_arr->cmds+i;
                                 if(this_cmd->type==CMD_JumpTo&&this_cmd->cmd_u.jump_to.str_index==jid_str_i){
                                     this_cmd->cmd_u.jump_to.cmd_index=cmd_arr_count;//Set all JumpTo to this JumpFrom index.
@@ -681,7 +680,6 @@ bool macro_buffer_process_next(macro_buffer_t* this,bool print_debug){//Returns 
                     num_str[read_offset_i]='\0';
                     parsed_num[0]=strtol(num_str,NULL,10);
                     free(num_str);
-                    printf("TODO %lu\n",parsed_num[0]);
                     command_array_add(this->cmd_arr,
                         (command_t){.type=CMD_QueryCompareCoords,.is_query=is_query,
                             .cmd_u.compare_coords=(compare_coords_t){
@@ -735,7 +733,19 @@ void macro_buffer_str_id_check(macro_buffer_t* this){//Check if RepeatStart does
         }
     }
     free(id_check);
-    //TODO: Also check if JumpFrom has a command next to it and Query Commands have 2 commands next to it. Otherwise, parse error.
+    int check_i=this->cmd_arr->size-1;
+    const command_t is_jf_cmd=this->cmd_arr->cmds[check_i];
+    if(is_jf_cmd.type==CMD_JumpFrom){
+        fprintf(stderr,"JumpFrom found without command next to it. Error command found at end of file.\n");
+        this->parse_error=true;
+    }
+    if(this->cmd_arr->cmds[check_i--].is_query){//Check twice.
+        fprintf(stderr,"Queries should have at least 2 commands next to it. Error command found at end of file.\n");
+        this->parse_error=true;
+    }else if(this->cmd_arr->cmds[check_i].is_query){
+        fprintf(stderr,"Queries should have at least 2 commands next to it. Error command found at end of file.\n");
+        this->parse_error=true;
+    }
 }
 void macro_buffer_free(macro_buffer_t* this){
     repeat_id_manager_free(this->rim);
