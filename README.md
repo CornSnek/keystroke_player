@@ -47,6 +47,17 @@ Exit command = `exit;`
     Will be used because of JumpTo and JumpFrom commands.
     That can always jump.
 
+Pass command = `pass;`
+
+    Placeholder for nothing.
+
+SaveMouseCoords = `save_mma;`
+
+LoadMouseCoords = `load_mma;`
+
+    This saves/loads the mouse coordinates that was previously saved by a load_mma; command.
+    Without any save_mma; command, the default is (x,y)=(0,0)
+
 JumpTo command = `JT<[A-Za-z0-9\+\_]+;`
 
     Will always jump to a JumpFrom.
