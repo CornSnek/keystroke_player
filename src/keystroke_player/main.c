@@ -81,7 +81,7 @@ int main(void){
                 break;
             case IS_EditConfig:
                 config=read_config_file();
-                printf("Set value for init_delay (Microseconds before autoclicker plays)\n");
+                printf("Set value for init_delay (Microseconds before macro plays)\n");
                 printf("Value right now is %lu (Enter nothing to skip): ",config.init_delay);
                 fgets(input_str,INPUT_BUFFER_LEN+1,stdin);
                 if(input_str[0]!='\n') config.init_delay=strtol(input_str,NULL,10);
@@ -90,7 +90,7 @@ int main(void){
                 fgets(input_str,INPUT_BUFFER_LEN+1,stdin);
                 if(input_str[0]!='\n') config.mouse_check_delay=strtol(input_str,NULL,10);
                 while(true){
-                    printf("Set value for print_commands (Prints debug commands when playing autoclicker)\n");
+                    printf("Set value for print_commands (Prints debug commands when playing macro)\n");
                     printf("Value right now is %d (Enter 0/1 or nothing to skip): ",config.print_commands);
                     fgets(input_str,INPUT_BUFFER_LEN+1,stdin);
                     if(input_str[0]=='0'){config.print_commands=false;break;}
@@ -127,11 +127,11 @@ int main(void){
                     write_to_default_file(input_str);
                 }
                 switch(ps){
-                    case PS_RunSuccess: printf("Autoclicker script ran successfully.\n"); break;
-                    case PS_CompileSuccess: printf("Autoclicker script compiled successfully.\n"); break;
-                    case PS_ReadError: printf("Autoclicker script failed (File non-existent or read error).\n"); break;
-                    case PS_ParseError: printf("Autoclicker script failed (File parsing errors).\n"); break;
-                    case PS_ProgramError: printf("Autoclicker script failed (Runtime program errors).\n"); break;
+                    case PS_RunSuccess: printf("Macro script ran successfully.\n"); break;
+                    case PS_CompileSuccess: printf("Macro script compiled successfully.\n"); break;
+                    case PS_ReadError: printf("Macro script failed (File non-existent or read error).\n"); break;
+                    case PS_ParseError: printf("Macro script failed (File parsing errors).\n"); break;
+                    case PS_ProgramError: printf("Macro script failed (Runtime program errors).\n"); break;
                 }
                 input_state=IS_Start;
                 break;
@@ -283,7 +283,7 @@ void* mouse_check_listener(void* srs_v){
         pthread_mutex_lock(&input_mutex);
         xdo_get_mouse_location(srs_p->xdo_obj,&mouse_x_after,&mouse_y_after,NULL);
         if(srs_p->mouse_c.x!=mouse_x_after||srs_p->mouse_c.y!=mouse_y_after){
-            printf("Mouse moved. Stopping autoclicker.\n");
+            printf("Mouse moved. Stopping macro script.\n");
             srs_p->program_done=true;
         }
     }
@@ -503,7 +503,7 @@ bool run_program(command_array_t* cmd_arr, Config config, xdo_t* xdo_obj){
         }
     }
     timespec_diff(&ts_begin,NULL,&ts_diff);
-    printf("%ld.%09ld seconds since autoclicker ran.\n",ts_diff.tv_sec,ts_diff.tv_nsec);
+    printf("%ld.%09ld seconds since macro script ran.\n",ts_diff.tv_sec,ts_diff.tv_nsec);
     pthread_mutex_unlock(&input_mutex);
     pthread_join(input_t,NULL);
     key_down_check_key_up(kdc,xdo_obj,CURRENTWINDOW);

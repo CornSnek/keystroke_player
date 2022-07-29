@@ -1,8 +1,8 @@
 # keystroke_player
-Linux X11 Autoclicker that can also use the keyboard, and script support is added. This is inspired by click4ever from https://github.com/daniel-araujo/click4ever. I just added keyboard support and scripting support for personal scripting uses.
+Linux X11 Macro program with script support. This is inspired by click4ever from https://github.com/daniel-araujo/click4ever. I just added keyboard support and scripting support for personal scripting uses.
 # Usage
-Run the program. It is an autoclicker command line program where you can edit configs, and compile/run scripts.
-It runs autoclicker scripts that can stop executing the program completely if the mouse moves, it reaches the end, or it exits via `exit;`
+Run the program. It is command line program where you can edit configs, and compile/run scripts.
+It runs macro scripts that can stop executing the program completely if the mouse moves, it reaches the end, or it exits via `exit;`
 .
 # Script
 Some examples of the script commands are shown in example_scripts.
@@ -43,7 +43,7 @@ MoveMouse command = `mm[ar]=[0-9\-]+,[0-9\-]+;`
 
 Exit command = `exit;`
 
-    Immediately exits the autoclicker program.
+    Immediately exits the macro script.
     Will be used because of JumpTo and JumpFrom commands.
     That can always jump.
 
