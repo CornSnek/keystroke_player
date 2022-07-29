@@ -35,7 +35,7 @@ RepeatEnd command = `\)[A-Za-z0-9\+\_]+(=[0-9]+)?;`
     0 or without (=[0-9]+)? means it will loop forever.
     There can only be one.
 
-MouseMove command = `mm[ar]=[0-9\-]+,[0-9\-]+;`
+MoveMouse command = `mm[ar]=[0-9\-]+,[0-9\-]+;`
 
     Moves mouse based on absolute (mma) or relative (mmr) of the screen.
     Example: mmr=100,-50; Moves 100 pixels to the right and 50 pixels upwards
@@ -62,13 +62,13 @@ There are Query Commands that will skip the next command if false, or not skip i
 
 `?(query_command)?JT<ThisQueryIsTrue;(Commands here if false); ... JF>ThisQueryIsTrue;(Commands here if true);`
 
-QueryComparePixel command = `?pxc=[0-9]+,[0-9]+,[0-9]+,[0-9]+?`
+QueryComparePixel command = `?pxc:[0-9]+,[0-9]+,[0-9]+,[0-9]+?`
 
     QueryComparePixel checks if the pixel at it's current mouse position is true. Valid numbers should be from 0 to 255.
     They are formatted by (rc,gc,bc,threshold) (Pixel to compare), where threshold will check any pixel colors close to rm,gm,bm (Pixel by mouse)
     (Formula for query is true if abs(rc-rm)<=threshold&&abs(gc-gm)<=threshold&&abs(bc-bm)<=threshold)
     For example:
-        If ?pxc=128,128,128,20; is the command, and
+        If ?pxc:128,128,128,20; is the command, and
         the mouse pixel is r,g,b=108,148,128 the query is true since 108, 148, and 128 is within 20.
         If the mouse pixel is r,g,b=255,255,255, the query is false since 255 is not within 20.
 

@@ -76,43 +76,74 @@ bool macro_buffer_process_next(macro_buffer_t* this,bool print_debug){//Returns 
     bool mouse_absolute;
     do{
         const char current_char=this->contents[this->token_i+read_i+read_offset_i];
+        const char* current_char_p=this->contents+this->token_i+read_i+read_offset_i;
         if(print_debug) printf("'%c' token_i:%d read_offset_i:%d read_i:%d State:%s\n",current_char,this->token_i,read_offset_i,read_i,ReadStateStrings[read_state]);
         switch(read_state){
             case RS_Start:
-                if(!strncmp(this->contents+this->token_i+read_i+read_offset_i,"exit;",5)){
+                if(!strncmp(current_char_p,"exit;",5)){
                     command_array_add(this->cmd_arr,
                         (command_t){.type=CMD_Exit,.is_query=is_query,
                             .cmd_u={{0}}
                         }
                     );
-                    read_i+=4;//Exclude reading "xit;"
+                    read_i+=4;//Exclude reading "exit;" The +1 for ';' is from read_offset_i++
                     key_processed=true;
                     break;
                 }
-                if(!strncmp(this->contents+this->token_i+read_i+read_offset_i,"JT<",3)){
+                if(!strncmp(current_char_p,"pass;",5)){//Just like exit, but does nothing.
+                    command_array_add(this->cmd_arr,
+                        (command_t){.type=CMD_Pass,.is_query=is_query,
+                            .cmd_u={{0}}
+                        }
+                    );
+                    read_i+=4;
+                    key_processed=true;
+                    break;
+                }
+                if(!strncmp(current_char_p,"save_mma;",9)){
+                    command_array_add(this->cmd_arr,
+                        (command_t){.type=CMD_SaveMouseCoords,.is_query=is_query,
+                            .cmd_u={{0}}
+                        }
+                    );
+                    read_i+=8;
+                    key_processed=true;
+                    break;
+                }
+                if(!strncmp(current_char_p,"load_mma;",9)){
+                    command_array_add(this->cmd_arr,
+                        (command_t){.type=CMD_LoadMouseCoords,.is_query=is_query,
+                            .cmd_u={{0}}
+                        }
+                    );
+                    read_i+=8;
+                    key_processed=true;
+                    break;
+                }
+                if(!strncmp(current_char_p,"JT<",3)){
                     read_i+=3;
                     read_offset_i=-1;
                     read_state=RS_JumpTo;
                     break;
                 }
-                if(!strncmp(this->contents+this->token_i+read_i+read_offset_i,"JF>",3)){
+                if(!strncmp(current_char_p,"JF>",3)){
                     read_i+=3;
                     read_offset_i=-1;
                     read_state=RS_JumpFrom;
                     break;
                 }
-                if(!strncmp(this->contents+this->token_i+read_i+read_offset_i,"mma=",4)){
+                if(!strncmp(current_char_p,"mma=",4)){
                     read_i+=4;
                     read_offset_i=-1;
                     mouse_absolute=true;
-                    read_state=RS_MouseMove;
+                    read_state=RS_MoveMouse;
                     break;
                 }
-                if(!strncmp(this->contents+this->token_i+read_i+read_offset_i,"mmr=",4)){
+                if(!strncmp(current_char_p,"mmr=",4)){
                     read_i+=4;
                     read_offset_i=-1;
                     mouse_absolute=false;
-                    read_state=RS_MouseMove;
+                    read_state=RS_MoveMouse;
                     break;
                 }
                 if(char_is_key(current_char)){
@@ -416,7 +447,7 @@ bool macro_buffer_process_next(macro_buffer_t* this,bool print_debug){//Returns 
                 this->parse_error=true;
                 key_processed=true;
                 break;
-            case RS_MouseMove:
+            case RS_MoveMouse:
                 if(isdigit(current_char)||current_char=='-') break;
                 else if(current_char==','&&!first_number){
                     num_str=(char*)malloc(sizeof(char)*read_offset_i+1);
@@ -438,7 +469,7 @@ bool macro_buffer_process_next(macro_buffer_t* this,bool print_debug){//Returns 
                         parsed_num[1]=strtol(num_str,NULL,10);
                         free(num_str);
                         command_array_add(this->cmd_arr,
-                        (command_t){.type=CMD_MouseMove,.is_query=is_query,
+                        (command_t){.type=CMD_MoveMouse,.is_query=is_query,
                                 .cmd_u.mouse_move=(mouse_move_t){
                                     .x=parsed_num[0],.y=parsed_num[1],.is_absolute=mouse_absolute
                                 }
@@ -555,13 +586,13 @@ bool macro_buffer_process_next(macro_buffer_t* this,bool print_debug){//Returns 
                 break;
             case RS_Query:
                 is_query=true;
-                if(!strncmp(this->contents+this->token_i+read_i+read_offset_i,"pxc=",4)){
+                if(!strncmp(current_char_p,"pxc:",4)){
                     read_i+=4;
                     read_offset_i=-1;
                     read_state=RS_QueryComparePixel;
                     break;
                 }
-                if(!strncmp(this->contents+this->token_i+read_i+read_offset_i,"coords:",7)){
+                if(!strncmp(current_char_p,"coords:",7)){
                     if(this->contents[this->token_i+read_i+read_offset_i+7]=='x'){
                         cmp_flags|=CMP_X;
                         read_i+=8;
@@ -895,17 +926,26 @@ void command_array_print(const command_array_t* this){
             case CMD_MouseClick:
                 printf("(%d) MouseClick: MouseType: %d MouseState: %d\n",i,cmd.mouse_click.mouse_type,cmd.mouse_click.mouse_state);
                 break;
-            case CMD_MouseMove:
-                printf("(%d) MouseMove: x: %d y: %d is_absolute: %d\n",i,cmd.mouse_move.x,cmd.mouse_move.y,cmd.mouse_move.is_absolute);
+            case CMD_MoveMouse:
+                printf("(%d) MoveMouse: x: %d y: %d is_absolute: %d\n",i,cmd.mouse_move.x,cmd.mouse_move.y,cmd.mouse_move.is_absolute);
                 break;
             case CMD_Exit:
                 printf("(%d) ExitProgram\n",i);
+                break;
+            case CMD_Pass:
+                printf("(%d) Pass\n",i);
                 break;
             case CMD_JumpTo:
                 printf("(%d) JumpTo cmd_i: %d str_i: %d\n",i,cmd.jump_to.cmd_index,cmd.jump_to.str_index);
                 break;
             case CMD_JumpFrom:
                 printf("(%d) JumpFrom str_i: %d\n",i,cmd.jump_from.str_index);
+                break;
+            case CMD_SaveMouseCoords:
+                printf("(%d) Save current mouse coordinates.\n",i);
+                break;
+            case CMD_LoadMouseCoords:
+                printf("(%d) Load stored mouse coordinates.\n",i);
                 break;
             case CMD_QueryComparePixel:
                 printf("(%d) QueryComparePixel r: %d g: %d b: %d threshold: %d\n",i,cmd.pixel_compare.r,cmd.pixel_compare.g,cmd.pixel_compare.b,cmd.pixel_compare.thr);

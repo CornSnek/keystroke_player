@@ -26,7 +26,7 @@ extern const char* ReadStateStrings[RS_Count];
     RS_DelayNum,\
     RS_MouseClickType,\
     RS_MouseClickState,\
-    RS_MouseMove,\
+    RS_MoveMouse,\
     RS_JumpTo,\
     RS_JumpFrom,\
     RS_Query,\
@@ -131,10 +131,13 @@ typedef enum _CommandType{
     CMD_RepeatStart,
     CMD_RepeatEnd,
     CMD_MouseClick,
-    CMD_MouseMove,
+    CMD_MoveMouse,
     CMD_Exit,
+    CMD_Pass,
     CMD_JumpTo,
     CMD_JumpFrom,
+    CMD_SaveMouseCoords,
+    CMD_LoadMouseCoords,
     CMD_QueryComparePixel,
     CMD_QueryCompareCoords
 }CommandType;

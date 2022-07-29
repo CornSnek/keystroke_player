@@ -123,7 +123,7 @@ int main(void){
                     case PS_CompileSuccess: printf("Autoclicker script compiled successfully.\n"); break;
                     case PS_ReadError: printf("Autoclicker script failed (File non-existent or read error).\n"); break;
                     case PS_ParseError: printf("Autoclicker script failed (File parsing errors).\n"); break;
-                    case PS_ProgramError: printf("Autoclicker script failed (Running program errors).\n"); break;
+                    case PS_ProgramError: printf("Autoclicker script failed (Runtime program errors).\n"); break;
                 }
                 input_state=IS_Start;
                 break;
@@ -216,7 +216,10 @@ ProgramStatus parse_file(const char* path, xdo_t* xdo_obj, Config config, bool a
     while(macro_buffer_process_next(mb,config.print_commands)){
         if(mb->token_i>mb->str_size) break;
     }
-    if(!mb->parse_error) macro_buffer_str_id_check(mb);
+    if(!mb->parse_error){
+        if(config.print_commands) command_array_print(cmd_arr); //Always print if no read errors after processing all commands.
+        macro_buffer_str_id_check(mb);
+    }
     if(!mb->parse_error&&and_run){
         bool run_success=run_program(cmd_arr,config,xdo_obj);
         if(!run_success){
@@ -272,7 +275,6 @@ void timespec_diff(const struct timespec* ts_begin,struct timespec* ts_end_clone
 }
 bool run_program(command_array_t* cmd_arr, Config config, xdo_t* xdo_obj){
     Window focus_window;//Will be ignored.
-    if(config.print_commands) command_array_print(cmd_arr);
     xdo_select_window_with_click(xdo_obj,&focus_window);
     int cmd_arr_len=command_array_count(cmd_arr);
     int cmd_arr_i=0;
@@ -300,7 +302,7 @@ bool run_program(command_array_t* cmd_arr, Config config, xdo_t* xdo_obj){
     nano_sec real_delay=0;//Adjust delay depending on time after commands and after sleeping.
     delay_ns_t adj_usleep;
     XColor pc;
-    int x_mouse,y_mouse;
+    int x_mouse,y_mouse,x_mouse_store=0,y_mouse_store=0;
     bool query_is_true;
     timespec_get(&ts_usleep_before,TIME_UTC);
     while(!srs.program_done){
@@ -380,7 +382,7 @@ bool run_program(command_array_t* cmd_arr, Config config, xdo_t* xdo_obj){
                 }
                 pthread_mutex_unlock(&input_mutex);
                 break;
-            case(CMD_MouseMove):
+            case(CMD_MoveMouse):
                 if(print_commands) printf("Mouse move at (%d,%d) (%s).",cmd_u.mouse_move.x,cmd_u.mouse_move.y,cmd_u.mouse_move.is_absolute?"absolute":"relative");
                 pthread_mutex_lock(&input_mutex);
                 if(cmd_u.mouse_move.is_absolute) xdo_move_mouse(xdo_obj,cmd_u.mouse_move.x,cmd_u.mouse_move.y,0);
@@ -398,12 +400,29 @@ bool run_program(command_array_t* cmd_arr, Config config, xdo_t* xdo_obj){
                 srs.program_done=true;
                 pthread_mutex_unlock(&input_mutex);
                 break;
+            case(CMD_Pass):
+                if(print_commands) printf("Pass command (does nothing).\n");
+                break;
             case(CMD_JumpTo):
                 if(print_commands) printf("Jump to Command #%d String ID#%d.\n",cmd_u.jump_to.cmd_index+2,cmd_u.jump_to.str_index);
                 cmd_arr_i=cmd_u.jump_to.cmd_index;
                 break;
             case(CMD_JumpFrom):
                 if(print_commands) printf("Jump from command String ID#%d.\n",cmd_u.jump_from.str_index);
+                break;
+            case(CMD_SaveMouseCoords):
+                if(print_commands) printf("Saving current mouse coordinates.");
+                pthread_mutex_lock(&input_mutex);
+                xdo_get_mouse_location(xdo_obj,&x_mouse_store,&y_mouse_store,0);
+                pthread_mutex_unlock(&input_mutex);
+                if(print_commands) printf(" x: %d y: %d\n",x_mouse_store,y_mouse_store);
+                break;
+            case(CMD_LoadMouseCoords):
+                if(print_commands) printf("Moving to stored mouse coordinates x: %d y: %d\n",x_mouse_store,y_mouse_store);
+                pthread_mutex_lock(&input_mutex);
+                xdo_move_mouse(xdo_obj,x_mouse_store,y_mouse_store,0);
+                xdo_get_mouse_location(xdo_obj,&srs.mouse.x,&srs.mouse.y,0);//Update mouse movement for input_t thread loop.
+                pthread_mutex_unlock(&input_mutex);
                 break;
             case(CMD_QueryComparePixel):
                 if(print_commands) printf("Skip next command if pixel at mouse matches r,g,b=%d,%d,%d with threshold of %d. ",cmd_u.pixel_compare.r,cmd_u.pixel_compare.g,cmd_u.pixel_compare.b,cmd_u.pixel_compare.thr);
