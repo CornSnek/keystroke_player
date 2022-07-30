@@ -11,7 +11,7 @@ START_TEST(parse_from_string){
     command_array_t* cmd_arr=command_array_new();
     macro_buffer_t* mb=macro_buffer_new(a_string_heap,cmd_arr);
     while(macro_buffer_process_next(mb,false)){
-        if(mb->token_i>mb->size) break;
+        if(mb->token_i>mb->str_size) break;
     }
     printf("%d\n",mb->parse_error);
     command_array_print(cmd_arr);

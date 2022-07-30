@@ -143,6 +143,7 @@ typedef enum _CommandType{
     CMD_Pass,
     CMD_JumpTo,
     CMD_JumpFrom,
+    CMD_RepeatResetCounters,
     CMD_SaveMouseCoords,
     CMD_LoadMouseCoords,
     CMD_QueryComparePixel,

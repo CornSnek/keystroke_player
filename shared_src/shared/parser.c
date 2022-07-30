@@ -83,6 +83,16 @@ bool macro_buffer_process_next(macro_buffer_t* this,bool print_debug){//Returns 
                     key_processed=true;
                     break;
                 }
+                if(!strncmp(current_char_p,"rep_reset;",10)){
+                    command_array_add(this->cmd_arr,
+                        (command_t){.type=CMD_RepeatResetCounters,.is_query=is_query,
+                            .cmd_u={{0}}
+                        }
+                    );
+                    read_i+=9;
+                    key_processed=true;
+                    break;
+                }
                 if(!strncmp(current_char_p,"JT<",3)){
                     read_i+=3;
                     read_offset_i=-1;
@@ -952,6 +962,9 @@ void command_array_print(const command_array_t* this){
                 break;
             case CMD_RepeatEnd:
                 printf("(%d) RepeatEnd: RepeatAtIndex: %d MaxCounter: %d str_i: %d\n",i,cmd.repeat_end.cmd_index,cmd.repeat_end.counter_max,cmd.repeat_start.str_index);
+                break;
+            case CMD_RepeatResetCounters:
+                printf("(%d) RepeatResetCounters\n",i);
                 break;
             case CMD_MouseClick:
                 printf("(%d) MouseClick: MouseType: %d MouseState: %d\n",i,cmd.mouse_click.mouse_type,cmd.mouse_click.mouse_state);

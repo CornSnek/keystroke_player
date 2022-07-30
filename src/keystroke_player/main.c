@@ -141,7 +141,7 @@ int main(void){
                 xdo_get_mouse_location(xdo_obj,&x_mouse,&y_mouse,0);
                 printf("You clicked at x:%d y:%d",x_mouse,y_mouse);
                 get_pixel_color(xdo_obj->xdpy,x_mouse,y_mouse,&pc);
-                printf (" with r:%u g:%u b:%u\n",pc.red>>8,pc.green>>8,pc.blue>>8);//Truncate to byte instead.
+                printf(" with r:%u g:%u b:%u\n",pc.red>>8,pc.green>>8,pc.blue>>8);//Truncate to byte instead.
                 input_state=IS_Start;
                 break;
         }
@@ -380,13 +380,19 @@ bool run_program(command_array_t* cmd_arr, Config config, xdo_t* xdo_obj){
             case CMD_RepeatEnd:
                 if(cmd_u.repeat_end.counter_max){//Max counter non-zero.
                     rst_counter=&(cmd_arr->cmds[cmd_u.repeat_end.cmd_index].cmd_u.repeat_start.counter);
-                    if(print_commands)
-                        printf("Jump to Command #%d until Counter %d/%d String ID#%d\n",cmd_u.repeat_end.cmd_index+2,++(*rst_counter),cmd_u.repeat_end.counter_max,cmd_u.repeat_end.str_index);
+                    if(print_commands) printf("Jump to Command #%d until Counter %d/%d String ID#%d\n",cmd_u.repeat_end.cmd_index+2,++(*rst_counter),cmd_u.repeat_end.counter_max,cmd_u.repeat_end.str_index);
                     if(*rst_counter!=cmd_u.repeat_end.counter_max) cmd_arr_i=cmd_u.repeat_end.cmd_index;//Go back if not counter_max
                     else *rst_counter=0;//Reset to loop again.
                 }else{//Loop forever otherwise.
                     if(print_commands) printf("Jump to Command #%d (Loops forever) String ID#%d\n",cmd_u.repeat_end.cmd_index+2,cmd_u.repeat_end.str_index);
                     cmd_arr_i=cmd_u.repeat_end.cmd_index;
+                }
+                break;
+            case CMD_RepeatResetCounters:
+                if(print_commands) printf("Resetting RepeatStart counters back to 0.\n");
+                for(int i=0;i<cmd_arr->size;i++){
+                    command_t* cmd=cmd_arr->cmds+i;
+                    if(cmd->type==CMD_RepeatStart) cmd->cmd_u.repeat_start.counter=0;
                 }
                 break;
             case CMD_RepeatStart:

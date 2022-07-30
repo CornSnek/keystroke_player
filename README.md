@@ -35,6 +35,11 @@ RepeatEnd command = `\)[A-Za-z0-9\+\_]+(=[0-9]+)?;`
     0 or without (=[0-9]+)? means it will loop forever.
     There can only be one.
 
+RepeatReset command = `rep_reset;`
+
+    Resets all counters in RepeatStart back to 0. This is used when Jump commands have been used
+    since it doesn't reset any counters back to 0.
+
 MoveMouse command = `mm[ar]=[0-9\-]+,[0-9\-]+;`
 
     Moves mouse based on absolute (mma) or relative (mmr) of the screen.
