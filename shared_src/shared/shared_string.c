@@ -2,6 +2,7 @@
 #include "macros.h"
 #include <string.h>
 #include <ctype.h>
+#include <assert.h>
 #include <stdio.h>
 #include <stdlib.h>
 shared_string_manager_t* SSManager_new(void){
@@ -128,4 +129,13 @@ bool char_is_whitespace(char c){
 }
 bool char_is_delay(char c){
     return (c=='m')||(c=='u')||(c=='s')||(c=='M')||(c=='U')||(c=='S');
+}
+//Returns string from start_p char to end_p char [[nodiscard]] returns pointer that needs to be freed.
+char* char_string_slice(char* start_p,char* end_p){
+    assert(start_p<=end_p);
+    char* char_p=malloc(sizeof(char)*(end_p-start_p+2));//+1 to count characters and +1 for '\0'
+    EXIT_IF_NULL(char_p,char)
+    strncpy(char_p,start_p,end_p-start_p+1);
+    char_p[end_p-start_p+1]='\0';
+    return char_p;
 }

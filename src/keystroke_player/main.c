@@ -305,8 +305,7 @@ void timespec_diff(const struct timespec* ts_begin,struct timespec* ts_end_clone
 bool run_program(command_array_t* cmd_arr, Config config, xdo_t* xdo_obj){
     Window focus_window;//Will be ignored.
     xdo_select_window_with_click(xdo_obj,&focus_window);
-    int cmd_arr_len=command_array_count(cmd_arr);
-    int cmd_arr_i=0;
+    int cmd_arr_len=command_array_count(cmd_arr),cmd_arr_i=0,stack_cmd_i;
     key_down_check_t* kdc=key_down_check_new();
     shared_rs srs=(shared_rs){.xdo_obj=xdo_obj,.program_done=false,.mouse_c={0},.mouse_check_delay=config.mouse_check_delay};
     printf("Starting script in %ld microseconds (%f seconds)\n",config.init_delay,(float)config.init_delay/1000000);
@@ -325,14 +324,13 @@ bool run_program(command_array_t* cmd_arr, Config config, xdo_t* xdo_obj){
     struct timespec ts_begin,ts_diff,ts_usleep_before,ts_usleep_before_adj;
     timespec_get(&ts_begin,TIME_UTC);
     pthread_mutex_lock(&input_mutex);
-    bool print_commands=config.print_commands;
+    bool print_commands=config.print_commands,query_is_true,not_empty,no_error=true;
     typedef long nano_sec;
     nano_sec time_after_last_usleep;
     nano_sec real_delay=0;//Adjust delay depending on time after commands and after sleeping.
     delay_ns_t adj_usleep;
     XColor pc;
     int x_mouse,y_mouse,x_mouse_store=0,y_mouse_store=0;
-    bool query_is_true;
     timespec_get(&ts_usleep_before,TIME_UTC);
     while(!srs.program_done){
         pthread_mutex_unlock(&input_mutex);
@@ -439,15 +437,30 @@ bool run_program(command_array_t* cmd_arr, Config config, xdo_t* xdo_obj){
                 if(print_commands) printf("Pass command (does nothing).\n");
                 break;
             case CMD_JumpTo:
-                if(print_commands) printf("Jump to Command #%d String ID#%d. %s\n",cmd_u.jump_to.cmd_index+2,cmd_u.jump_to.str_index,cmd_u.jump_to.store_index?"Will also store this command's index.":"");
-                cmd_arr_i=cmd_u.jump_to.cmd_index;
+                if(print_commands) printf("Jump to Command #%d String ID#%d. %s",cmd_u.jump_to.cmd_index+2,cmd_u.jump_to.str_index,cmd_u.jump_to.store_index?"Will also store this command's index.":"");
                 if(cmd_u.jump_to.store_index){
-                    if(print_commands) printf(" Storing next command index to jump later (#%d)",cmd_arr_i+2);
+                    if(print_commands) printf(" Storing command index to jump to later (#%d)\n",cmd_arr_i+2);
                     store_cmd_index(cmd_arr_i);
                 }
+                cmd_arr_i=cmd_u.jump_to.cmd_index;
                 break;
             case CMD_JumpFrom:
                 if(print_commands) printf("Jump from command String ID#%d.\n",cmd_u.jump_from.str_index);
+                break;
+            case CMD_JumpBack:
+                not_empty=pop_cmd_index(&stack_cmd_i);
+                if(not_empty) cmd_arr_i=stack_cmd_i;
+                if(print_commands){
+                    printf("Jump to Command stored from stack. ");
+                    if(not_empty) printf("Jumping back to command index #%d\n",stack_cmd_i+2);
+                }
+                if(!not_empty){
+                    printf("Stack is empty! Aborting program.\n");
+                    pthread_mutex_lock(&input_mutex);
+                    srs.program_done=true;
+                    no_error=false;
+                    pthread_mutex_unlock(&input_mutex);
+                }
                 break;
             case CMD_SaveMouseCoords:
                 if(print_commands) printf("Saving current mouse coordinates.");
@@ -514,5 +527,5 @@ bool run_program(command_array_t* cmd_arr, Config config, xdo_t* xdo_obj){
     pthread_join(input_t,NULL);
     key_down_check_key_up(kdc,xdo_obj,CURRENTWINDOW);
     key_down_check_free(kdc);
-    return true;
+    return no_error;
 }

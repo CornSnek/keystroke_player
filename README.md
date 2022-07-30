@@ -4,7 +4,7 @@ Linux X11 Macro program with script support. This is inspired by click4ever from
 Run the program. It is a command line program where you can edit configs, and compile/run scripts.
 It runs macro scripts that can stop executing the program completely if the mouse moves, it reaches the end, or it exits via `exit;`
 .
-# Script
+# Script Commands and Queries
 Some examples of the script commands are shown in example_scripts.
 Syntax is as follows (In RegExp-ish form). Note that most commands terminate with a semicolon `;`.
 
@@ -17,23 +17,22 @@ Keystroke command = `[A-Za-z0-9\+\_]+=[UuDdCc];`
 Mouse command = `m[1-5]=[UuDdCc];`
 
     1=Left, 2=Middle, 3=Right, 4=Wheel Up, 5=Wheel Down
-    UuDdCc also applies here too.
+    UuDdCc also applies here too from Keystroke commands.
 
 Delay command = `.[ums]?[0-9]+;`
 
     u/m/s represents microseconds/milliseconds/seconds respectively. 
-    Without prefix is defaulted to microseconds.
+    Without prefix, numbers are defaulted to microseconds (1/1000000 seconds).
 
 RepeatStart command = `\([A-Za-z0-9\+\_]+;`
 
-    ( with string name is used to jump back to this command from a RepeatEnd. There can only be one.
+    ( with string name is used to jump back to this command from a RepeatEnd. There can only be one and at least 1 RepeatEnd is needed.
 
 RepeatEnd command = `\)[A-Za-z0-9\+\_]+(=[0-9]+)?;`
 
     ) with string name is used to jump back to a RepeatStart.
     Numbers represent how many loops it would do.
-    0 or without (=[0-9]+)? means it will loop forever.
-    There can only be one.
+    =0 or without (=[0-9]+)? means it will loop forever.
 
 RepeatReset command = `rep_reset;`
 
@@ -54,14 +53,14 @@ Exit command = `exit;`
 
 Pass command = `pass;`
 
-    Placeholder for nothing.
+    Placeholder command for nothing.
 
 SaveMouseCoords = `save_mma;`
 
 LoadMouseCoords = `load_mma;`
 
     This saves/loads the mouse coordinates that was previously saved by a load_mma; command.
-    Without any save_mma; command, the default is (x,y)=(0,0)
+    When using `load_mma` without any previous `save_mma;` command, the default is (x,y)=(0,0)
 
 JumpTo command = `JT<[A-Za-z0-9\+\_]+;`
 
@@ -73,6 +72,13 @@ JumpFrom command = `JF>[A-Za-z0-9\+\_]+;`
 
     A JumpTo will jump to this command. There can be one and only one JumpFrom.
     Otherwise, the program will not compile if there are no JumpFroms or more than one with the same name.
+
+JumpToStore command = `JTS<[A-Za-z0-9\+\_]+;`
+JumpBack command = `JB>;`
+
+    Same as JumpTo, but stores its index to a stack to jump to later, like a function.
+    JumpBack command pops any index stored in the stack.
+    Will throw an error if the stack is empty.
 
 There are Query Commands that will skip the next command if false, or not skip if true. They are prefixed with a `?` and end with a `?`. These should be used next to a JumpTo command. For example:
 
@@ -92,7 +98,8 @@ QueryCompareCoords command = `?coords:[xy][<>]=?[0-9]?`
 
     Compares either the x or y coordinate of the mouse. Supports
     >, >=, <, and <= only.
-        Examples: ?coords:x>=100? compares if x is greater than or equal to 100.
+        Examples: ?coords:x>=100? compares if x is
+        greater than or equal to 100.
         ?coords:y<500? compares if y is less than 500.
 
 QueryCoordsWithin command = `?within:[0-9]+,[0-9]+,[0-9]+,[0-9]+?`

@@ -19,4 +19,5 @@ bool char_is_key(char c);
 bool char_is_keystate(char c);
 bool char_is_whitespace(char c);
 bool char_is_delay(char c);
+char* char_string_slice(char* start_p,char* end_p);
 #endif

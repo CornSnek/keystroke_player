@@ -143,6 +143,7 @@ typedef enum _CommandType{
     CMD_Pass,
     CMD_JumpTo,
     CMD_JumpFrom,
+    CMD_JumpBack,
     CMD_RepeatResetCounters,
     CMD_SaveMouseCoords,
     CMD_LoadMouseCoords,
@@ -154,6 +155,8 @@ typedef struct command_s{//Aggregating like for SDL events (enums and unions).
     CommandType type;
     command_union_t cmd_u;
     bool is_query;//For query commands.
+    char* start_cmd_p;
+    char* end_cmd_p;
 }command_t;
 typedef struct command_array_s{
     int size;

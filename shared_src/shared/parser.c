@@ -35,6 +35,7 @@ bool macro_buffer_process_next(macro_buffer_t* this,bool print_debug){//Returns 
     bool store_index=false;
     CompareCoords cmp_flags=CMP_NULL;
     bool mouse_absolute;
+    char* start_p=this->contents+this->token_i;
     do{
         this->char_num+=this->token_i+read_i+read_offset_i-this->last_total_read_i;
         this->last_total_read_i=this->token_i+read_i+read_offset_i;
@@ -112,6 +113,16 @@ bool macro_buffer_process_next(macro_buffer_t* this,bool print_debug){//Returns 
                     read_state=RS_JumpFrom;
                     break;
                 }
+                if(!strncmp(current_char_p,"JB>;",4)){
+                    command_array_add(this->cmd_arr,
+                        (command_t){.type=CMD_JumpBack,.is_query=is_query,
+                            .cmd_u={{0}}
+                        }
+                    );
+                    read_i+=3;
+                    key_processed=true;
+                    break;
+                }
                 if(!strncmp(current_char_p,"mma=",4)){
                     read_i+=4;
                     read_offset_i=-1;
@@ -156,16 +167,19 @@ bool macro_buffer_process_next(macro_buffer_t* this,bool print_debug){//Returns 
                         key_processed=true;
                         break;
                     case '\n':
+                        start_p++;
                         read_i++;
                         read_offset_i=-1;
                         this->line_num++;
                         this->char_num=0;//1 after loop repeats.
                         break;
                     case '#':
+                        start_p++;
                         read_state=RS_Comments;
                         break;
                     case ' '://Fallthrough
                     case '\t'://Allow tabs and spaces before making comments.
+                        start_p++;
                         read_i++;
                         read_offset_i=-1;
                         break;
@@ -183,6 +197,7 @@ bool macro_buffer_process_next(macro_buffer_t* this,bool print_debug){//Returns 
                 }
                 break;
             case RS_Comments:
+                start_p++;
                 if(current_char=='\n'){
                     read_i+=read_offset_i+1;
                     read_offset_i=-1;
@@ -494,7 +509,8 @@ bool macro_buffer_process_next(macro_buffer_t* this,bool print_debug){//Returns 
                         (command_t){.type=CMD_JumpTo,.is_query=is_query,
                                 .cmd_u.jump_to=(jump_to_t){
                                     .cmd_index=jid_cmd_i,
-                                    .str_index=jump_id_manager_search_string_index(this->jim,str_name)
+                                    .str_index=jump_id_manager_search_string_index(this->jim,str_name),
+                                    .store_index=store_index
                                 }
                             }
                         );
@@ -769,6 +785,11 @@ bool macro_buffer_process_next(macro_buffer_t* this,bool print_debug){//Returns 
         read_offset_i++;
     }while(!key_processed);
     this->token_i+=read_i+read_offset_i;
+    char* end_p=this->contents+this->token_i-1;
+    if(!this->parse_error&&start_p!=end_p){
+        this->cmd_arr->cmds[this->cmd_arr->size-1].start_cmd_p=start_p;
+        this->cmd_arr->cmds[this->cmd_arr->size-1].end_cmd_p=end_p;
+    }
     return !this->parse_error;
 }
 void macro_buffer_str_id_check(macro_buffer_t* this){//Check if RepeatStart doesn't have a respective RepeatEnd, or if there are no JumpFroms.
@@ -950,55 +971,62 @@ int command_array_count(const command_array_t* this){
 void command_array_print(const command_array_t* this){
     for(int i=0;i<this->size;i++){
         const command_union_t cmd=this->cmds[i].cmd_u;
+        printf("Command Index: %d ",i);
+        char* cmd_str=char_string_slice(this->cmds[i].start_cmd_p,this->cmds[i].end_cmd_p);
+        printf("\tCommand String: '%s'\n\tCommandType: ",cmd_str);
+        free(cmd_str);
         switch(this->cmds[i].type){
             case CMD_KeyStroke:
-                printf("(%d) Key: %s KeyState: %d\n",i,cmd.ks.key,cmd.ks.key_state);
+                printf("Key %s KeyState: %d\n",cmd.ks.key,cmd.ks.key_state);
                 break;
             case CMD_Delay:
-                printf("(%d) Delay: %lu\n",i,cmd.delay);
+                printf("Delay %lu\n",cmd.delay);
                 break;
             case CMD_RepeatStart:
-                printf("(%d) RepeatStart: Counter: %d str_i: %d\n",i,cmd.repeat_start.counter,cmd.repeat_start.str_index);
+                printf("RepeatStart Counter: %d str_i: %d\n",cmd.repeat_start.counter,cmd.repeat_start.str_index);
                 break;
             case CMD_RepeatEnd:
-                printf("(%d) RepeatEnd: RepeatAtIndex: %d MaxCounter: %d str_i: %d\n",i,cmd.repeat_end.cmd_index,cmd.repeat_end.counter_max,cmd.repeat_start.str_index);
+                printf("RepeatEnd RepeatAtIndex: %d MaxCounter: %d str_i: %d\n",cmd.repeat_end.cmd_index,cmd.repeat_end.counter_max,cmd.repeat_start.str_index);
                 break;
             case CMD_RepeatResetCounters:
-                printf("(%d) RepeatResetCounters\n",i);
+                printf("RepeatResetCounters\n");
                 break;
             case CMD_MouseClick:
-                printf("(%d) MouseClick: MouseType: %d MouseState: %d\n",i,cmd.mouse_click.mouse_type,cmd.mouse_click.mouse_state);
+                printf("MouseClick MouseType: %d MouseState: %d\n",cmd.mouse_click.mouse_type,cmd.mouse_click.mouse_state);
                 break;
             case CMD_MoveMouse:
-                printf("(%d) MoveMouse: x: %d y: %d is_absolute: %d\n",i,cmd.mouse_move.x,cmd.mouse_move.y,cmd.mouse_move.is_absolute);
+                printf("MoveMouse x: %d y: %d is_absolute: %d\n",cmd.mouse_move.x,cmd.mouse_move.y,cmd.mouse_move.is_absolute);
                 break;
             case CMD_Exit:
-                printf("(%d) ExitProgram\n",i);
+                printf("ExitProgram\n");
                 break;
             case CMD_Pass:
-                printf("(%d) Pass\n",i);
+                printf("Pass\n");
                 break;
             case CMD_JumpTo:
-                printf("(%d) JumpTo cmd_i: %d str_i: %d store_index %d\n",i,cmd.jump_to.cmd_index,cmd.jump_to.str_index,cmd.jump_to.store_index);
+                printf("JumpTo cmd_i: %d str_i: %d store_i: %d\n",cmd.jump_to.cmd_index,cmd.jump_to.str_index,cmd.jump_to.store_index);
                 break;
             case CMD_JumpFrom:
-                printf("(%d) JumpFrom str_i: %d\n",i,cmd.jump_from.str_index);
+                printf("JumpFrom str_i: %d\n",cmd.jump_from.str_index);
+                break;
+            case CMD_JumpBack:
+                printf("JumpBack\n");
                 break;
             case CMD_SaveMouseCoords:
-                printf("(%d) Save current mouse coordinates.\n",i);
+                printf("SaveMouseCoords\n");
                 break;
             case CMD_LoadMouseCoords:
-                printf("(%d) Load stored mouse coordinates.\n",i);
+                printf("LoadMouseCoords\n");
                 break;
             case CMD_QueryComparePixel:
-                printf("(%d) QueryComparePixel r: %d g: %d b: %d threshold: %d\n",i,cmd.pixel_compare.r,cmd.pixel_compare.g,cmd.pixel_compare.b,cmd.pixel_compare.thr);
+                printf("QueryComparePixel r: %d g: %d b: %d threshold: %d\n",cmd.pixel_compare.r,cmd.pixel_compare.g,cmd.pixel_compare.b,cmd.pixel_compare.thr);
                 break;
             case CMD_QueryCompareCoords:
                 ;const CompareCoords cc=cmd.compare_coords.cmp_flags;
-                printf("(%d) QueryCompareCoords cmp_flags: '%c,%c%s' var:%d\n",i,(cc&CMP_Y)==CMP_Y?'y':'x',(cc&CMP_GT)==CMP_GT?'>':'<',(cc&CMP_W_EQ)==CMP_W_EQ?",=":"",cmd.compare_coords.var);
+                printf("QueryCompareCoords cmp_flags: '%c,%c%s' var:%d\n",(cc&CMP_Y)==CMP_Y?'y':'x',(cc&CMP_GT)==CMP_GT?'>':'<',(cc&CMP_W_EQ)==CMP_W_EQ?",=":"",cmd.compare_coords.var);
                 break;
             case CMD_QueryCoordsWithin:
-                printf("(%d) QueryCoordsWithin xl: %d yl: %d xh: %d yh: %d\n",i,cmd.coords_within.xl,cmd.coords_within.yl,cmd.coords_within.xh,cmd.coords_within.yh);
+                printf("QueryCoordsWithin xl: %d yl: %d xh: %d yh: %d\n",cmd.coords_within.xl,cmd.coords_within.yl,cmd.coords_within.xh,cmd.coords_within.yh);
                 break;
         }
     }
