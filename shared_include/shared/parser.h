@@ -155,6 +155,7 @@ typedef struct command_s{//Aggregating like for SDL events (enums and unions).
     CommandType type;
     command_union_t cmd_u;
     bool is_query;//For query commands.
+    bool print_cmd;
     char* start_cmd_p;
     char* end_cmd_p;
 }command_t;

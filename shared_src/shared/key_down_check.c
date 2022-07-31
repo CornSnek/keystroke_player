@@ -30,8 +30,9 @@ bool key_down_check_remove(key_down_check_t* this,const char* rem_key){
     return false;
 }
 void key_down_check_print(key_down_check_t* this){
+    printf("Keys pressed: ");
     for(int i=0;i<this->len;i++){
-        printf("%s,",this->keys[i]);
+        printf("%s ",this->keys[i]);
     }
     printf("\n");
 }

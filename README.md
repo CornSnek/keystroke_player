@@ -80,6 +80,11 @@ JumpBack command = `JB>;`
     JumpBack command pops any index stored in the stack.
     Will throw an error if the stack is empty.
 
+PRINT command = `PRINT>>(Command)`
+
+    This prints any command prefixed with PRINT>>. Prints similar to setting debug_print_type=1 in configs.
+    Can't be shown for debug_print_type=2.
+
 There are Query Commands that will skip the next command if false, or not skip if true. They are prefixed with a `?` and end with a `?`. These should be used next to a JumpTo command. For example:
 
 `?(query_command)?JT<ThisQueryIsTrue;(Commands here if false); ... JF>ThisQueryIsTrue;(Commands here if true);`
