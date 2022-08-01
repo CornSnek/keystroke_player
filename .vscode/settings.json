@@ -41,7 +41,8 @@
         "tuple": "c",
         "typeindex": "c",
         "math.h": "c",
-        "cstdlib": "c"
+        "cstdlib": "c",
+        "pthread.h": "c"
     },
     //"editor.autoClosingBrackets": "never",
     //"editor.autoClosingDelete": "never",

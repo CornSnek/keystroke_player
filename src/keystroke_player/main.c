@@ -257,7 +257,7 @@ typedef struct{
     delay_ns_t mouse_check_delay;
     mouse_c_t mouse_c;
 }shared_rs;
-pthread_mutex_t input_mutex;
+pthread_mutex_t input_mutex=PTHREAD_MUTEX_INITIALIZER;
 void* mouse_check_listener(void* srs_v){
     shared_rs* srs_p=(shared_rs*)srs_v;
     int mouse_x_after,mouse_y_after;
@@ -269,7 +269,7 @@ void* mouse_check_listener(void* srs_v){
         pthread_mutex_lock(&input_mutex);
         xdo_get_mouse_location(srs_p->xdo_obj,&mouse_x_after,&mouse_y_after,NULL);
         if(srs_p->mouse_c.x!=mouse_x_after||srs_p->mouse_c.y!=mouse_y_after){
-            printf("Mouse moved. Stopping macro script.\n");
+            printf("Mouse moved %d %d %d %d. Stopping macro script.\n",srs_p->mouse_c.x,mouse_x_after,srs_p->mouse_c.y,mouse_y_after);
             srs_p->program_done=true;
         }
     }
@@ -325,8 +325,14 @@ bool run_program(command_array_t* cmd_arr, Config config, xdo_t* xdo_obj){
     printf("Running.\n");
     xdo_get_mouse_location(xdo_obj,&srs.mouse_c.x,&srs.mouse_c.y,NULL);
     pthread_t input_t;
-    pthread_mutex_init(&input_mutex,NULL);
-    int ret=pthread_create(&input_t,NULL,mouse_check_listener,&srs);
+    int ret=pthread_mutex_init(&input_mutex,PTHREAD_MUTEX_TIMED_NP);
+    if(ret){
+        fprintf(stderr,"Unable to create thread. Exiting program.\n");
+        key_down_check_free(kdc);
+        xdo_free(xdo_obj);
+        return false;
+    }
+    ret=pthread_create(&input_t,NULL,mouse_check_listener,&srs);
     if(ret){
         fprintf(stderr,"Unable to create thread. Exiting program.\n");
         key_down_check_free(kdc);
@@ -473,18 +479,18 @@ bool run_program(command_array_t* cmd_arr, Config config, xdo_t* xdo_obj){
             case CMD_MouseClick:
                 switch(cmd_u.mouse_click.mouse_state){
                     case IS_Down:
-                        cmdprintf("Mouse down (%d).\n",cmd_u.mouse_click.mouse_type);
                         pthread_mutex_lock(&input_mutex);
+                        cmdprintf("Mouse down (%d).\n",cmd_u.mouse_click.mouse_type);
                         xdo_mouse_down(xdo_obj,CURRENTWINDOW,cmd_u.mouse_click.mouse_type);
                         break;
                     case IS_Up:
-                        cmdprintf("Mouse up (%d).\n",cmd_u.mouse_click.mouse_type);
                         pthread_mutex_lock(&input_mutex);
+                        cmdprintf("Mouse up (%d).\n",cmd_u.mouse_click.mouse_type);
                         xdo_mouse_up(xdo_obj,CURRENTWINDOW,cmd_u.mouse_click.mouse_type);
                         break;
                     case IS_Click:
-                        cmdprintf("Mouse click (%d).\n",cmd_u.mouse_click.mouse_type);
                         pthread_mutex_lock(&input_mutex);
+                        cmdprintf("Mouse click (%d).\n",cmd_u.mouse_click.mouse_type);
                         xdo_click_window(xdo_obj,CURRENTWINDOW,cmd_u.mouse_click.mouse_type);
                 }
                 pthread_mutex_unlock(&input_mutex);
@@ -552,7 +558,7 @@ bool run_program(command_array_t* cmd_arr, Config config, xdo_t* xdo_obj){
                 cmdprintf("Moving to stored mouse coordinates x: %d y: %d\n",x_mouse_store,y_mouse_store);
                 pthread_mutex_lock(&input_mutex);
                 xdo_move_mouse(xdo_obj,x_mouse_store,y_mouse_store,0);
-                xdo_get_mouse_location(xdo_obj,&srs.mouse_c.x,&srs.mouse_c.y,0);//Update mouse movement for input_t thread loop.
+                srs.mouse_c.x=x_mouse_store;srs.mouse_c.y=y_mouse_store;//Update mouse movement for input_t thread loop.
                 pthread_mutex_unlock(&input_mutex);
                 PrintLastCommand(LastKey);
                 break;

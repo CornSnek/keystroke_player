@@ -78,7 +78,53 @@ void SSManager_free(shared_string_manager_t* this){
     free(this->c_strs);
     free(this);
 }
-
+macro_paster_t* macro_paster_new(void){
+    macro_paster_t* this=(macro_paster_t*)calloc(1,sizeof(macro_paster_t));
+    EXIT_IF_NULL(this,macro_paster_t)
+    return this;
+}
+bool macro_paster_add_name(macro_paster_t* this,const char* str_name){//Bool if unique string (true), or duplicate (false).
+    for(int i=0;i<this->count;i++){
+        if(!strcmp(this->str_names[i],str_name)){
+            return false;
+        }
+    }
+    this->count++;
+    if(this->str_names){
+        this->str_names=(char**)realloc(this->str_names,sizeof(char*)*(this->count));
+        this->str_var_count=(int*)realloc(this->str_var_count,sizeof(int)*(this->count));
+        this->str_vars=(char***)realloc(this->str_vars,sizeof(char**)*(this->count));
+    }else{
+        this->str_names=(char**)malloc(sizeof(char*));
+        this->str_var_count=(int*)malloc(sizeof(int));
+        this->str_vars=(char***)malloc(sizeof(char**));
+    }
+    EXIT_IF_NULL(this->str_names,char**)
+    EXIT_IF_NULL(this->str_var_count,int*)
+    EXIT_IF_NULL(this->str_vars,char***)
+    const int add_i=this->count-1;
+    this->str_names[add_i]=(char*)malloc(sizeof(char)*(strlen(str_name)+1));
+    EXIT_IF_NULL(this->str_names[add_i],char*)
+    this->str_var_count[add_i]=0;
+    strcpy(this->str_names[add_i],str_name);
+    return true;
+}
+bool macro_paster_add_var(macro_paster_t* this,const char* str_name,const char* var_name){//TODO
+    (void)this;(void)str_name;(void)var_name;
+    return false;
+}
+void macro_paster_free(macro_paster_t* this){
+    for(int str_i=0;str_i<this->count;str_i++){
+        free(this->str_names[str_i]);
+        for(int var_i=0;var_i<this->str_var_count[str_i];var_i++){
+            free(this->str_vars[var_i]);
+        }
+    }
+    free(this->str_names);
+    free(this->str_var_count);
+    free(this->str_vars);
+    free(this);
+}
 int trim_whitespace(char** strptr){//For null-terminated strings only, and reedit pointer to resize for trimmed strings. Returns int to get total length of the trimmed string.
     int str_i=0;
     int whitespace_count=0;

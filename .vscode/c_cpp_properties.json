@@ -4,6 +4,7 @@
       "name": "Linux",
       "includePath": [
         "${workspaceFolder}/shared_include/shared",
+        "${workspaceFolder}/include/keystroke_player",
         "${workspaceFolder}/include/keystroke_player_tests"
       ],
       "compilerArgs": [

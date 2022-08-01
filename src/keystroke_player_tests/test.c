@@ -2,7 +2,6 @@
 #include "parser.h"
 #include "test_utils.h"
 #include <string.h>
-#include <xdo.h>
 #include <check.h>
 START_TEST(parse_from_string){
     printf("Starting Test parse_from_string\n");
