@@ -139,3 +139,34 @@ char* char_string_slice(char* start_p,char* end_p){
     char_p[end_p-start_p+1]='\0';
     return char_p;
 }
+/*
+Assign pointers find_begin_p and find_end_p to the innermost bracket in search_str.
+Int means + if more begin brackets, -1 if one more end bracket (terminates immediately), or 0 if brackets all match.
+*/
+int first_innermost_bracket(const char* search_str,const char* begin_bracket,const char* end_bracket,const char** find_begin_p,const char** find_end_p){
+    int depth=0;
+    int max_depth=0;
+    bool find_end_b=false;
+    for(size_t str_i=0;str_i<strlen(search_str);str_i++){
+        if(search_str[str_i]==begin_bracket[0]){
+            if(!strncmp(search_str+str_i,begin_bracket,strlen(begin_bracket))){
+                if(++depth==max_depth+1){
+                    max_depth++;
+                    *find_begin_p=search_str+str_i;
+                    find_end_b=true;
+                }
+                str_i+=strlen(begin_bracket)-1;//Skip characters of begin bracket string so there's no overlapping. -1 because of ++ in for loop.
+            }
+        }else if(search_str[str_i]==end_bracket[0]){
+            if(!strncmp(search_str+str_i,end_bracket,strlen(end_bracket))){
+                if(--depth<0) return -1;//Immediately terminate (-1 means not a dyck word.)
+                if(find_end_b){
+                    *find_end_p=search_str+str_i;
+                    find_end_b=false;
+                }
+                str_i+=strlen(end_bracket)-1; //No overlapping for end bracket string.
+            }
+        }
+    }
+    return depth;//No mismatched brackets.
+}

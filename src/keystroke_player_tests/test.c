@@ -1,5 +1,6 @@
 #include "shared_string.h"
 #include "parser.h"
+#include "test_utils.h"
 #include <string.h>
 #include <xdo.h>
 #include <check.h>
@@ -79,6 +80,45 @@ START_TEST(shared_string_test){
     free(a_string_heap);
 }
 END_TEST
+START_TEST(innermost_test){
+    char str[]="[![!M_NAME:var1:var2:var3]][![![!M_NAME2]]]";
+    printf("%s\n",str);
+    const char* s_p,* e_p;
+    int extra_p=first_innermost_bracket(str,"[!","]",&s_p,&e_p);
+    printf("%sErrors\n",!extra_p?"No ":"");
+    if(!extra_p){
+        printf("%lx %lx %lx\n",(size_t)str,(size_t)s_p,(size_t)e_p);
+        printf("%30s\n%30s\n%30s\n",str,s_p,e_p);
+    }
+    #define DYCK_WORD_LEN 5
+    bool dyck_word[DYCK_WORD_LEN*2]={0};
+    for(size_t i=DYCK_WORD_LEN;i<DYCK_WORD_LEN*2;i++) dyck_word[i]=true;
+    size_t cat=catalan(DYCK_WORD_LEN);
+    #define START_B "<[!"
+    #define END_B "]>"
+    const size_t str_len_s_b=strlen(START_B),str_len_e_b=strlen(END_B);
+    const size_t str_len_total=(str_len_s_b+str_len_e_b)*DYCK_WORD_LEN;
+    char* bracket_str=malloc(sizeof(char)*(str_len_total)+1);
+    bracket_str[str_len_total]='\0';//Null terminate.
+    for(size_t c=0;c<cat;c++){
+        next_dyck_word(dyck_word,DYCK_WORD_LEN*2);
+        size_t str_i=0;
+        for(size_t i=0;i<DYCK_WORD_LEN*2;i++){//0 is start bracket, 1 is end bracket.
+            if(dyck_word[i]){
+                strncpy(bracket_str+str_i,END_B,str_len_e_b);
+                str_i+=str_len_e_b;
+            }else{
+                strncpy(bracket_str+str_i,START_B,str_len_s_b);
+                str_i+=str_len_s_b;
+            }
+        }
+        const char* begin_p,* end_p;
+        ck_assert_int_eq(first_innermost_bracket(bracket_str,START_B,END_B,&begin_p,&end_p),0);
+        printf("%s\n",bracket_str);
+    }
+    free(bracket_str);
+}
+END_TEST
 Suite* test_suite(void){
     Suite* s;
     TCase* tc_core;
@@ -87,6 +127,7 @@ Suite* test_suite(void){
     tcase_add_test(tc_core,parse_from_string);
     tcase_add_test(tc_core,repeat_id_search_str_test);
     tcase_add_test(tc_core,shared_string_test);
+    tcase_add_test(tc_core,innermost_test);
     suite_add_tcase(s,tc_core);
     return s;
 }

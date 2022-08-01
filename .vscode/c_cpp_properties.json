@@ -3,7 +3,8 @@
     {
       "name": "Linux",
       "includePath": [
-        "${workspaceFolder}/shared_include/shared"
+        "${workspaceFolder}/shared_include/shared",
+        "${workspaceFolder}/include/keystroke_player_tests"
       ],
       "compilerArgs": [
         "-O3",

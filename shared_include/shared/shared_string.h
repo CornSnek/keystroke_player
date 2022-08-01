@@ -20,4 +20,7 @@ bool char_is_keystate(char c);
 bool char_is_whitespace(char c);
 bool char_is_delay(char c);
 char* char_string_slice(char* start_p,char* end_p);
+int first_innermost_bracket(const char* search_str,const char* begin_pat,const char* end_pat,const char** find_begin_p,const char** find_end_p);
+void next_dyck_word(bool* bits,size_t bits_size);
+size_t catalan(unsigned int n);
 #endif

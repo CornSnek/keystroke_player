@@ -40,7 +40,8 @@
         "mutex": "c",
         "tuple": "c",
         "typeindex": "c",
-        "math.h": "c"
+        "math.h": "c",
+        "cstdlib": "c"
     },
     //"editor.autoClosingBrackets": "never",
     //"editor.autoClosingDelete": "never",
