@@ -157,7 +157,7 @@ void _macro_paster_write_var_value(macro_paster_t* this,int str_name_i,int var_n
     EXIT_IF_NULL(this->str_var_values[str_name_i][var_name_i],char*)
     strcpy(this->str_var_values[str_name_i][var_name_i],var_value);
 }
-bool macro_paster_var_value_str(macro_paster_t* this,const char* str_name,const char* var_name,const char* var_value){
+bool macro_paster_write_var_by_str(macro_paster_t* this,const char* str_name,const char* var_name,const char* var_value){
     int str_name_i;
     int var_name_i;
     for(int i=0;i<this->count;i++){
@@ -181,7 +181,8 @@ bool macro_paster_var_value_str(macro_paster_t* this,const char* str_name,const 
     _macro_paster_write_var_value(this,str_name_i,var_name_i,var_value);
     return true;
 }
-bool macro_paster_var_value_ind(macro_paster_t* this,const char* str_name,int var_i,const char* var_value){
+//Same as above, but uses var indices.
+bool macro_paster_write_var_by_ind(macro_paster_t* this,const char* str_name,int var_i,const char* var_value){
     int str_name_i;
     for(int i=0;i<this->count;i++){
         if(!strcmp(this->str_names[i],str_name)){

@@ -101,13 +101,13 @@ bool macro_buffer_process_next(macro_buffer_t* this,bool print_debug){//Returns 
                     key_processed=true;
                     break;
                 }
-                if(!strncmp(current_char_p,"JT<",3)){
+                if(!strncmp(current_char_p,"JT>",3)){
                     read_i+=3;
                     read_offset_i=-1;
                     read_state=RS_JumpTo;
                     break;
                 }
-                if(!strncmp(current_char_p,"JTS<",4)){
+                if(!strncmp(current_char_p,"JTS>",4)){
                     read_i+=4;
                     read_offset_i=-1;
                     store_index=true;
@@ -595,13 +595,13 @@ bool macro_buffer_process_next(macro_buffer_t* this,bool print_debug){//Returns 
                 break;
             case RS_Query:
                 is_query=true;
-                if(!strncmp(current_char_p,"pxc:",4)){
+                if(!strncmp(current_char_p,"pxc=",4)){
                     read_i+=4;
                     read_offset_i=-1;
                     read_state=RS_QueryComparePixel;
                     break;
                 }
-                if(!strncmp(current_char_p,"coords:",7)){
+                if(!strncmp(current_char_p,"coords=",7)){
                     if(this->contents[this->token_i+read_i+read_offset_i+7]=='x'){
                         cmp_flags|=CMP_X;
                         read_i+=8;
@@ -616,7 +616,7 @@ bool macro_buffer_process_next(macro_buffer_t* this,bool print_debug){//Returns 
                         break;
                     }
                 }
-                if(!strncmp(current_char_p,"within:",7)){
+                if(!strncmp(current_char_p,"within=",7)){
                     read_i+=7;
                     read_offset_i=-1;
                     read_state=RS_QueryCoordsWithin;
