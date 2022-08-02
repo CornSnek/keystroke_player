@@ -64,7 +64,15 @@ int main(void){
         switch(input_state){
             case IS_Start:
                 also_run=false;
-                printf("Keystroke Player Menu:\nType c for Config\nType b to Build File\nType r to Build and Run File\nType t to Test coordinates of mouse and color\nType q to Quit\nType to continue: ");
+                printf(
+                    "Keystroke Player: Plays mouse/keyboard macro scripts and stops when Esc key is pressed, or the script exits\n"
+                    "Type c for Config\n"
+                    "Type b to Build File\n"
+                    "Type r to Build and Run File\n"
+                    "Type t to Test coordinates of mouse and color\n"
+                    "Type q to Quit\n"
+                    "Type to continue: "
+                );
                 fgets(input_str,INPUT_BUFFER_LEN+1,stdin);
                 //fgets_change(input_str,INPUT_BUFFER_LEN);//Remove '\n' if any.
                 if(!strcmp(input_str,"q\n")) goto done;
