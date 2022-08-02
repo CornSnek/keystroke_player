@@ -8,7 +8,9 @@
 int usleep(useconds_t usec);
 #include <xdo.h>
 #include <pthread.h>
+#include <X11/Xlib.h>
 #include <X11/Xutil.h>
+#include <assert.h>
 
 #define CLEAR_TERM "\x1B[H\x1B[0J"
 #define NSEC_TO_SEC 1000000000
@@ -28,16 +30,12 @@ typedef enum _DebugPrintType{
 }DebugPrintType;
 typedef struct{
     delay_ns_t init_delay;
-    delay_ns_t mouse_check_delay;
+    delay_ns_t key_check_delay;
     DebugPrintType debug_print_type;
 }Config;
 const Config InitConfig={
-    .init_delay=2000000,.mouse_check_delay=100000,.debug_print_type=DBP_CommandNumber
+    .init_delay=2000000,.key_check_delay=100000,.debug_print_type=DBP_None
 };
-typedef struct mouse_c_s{
-    int x;
-    int y;
-}mouse_c_t;
 bool fgets_change(char* str,int buffer_len);
 bool write_to_config(const Config config);
 Config read_config_file(void);
@@ -81,10 +79,10 @@ int main(void){
                 printf("Value right now is %lu (Enter nothing to skip): ",config.init_delay);
                 fgets(input_str,INPUT_BUFFER_LEN+1,stdin);
                 if(input_str[0]!='\n') config.init_delay=strtol(input_str,NULL,10);
-                printf("Set value for mouse_check_delay (Microseconds to check if mouse moved)\n");
-                printf("Value right now is %lu (Enter nothing to skip): ",config.mouse_check_delay);
+                printf("Set value for key_check_delay (Microseconds to check if escape key is pressed)\n");
+                printf("Value right now is %lu (Enter nothing to skip): ",config.key_check_delay);
                 fgets(input_str,INPUT_BUFFER_LEN+1,stdin);
-                if(input_str[0]!='\n') config.mouse_check_delay=strtol(input_str,NULL,10);
+                if(input_str[0]!='\n') config.key_check_delay=strtol(input_str,NULL,10);
                 while(true){
                     printf("Set value for debug_commands (Prints debug commands when playing macro)\n");
                     printf("0 for no debug printing, 1 to print all commands (parsing and running program), 2 to print some command numbers and strings (clears terminal)\n");
@@ -254,25 +252,33 @@ ProgramStatus parse_file(const char* path, xdo_t* xdo_obj, Config config, bool a
 typedef struct{
     xdo_t* xdo_obj;
     bool program_done;
-    delay_ns_t mouse_check_delay;
-    mouse_c_t mouse_c;
+    delay_ns_t key_check_delay;
 }shared_rs;
 pthread_mutex_t input_mutex=PTHREAD_MUTEX_INITIALIZER;
-void* mouse_check_listener(void* srs_v){
-    shared_rs* srs_p=(shared_rs*)srs_v;
-    int mouse_x_after,mouse_y_after;
+void* keyboard_check_listener(void* srs_v){
+    shared_rs* const srs_p=(shared_rs*)srs_v;
     pthread_mutex_lock(&input_mutex);
-    delay_ns_t mouse_check_delay=srs_p->mouse_check_delay;
+    delay_ns_t key_check_delay=srs_p->key_check_delay;
+    Display* xdpy=((shared_rs*)srs_v)->xdo_obj->xdpy;
+    int scr=DefaultScreen(xdpy);
+    XGrabKey(xdpy,XKeysymToKeycode(xdpy,XK_Escape),None,RootWindow(xdpy,scr),True,GrabModeSync,GrabModeAsync);
+    XEvent e={0};
     while(!srs_p->program_done){
         pthread_mutex_unlock(&input_mutex);
-        usleep(mouse_check_delay);
+        usleep(key_check_delay);
         pthread_mutex_lock(&input_mutex);
-        xdo_get_mouse_location(srs_p->xdo_obj,&mouse_x_after,&mouse_y_after,NULL);
-        if(srs_p->mouse_c.x!=mouse_x_after||srs_p->mouse_c.y!=mouse_y_after){
-            printf("Mouse moved. Stopping macro script.\n");
-            srs_p->program_done=true;
+        while(XPending(xdpy)){ //XPending doesn't make XNextEvent block if 0 events.
+            XNextEvent(xdpy,&e); 
+            switch(e.type){
+                case KeyPress:
+                    printf("Escape key pressed. Stopping macro script.\n");
+                    srs_p->program_done=true;
+                    break;
+                default: break;
+            }
         }
     }
+    XUngrabKey(xdpy,XKeysymToKeycode(xdpy,XK_Escape),None,RootWindow(xdpy,scr));
     pthread_mutex_unlock(&input_mutex);
     pthread_exit(NULL);
 }
@@ -319,12 +325,11 @@ bool run_program(command_array_t* cmd_arr, Config config, xdo_t* xdo_obj){
     xdo_select_window_with_click(xdo_obj,&focus_window);
     int cmd_arr_len=command_array_count(cmd_arr),cmd_arr_i=0,stack_cmd_i;
     key_down_check_t* kdc=key_down_check_new();
-    shared_rs srs=(shared_rs){.xdo_obj=xdo_obj,.program_done=false,.mouse_c={0},.mouse_check_delay=config.mouse_check_delay};
+    shared_rs srs=(shared_rs){.xdo_obj=xdo_obj,.program_done=false,.key_check_delay=config.key_check_delay};
     printf("Starting script in %ld microseconds (%f seconds)\n",config.init_delay,(float)config.init_delay/1000000);
     usleep(config.init_delay);
     printf("Running.\n");
-    xdo_get_mouse_location(xdo_obj,&srs.mouse_c.x,&srs.mouse_c.y,NULL);
-    pthread_t input_t;
+    pthread_t keyboard_input_t;
     int ret=pthread_mutex_init(&input_mutex,PTHREAD_MUTEX_TIMED_NP);
     if(ret){
         fprintf(stderr,"Unable to create thread. Exiting program.\n");
@@ -332,7 +337,7 @@ bool run_program(command_array_t* cmd_arr, Config config, xdo_t* xdo_obj){
         xdo_free(xdo_obj);
         return false;
     }
-    ret=pthread_create(&input_t,NULL,mouse_check_listener,&srs);
+    ret=pthread_create(&keyboard_input_t,NULL,keyboard_check_listener,&srs);
     if(ret){
         fprintf(stderr,"Unable to create thread. Exiting program.\n");
         key_down_check_free(kdc);
@@ -501,10 +506,10 @@ bool run_program(command_array_t* cmd_arr, Config config, xdo_t* xdo_obj){
                 pthread_mutex_lock(&input_mutex);
                 if(cmd_u.mouse_move.is_absolute) xdo_move_mouse(xdo_obj,cmd_u.mouse_move.x,cmd_u.mouse_move.y,0);
                 else xdo_move_mouse_relative(xdo_obj,cmd_u.mouse_move.x,cmd_u.mouse_move.y);
-                xdo_get_mouse_location(xdo_obj,&srs.mouse_c.x,&srs.mouse_c.y,0);//Update mouse movement for input_t thread loop.
                 if(config.debug_print_type==DBP_AllCommands||this_cmd.print_cmd){
+                    xdo_get_mouse_location(xdo_obj,&x_mouse,&y_mouse,0);//To check mouse location.
                     if(cmd_u.mouse_move.is_absolute) printf("\n");
-                    else printf(" Mouse now at (%d,%d).\n",srs.mouse_c.x,srs.mouse_c.y);
+                    else printf(" Mouse now at (%d,%d).\n",x_mouse,y_mouse);
                 } 
                 pthread_mutex_unlock(&input_mutex);
                 PrintLastCommand(LastKey);
@@ -558,7 +563,6 @@ bool run_program(command_array_t* cmd_arr, Config config, xdo_t* xdo_obj){
                 cmdprintf("Moving to stored mouse coordinates x: %d y: %d\n",x_mouse_store,y_mouse_store);
                 pthread_mutex_lock(&input_mutex);
                 xdo_move_mouse(xdo_obj,x_mouse_store,y_mouse_store,0);
-                srs.mouse_c.x=x_mouse_store;srs.mouse_c.y=y_mouse_store;//Update mouse movement for input_t thread loop.
                 pthread_mutex_unlock(&input_mutex);
                 PrintLastCommand(LastKey);
                 break;
@@ -607,13 +611,13 @@ bool run_program(command_array_t* cmd_arr, Config config, xdo_t* xdo_obj){
             }else cmd_arr_i+=2;//Skip
         }
         if(cmd_arr_i==cmd_arr_len){
-            srs.program_done=true;//To end the input_t thread loop as well.
+            srs.program_done=true;//To end the mouse_input_t thread loop as well.
         }
     }
     timespec_diff(&ts_begin,NULL,&ts_diff);
     printf("%ld.%09ld seconds since macro script ran.\n",ts_diff.tv_sec,ts_diff.tv_nsec);
     pthread_mutex_unlock(&input_mutex);
-    pthread_join(input_t,NULL);
+    pthread_join(keyboard_input_t,NULL);
     key_down_check_key_up(kdc,xdo_obj,CURRENTWINDOW);
     key_down_check_free(kdc);
     return no_error;
