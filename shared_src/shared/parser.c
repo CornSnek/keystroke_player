@@ -170,8 +170,10 @@ bool macro_buffer_process_next(macro_buffer_t* this,bool print_debug){//Returns 
                         read_offset_i=-1;
                         read_state=RS_RepeatEnd;
                         break;
+                    case ';'://Fallthough
                     case '\0':
-                        key_processed=true;
+                        this->token_i+=read_i+read_offset_i+1;//Don't add string slice to null characters or semi-colon.
+                        return true;
                         break;
                     case '\n':
                         start_p++;
@@ -211,7 +213,10 @@ bool macro_buffer_process_next(macro_buffer_t* this,bool print_debug){//Returns 
                     this->line_num++;
                     this->char_num=0;//1 after loop repeats.
                     read_state=RS_Start;
-                }else if(current_char=='\0') key_processed=true;
+                }else if(current_char=='\0'){//Don't add string slice to null characters.
+                    this->token_i+=read_i+read_offset_i+1;
+                    return true;
+                }
                 break; //No need for errors here.
             case RS_RepeatStart:
                 if(char_is_key(current_char)) break;
@@ -793,7 +798,7 @@ bool macro_buffer_process_next(macro_buffer_t* this,bool print_debug){//Returns 
     }while(!key_processed);
     this->token_i+=read_i+read_offset_i;
     char* end_p=this->contents+this->token_i-1;
-    if(!this->parse_error&&start_p!=end_p){
+    if(!this->parse_error){
         this->cmd_arr->cmds[this->cmd_arr->size-1].start_cmd_p=start_p;
         this->cmd_arr->cmds[this->cmd_arr->size-1].end_cmd_p=end_p;
     }

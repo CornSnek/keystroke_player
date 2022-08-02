@@ -269,7 +269,7 @@ void* mouse_check_listener(void* srs_v){
         pthread_mutex_lock(&input_mutex);
         xdo_get_mouse_location(srs_p->xdo_obj,&mouse_x_after,&mouse_y_after,NULL);
         if(srs_p->mouse_c.x!=mouse_x_after||srs_p->mouse_c.y!=mouse_y_after){
-            printf("Mouse moved %d %d %d %d. Stopping macro script.\n",srs_p->mouse_c.x,mouse_x_after,srs_p->mouse_c.y,mouse_y_after);
+            printf("Mouse moved. Stopping macro script.\n");
             srs_p->program_done=true;
         }
     }

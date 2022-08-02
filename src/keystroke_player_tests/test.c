@@ -118,6 +118,33 @@ START_TEST(innermost_test){
     free(bracket_str);
 }
 END_TEST
+START_TEST(macro_paster_test){
+    macro_paster_t* mp=macro_paster_new();
+    ck_assert_int_eq(macro_paster_add_name(mp,"AAA"),1);
+    ck_assert_int_eq(macro_paster_add_name(mp,"AAA"),0);
+    ck_assert_int_eq(macro_paster_add_name(mp,"BBB"),1);
+    ck_assert_int_eq(macro_paster_add_var(mp,"CCC","def"),0);
+    ck_assert_int_eq(macro_paster_add_var(mp,"BBB","def"),1);
+    ck_assert_int_eq(macro_paster_add_var(mp,"BBB","def"),0);
+    ck_assert_int_eq(macro_paster_add_name(mp,"CCC"),1);
+    ck_assert_int_eq(macro_paster_add_var(mp,"BBB","ghi"),1);
+    ck_assert_int_eq(macro_paster_add_var(mp,"CCC","ghi"),1);
+    ck_assert_int_eq(macro_paster_var_value_str(mp,"DDD","aaa","ddd"),0);
+    ck_assert_int_eq(macro_paster_var_value_str(mp,"CCC","ghj","klmnop"),0);
+    ck_assert_int_eq(macro_paster_var_value_str(mp,"BBB","def","klmnop"),1);
+    ck_assert_int_eq(macro_paster_var_value_str(mp,"BBB","ghi","nopqrst"),1);
+    ck_assert_int_eq(macro_paster_var_value_str(mp,"CCC","ghi","write"),1);
+    ck_assert_int_eq(macro_paster_var_value_str(mp,"CCC","ghi","rewrite"),1);
+    ck_assert_int_eq(macro_paster_add_var(mp,"AAA","var_1"),1);
+    ck_assert_int_eq(macro_paster_var_value_ind(mp,"DDD",0,"value_1"),0);
+    ck_assert_int_eq(macro_paster_var_value_ind(mp,"AAA",-1,"value_1"),0);
+    ck_assert_int_eq(macro_paster_var_value_ind(mp,"AAA",1,"value_1"),0);
+    ck_assert_int_eq(macro_paster_var_value_ind(mp,"AAA",0,"value_1"),1);
+    ck_assert_int_eq(macro_paster_var_value_ind(mp,"AAA",0,"value_2"),1);
+    macro_paster_print(mp);
+    macro_paster_free(mp);
+}
+END_TEST
 Suite* test_suite(void){
     Suite* s;
     TCase* tc_core;
@@ -127,6 +154,7 @@ Suite* test_suite(void){
     tcase_add_test(tc_core,repeat_id_search_str_test);
     tcase_add_test(tc_core,shared_string_test);
     tcase_add_test(tc_core,innermost_test);
+    tcase_add_test(tc_core,macro_paster_test);
     suite_add_tcase(s,tc_core);
     return s;
 }

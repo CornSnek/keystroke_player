@@ -83,9 +83,10 @@ macro_paster_t* macro_paster_new(void){
     EXIT_IF_NULL(this,macro_paster_t)
     return this;
 }
-bool macro_paster_add_name(macro_paster_t* this,const char* str_name){//Bool if unique string (true), or duplicate (false).
+bool macro_paster_add_name(macro_paster_t* this,const char* str_name){
     for(int i=0;i<this->count;i++){
         if(!strcmp(this->str_names[i],str_name)){
+            fprintf(stderr,"In macro_paster, string '%s' already exists as a macro name.\n",str_name);
             return false;
         }
     }
@@ -94,35 +95,136 @@ bool macro_paster_add_name(macro_paster_t* this,const char* str_name){//Bool if 
         this->str_names=(char**)realloc(this->str_names,sizeof(char*)*(this->count));
         this->str_var_count=(int*)realloc(this->str_var_count,sizeof(int)*(this->count));
         this->str_vars=(char***)realloc(this->str_vars,sizeof(char**)*(this->count));
+        this->str_var_values=(char***)realloc(this->str_var_values,sizeof(char**)*(this->count));
     }else{
         this->str_names=(char**)malloc(sizeof(char*));
         this->str_var_count=(int*)malloc(sizeof(int));
         this->str_vars=(char***)malloc(sizeof(char**));
+        this->str_var_values=(char***)malloc(sizeof(char**));
     }
     EXIT_IF_NULL(this->str_names,char**)
     EXIT_IF_NULL(this->str_var_count,int*)
     EXIT_IF_NULL(this->str_vars,char***)
+    EXIT_IF_NULL(this->str_var_values,char***)
     const int add_i=this->count-1;
     this->str_names[add_i]=(char*)malloc(sizeof(char)*(strlen(str_name)+1));
     EXIT_IF_NULL(this->str_names[add_i],char*)
-    this->str_var_count[add_i]=0;
     strcpy(this->str_names[add_i],str_name);
+    this->str_var_count[add_i]=0;
+    this->str_vars[add_i]=0;
+    this->str_var_values[add_i]=0;
     return true;
 }
-bool macro_paster_add_var(macro_paster_t* this,const char* str_name,const char* var_name){//TODO
-    (void)this;(void)str_name;(void)var_name;
+bool macro_paster_add_var(macro_paster_t* this,const char* str_name,const char* var_name){
+    int str_name_i;
+    for(int i=0;i<this->count;i++){
+        if(!strcmp(this->str_names[i],str_name)){
+            str_name_i=i;
+            goto string_exists;
+        }
+    }
+    fprintf(stderr,"In macro_paster, string '%s' does not exist. Did not add variable string '%s'.\n",str_name,var_name);
     return false;
+    string_exists:
+    for(int i=0;i<this->str_var_count[str_name_i];i++){
+        if(!strcmp(this->str_vars[str_name_i][i],var_name)){
+            fprintf(stderr,"In macro_paster, variable '%s' already exists for string '%s'. Did not add variable.\n",var_name,str_name);
+            return false;
+        }
+    }
+    int* const var_count=this->str_var_count+str_name_i;
+    char*** const var_array=this->str_vars+str_name_i;
+    char*** const var_value_array=this->str_var_values+str_name_i;
+    (*var_count)++;
+    if(*var_array){
+        *var_array=(char**)realloc(*var_array,sizeof(char*)*(*var_count));
+        *var_value_array=(char**)realloc(*var_value_array,sizeof(char*)*(*var_count));
+    }else{
+        *var_array=(char**)malloc(sizeof(char*));
+        *var_value_array=(char**)malloc(sizeof(char*));
+    }
+    EXIT_IF_NULL(*var_array,char**)
+    EXIT_IF_NULL(*var_value_array,char**)
+    (*var_array)[*var_count-1]=(char*)malloc(sizeof(char)*(strlen(var_name)+1));
+    (*var_value_array)[*var_count-1]=(char*)calloc(1,sizeof(char));//As null string.
+    EXIT_IF_NULL((*var_array)[*var_count-1],char*)
+    EXIT_IF_NULL((*var_value_array)[*var_count-1],char*)
+    strcpy((*var_array)[*var_count-1],var_name);
+    return true;
+}
+void _macro_paster_write_var_value(macro_paster_t* this,int str_name_i,int var_name_i,const char* var_value){
+    this->str_var_values[str_name_i][var_name_i]=(char*)realloc(this->str_var_values[str_name_i][var_name_i],sizeof(char)*(strlen(var_value)+1));
+    EXIT_IF_NULL(this->str_var_values[str_name_i][var_name_i],char*)
+    strcpy(this->str_var_values[str_name_i][var_name_i],var_value);
+}
+bool macro_paster_var_value_str(macro_paster_t* this,const char* str_name,const char* var_name,const char* var_value){
+    int str_name_i;
+    int var_name_i;
+    for(int i=0;i<this->count;i++){
+        if(!strcmp(this->str_names[i],str_name)){
+            str_name_i=i;
+            goto string_exists;
+        }
+    }
+    fprintf(stderr,"In macro_paster, string '%s' does not exist. Did not change variable string '%s'.\n",str_name,var_name);
+    return false;
+    string_exists:
+    for(int i=0;i<this->str_var_count[str_name_i];i++){
+        if(!strcmp(this->str_vars[str_name_i][i],var_name)){
+            var_name_i=i;
+            goto variable_exists;
+        }
+    }
+    fprintf(stderr,"In macro_paster, variable '%s' does not exist for string '%s'.\n",var_name,str_name);
+    return false;
+    variable_exists:
+    _macro_paster_write_var_value(this,str_name_i,var_name_i,var_value);
+    return true;
+}
+bool macro_paster_var_value_ind(macro_paster_t* this,const char* str_name,int var_i,const char* var_value){
+    int str_name_i;
+    for(int i=0;i<this->count;i++){
+        if(!strcmp(this->str_names[i],str_name)){
+            str_name_i=i;
+            goto string_exists;
+        }
+    }
+    fprintf(stderr,"In macro_paster, string '%s' does not exist. Did not change variable index #%d.\n",str_name,var_i);
+    return false;
+    string_exists:
+    if(var_i>=0&&var_i<this->str_var_count[str_name_i]){
+        _macro_paster_write_var_value(this,str_name_i,var_i,var_value);
+        return true;
+    }else{
+        fprintf(stderr,"In macro_paster, variable index #%d is out of range for string '%s'.\n",var_i,str_name);
+        return false;
+    }
+}
+void macro_paster_print(macro_paster_t* this){
+    for(int str_i=0;str_i<this->count;str_i++){
+        printf("Macro name: %s: ",this->str_names[str_i]);
+        printf("Variables:[");
+        for(int var_i=0;var_i<this->str_var_count[str_i];var_i++){
+            char* const str_value=this->str_var_values[str_i][var_i];
+            printf("%s=%s%s",this->str_vars[str_i][var_i],(str_value[0])?str_value:"(NULL)",(var_i!=this->str_var_count[str_i]-1)?",":"");
+        }
+        printf("]\n");
+    }
 }
 void macro_paster_free(macro_paster_t* this){
     for(int str_i=0;str_i<this->count;str_i++){
         free(this->str_names[str_i]);
         for(int var_i=0;var_i<this->str_var_count[str_i];var_i++){
-            free(this->str_vars[var_i]);
+            free(this->str_vars[str_i][var_i]);
+            free(this->str_var_values[str_i][var_i]);
         }
+        free(this->str_vars[str_i]);
+        free(this->str_var_values[str_i]);
     }
     free(this->str_names);
     free(this->str_var_count);
     free(this->str_vars);
+    free(this->str_var_values);
     free(this);
 }
 int trim_whitespace(char** strptr){//For null-terminated strings only, and reedit pointer to resize for trimmed strings. Returns int to get total length of the trimmed string.
