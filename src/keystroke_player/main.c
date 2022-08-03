@@ -237,7 +237,8 @@ ProgramStatus parse_file(const char* path, xdo_t* xdo_obj, Config config, bool a
     fclose(f_obj);
     command_array_t* cmd_arr=command_array_new();
     macro_buffer_t* mb=macro_buffer_new(file_str,cmd_arr);
-    while(macro_buffer_process_next(mb,config.debug_print_type==DBP_AllCommands)){
+    while(true){
+        macro_buffer_process_next(mb,config.debug_print_type==DBP_AllCommands);
         if(mb->token_i>mb->str_size) break;
     }
     if(!mb->parse_error){
@@ -324,6 +325,15 @@ bool pop_cmd_index(int* cmd_i){
         *cmd_i=0;
         return false;
     }
+}
+#include <X11/extensions/XTest.h>
+//Based from xdo.c file using xdo_move_mouse_relative's functions, as XWarpPointer makes the mouse not click properly.
+int custom_xdo_move_mouse_absolute(const xdo_t *xdo,int x,int y,int screen){
+    int ret=0,last_mouse_x,last_mouse_y;
+    xdo_get_mouse_location(xdo,&last_mouse_x,&last_mouse_y,&screen);
+    ret=XTestFakeRelativeMotionEvent(xdo->xdpy,x-last_mouse_x,y-last_mouse_y,CurrentTime);
+    XFlush(xdo->xdpy);
+    return ret==0;
 }
 bool run_program(command_array_t* cmd_arr, Config config, xdo_t* xdo_obj){
     Window focus_window;//Will be ignored.
@@ -509,7 +519,7 @@ bool run_program(command_array_t* cmd_arr, Config config, xdo_t* xdo_obj){
             case CMD_MoveMouse:
                 cmdprintf("Mouse move at (%d,%d) (%s).",cmd_u.mouse_move.x,cmd_u.mouse_move.y,cmd_u.mouse_move.is_absolute?"absolute":"relative");
                 pthread_mutex_lock(&input_mutex);
-                if(cmd_u.mouse_move.is_absolute) xdo_move_mouse(xdo_obj,cmd_u.mouse_move.x,cmd_u.mouse_move.y,0);
+                if(cmd_u.mouse_move.is_absolute) custom_xdo_move_mouse_absolute(xdo_obj,cmd_u.mouse_move.x,cmd_u.mouse_move.y,0);
                 else xdo_move_mouse_relative(xdo_obj,cmd_u.mouse_move.x,cmd_u.mouse_move.y);
                 if(config.debug_print_type==DBP_AllCommands||this_cmd.print_cmd){
                     xdo_get_mouse_location(xdo_obj,&x_mouse,&y_mouse,0);//To check mouse location.
@@ -567,7 +577,7 @@ bool run_program(command_array_t* cmd_arr, Config config, xdo_t* xdo_obj){
             case CMD_LoadMouseCoords:
                 cmdprintf("Moving to stored mouse coordinates x: %d y: %d\n",x_mouse_store,y_mouse_store);
                 pthread_mutex_lock(&input_mutex);
-                xdo_move_mouse(xdo_obj,x_mouse_store,y_mouse_store,0);
+                custom_xdo_move_mouse_absolute(xdo_obj,x_mouse_store,y_mouse_store,0);
                 pthread_mutex_unlock(&input_mutex);
                 PrintLastCommand(LastKey);
                 break;

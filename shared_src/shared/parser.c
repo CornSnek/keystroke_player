@@ -18,6 +18,10 @@ void print_where_error_is(const char* contents,int begin_error,int end_error){
     printf("%s < Command where error occured.\n",str_to_print);
     free(str_to_print);
 }
+int error_move_offset(const char* begin_error_p){//Moves the pointer to the end to help process multiple errors.
+    const char* end_p1=strchr(begin_error_p,';'),* end_p2=strchr(begin_error_p,'\0');
+    return ((end_p1<end_p2)?end_p1:end_p2)-begin_error_p;
+}
 bool macro_buffer_process_next(macro_buffer_t* this,bool print_debug){//Returns bool if processed successfully or not.
     ReadState read_state=RS_Start;
     bool key_processed=false;
@@ -200,6 +204,7 @@ bool macro_buffer_process_next(macro_buffer_t* this,bool print_debug){//Returns 
                     default:
                         fprintf(stderr,"Unexpected character '%c' at line %d char %d state %s.\n",current_char,this->line_num,this->char_num,ReadStateStrings[read_state]);
                         print_where_error_is(this->contents,this->token_i,read_i+read_offset_i);
+                        this->token_i+=error_move_offset(this->contents+this->token_i+read_i+read_offset_i);
                         this->parse_error=true;
                         key_processed=true;
                         break;
@@ -238,6 +243,7 @@ bool macro_buffer_process_next(macro_buffer_t* this,bool print_debug){//Returns 
                 }
                 fprintf(stderr,"Unexpected character '%c' at line %d char %d state %s.\n",current_char,this->line_num,this->char_num,ReadStateStrings[read_state]);
                 print_where_error_is(this->contents,this->token_i,read_i+read_offset_i);
+                this->token_i+=error_move_offset(this->contents+this->token_i+read_i+read_offset_i);
                 this->parse_error=true;
                 key_processed=true;
                 break;
@@ -255,6 +261,8 @@ bool macro_buffer_process_next(macro_buffer_t* this,bool print_debug){//Returns 
                         break;
                     }
                     fprintf(stderr,"String '%s' was not initially defined from a Loop Start at line %d char %d.\n",str_name,this->line_num,this->char_num);
+                    print_where_error_is(this->contents,this->token_i,read_i+read_offset_i);
+                    this->token_i+=error_move_offset(this->contents+this->token_i+read_i+read_offset_i);
                     this->parse_error=true;
                     key_processed=true;
                     break;
@@ -279,12 +287,14 @@ bool macro_buffer_process_next(macro_buffer_t* this,bool print_debug){//Returns 
                     }
                     fprintf(stderr,"String '%s' was not initially defined from a Loop Start at line %d char %d.\n",str_name,this->line_num,this->char_num);
                     print_where_error_is(this->contents,this->token_i,read_i+read_offset_i);
+                    this->token_i+=error_move_offset(this->contents+this->token_i+read_i+read_offset_i);
                     this->parse_error=true;
                     key_processed=true;
                     break;
                 }
                 fprintf(stderr,"Unexpected character '%c' at line %d char %d state %s.\n",current_char,this->line_num,this->char_num,ReadStateStrings[read_state]);
                 print_where_error_is(this->contents,this->token_i,read_i+read_offset_i);
+                this->token_i+=error_move_offset(this->contents+this->token_i+read_i+read_offset_i);
                 this->parse_error=true;
                 key_processed=true;
                 break;
@@ -310,6 +320,7 @@ bool macro_buffer_process_next(macro_buffer_t* this,bool print_debug){//Returns 
                 }
                 fprintf(stderr,"Unexpected character '%c' at line %d char %d state %s.\n",current_char,this->line_num,this->char_num,ReadStateStrings[read_state]);
                 print_where_error_is(this->contents,this->token_i,read_i+read_offset_i);
+                this->token_i+=error_move_offset(this->contents+this->token_i+read_i+read_offset_i);
                 this->parse_error=true;
                 key_processed=true;
                 break;
@@ -322,6 +333,7 @@ bool macro_buffer_process_next(macro_buffer_t* this,bool print_debug){//Returns 
                 }
                 fprintf(stderr,"Unexpected character '%c' at line %d char %d state %s.\n",current_char,this->line_num,this->char_num,ReadStateStrings[read_state]);
                 print_where_error_is(this->contents,this->token_i,read_i+read_offset_i);
+                this->token_i+=error_move_offset(this->contents+this->token_i+read_i+read_offset_i);
                 this->parse_error=true;
                 key_processed=true;
                 break;
@@ -330,6 +342,7 @@ bool macro_buffer_process_next(macro_buffer_t* this,bool print_debug){//Returns 
                     if(added_keystate){
                         fprintf(stderr,"Cannot add more than 1 keystate at line %d char %d.\n",this->line_num,this->char_num);
                         print_where_error_is(this->contents,this->token_i,read_i+read_offset_i);
+                        this->token_i+=error_move_offset(this->contents+this->token_i+read_i+read_offset_i);
                         this->parse_error=true;
                         key_processed=true;
                         break;
@@ -358,6 +371,7 @@ bool macro_buffer_process_next(macro_buffer_t* this,bool print_debug){//Returns 
                 }
                 fprintf(stderr,"Unexpected character '%c' at line %d char %d state %s.\n",current_char,this->line_num,this->char_num,ReadStateStrings[read_state]);
                 print_where_error_is(this->contents,this->token_i,read_i+read_offset_i);
+                this->token_i+=error_move_offset(this->contents+this->token_i+read_i+read_offset_i);
                 this->parse_error=true;
                 key_processed=true;
                 break;
@@ -379,6 +393,7 @@ bool macro_buffer_process_next(macro_buffer_t* this,bool print_debug){//Returns 
                 }
                 fprintf(stderr,"Unexpected character '%c' at line %d char %d state %s.\n",current_char,this->line_num,this->char_num,ReadStateStrings[read_state]);
                 print_where_error_is(this->contents,this->token_i,read_i+read_offset_i);
+                this->token_i+=error_move_offset(this->contents+this->token_i+read_i+read_offset_i);
                 this->parse_error=true;
                 key_processed=true;
                 break;
@@ -400,6 +415,7 @@ bool macro_buffer_process_next(macro_buffer_t* this,bool print_debug){//Returns 
                 }
                 fprintf(stderr,"Unexpected character '%c' at line %d char %d state %s.\n",current_char,this->line_num,this->char_num,ReadStateStrings[read_state]);
                 print_where_error_is(this->contents,this->token_i,read_i+read_offset_i);
+                this->token_i+=error_move_offset(this->contents+this->token_i+read_i+read_offset_i);
                 this->parse_error=true;
                 key_processed=true;
                 break;
@@ -419,6 +435,7 @@ bool macro_buffer_process_next(macro_buffer_t* this,bool print_debug){//Returns 
                 }
                 fprintf(stderr,"Unexpected character '%c' at line %d char %d state %s.\n",current_char,this->line_num,this->char_num,ReadStateStrings[read_state]);
                 print_where_error_is(this->contents,this->token_i,read_i+read_offset_i);
+                this->token_i+=error_move_offset(this->contents+this->token_i+read_i+read_offset_i);
                 this->parse_error=true;
                 key_processed=true;
                 break;
@@ -427,6 +444,7 @@ bool macro_buffer_process_next(macro_buffer_t* this,bool print_debug){//Returns 
                     if(added_keystate){
                         fprintf(stderr,"Cannot add more than 1 keystate at line %d char %d.\n",this->line_num,this->char_num);
                         print_where_error_is(this->contents,this->token_i,read_i+read_offset_i);
+                        this->token_i+=error_move_offset(this->contents+this->token_i+read_i+read_offset_i);
                         this->parse_error=true;
                         key_processed=true;
                         break;
@@ -451,6 +469,7 @@ bool macro_buffer_process_next(macro_buffer_t* this,bool print_debug){//Returns 
                 }
                 fprintf(stderr,"Unexpected character '%c' at line %d char %d state %s.\n",current_char,this->line_num,this->char_num,ReadStateStrings[read_state]);
                 print_where_error_is(this->contents,this->token_i,read_i+read_offset_i);
+                this->token_i+=error_move_offset(this->contents+this->token_i+read_i+read_offset_i);
                 this->parse_error=true;
                 key_processed=true;
                 break;
@@ -487,12 +506,14 @@ bool macro_buffer_process_next(macro_buffer_t* this,bool print_debug){//Returns 
                     }
                     fprintf(stderr,"2 numbers are needed (separated by comma) at line %d char %d.\n",this->line_num,this->char_num);
                     print_where_error_is(this->contents,this->token_i,read_i+read_offset_i);
+                    this->token_i+=error_move_offset(this->contents+this->token_i+read_i+read_offset_i);
                     this->parse_error=true;
                     key_processed=true;
                     break;
                 }
                 fprintf(stderr,"Unexpected character '%c' at line %d char %d state %s.\n",current_char,this->line_num,this->char_num,ReadStateStrings[read_state]);
                 print_where_error_is(this->contents,this->token_i,read_i+read_offset_i);
+                this->token_i+=error_move_offset(this->contents+this->token_i+read_i+read_offset_i);
                 this->parse_error=true;
                 key_processed=true;
                 break;
@@ -532,12 +553,14 @@ bool macro_buffer_process_next(macro_buffer_t* this,bool print_debug){//Returns 
                     }
                     fprintf(stderr,"Unexpected character '%c' at line %d char %d state %s.\n",current_char,this->line_num,this->char_num,ReadStateStrings[read_state]);
                     print_where_error_is(this->contents,this->token_i,read_i+read_offset_i);
+                    this->token_i+=error_move_offset(this->contents+this->token_i+read_i+read_offset_i);
                     this->parse_error=true;
                     key_processed=true;
                     break;
                 }
                 fprintf(stderr,"Unexpected character '%c' at line %d char %d state %s.\n",current_char,this->line_num,this->char_num,ReadStateStrings[read_state]);
                 print_where_error_is(this->contents,this->token_i,read_i+read_offset_i);
+                this->token_i+=error_move_offset(this->contents+this->token_i+read_i+read_offset_i);
                 this->parse_error=true;
                 key_processed=true;
                 break;
@@ -583,6 +606,7 @@ bool macro_buffer_process_next(macro_buffer_t* this,bool print_debug){//Returns 
                         fprintf(stderr,"Cannot add a second JumpFrom with string '%s' at line %d char %d state %s.\n",str_name,this->line_num,this->char_num,ReadStateStrings[read_state]);
                         free(str_name);
                         print_where_error_is(this->contents,this->token_i,read_i+read_offset_i);
+                        this->token_i+=error_move_offset(this->contents+this->token_i+read_i+read_offset_i);
                         this->parse_error=true;
                         key_processed=true;
                         break;
@@ -590,6 +614,7 @@ bool macro_buffer_process_next(macro_buffer_t* this,bool print_debug){//Returns 
                 }
                 fprintf(stderr,"Unexpected character '%c' at line %d char %d state %s.\n",current_char,this->line_num,this->char_num,ReadStateStrings[read_state]);
                 print_where_error_is(this->contents,this->token_i,read_i+read_offset_i);
+                this->token_i+=error_move_offset(this->contents+this->token_i+read_i+read_offset_i);
                 this->parse_error=true;
                 key_processed=true;
                 break;
@@ -624,6 +649,7 @@ bool macro_buffer_process_next(macro_buffer_t* this,bool print_debug){//Returns 
                 }
                 fprintf(stderr,"Unexpected character '%c' at line %d char %d state %s.\n",current_char,this->line_num,this->char_num,ReadStateStrings[read_state]);
                 print_where_error_is(this->contents,this->token_i,read_i+read_offset_i);
+                this->token_i+=error_move_offset(this->contents+this->token_i+read_i+read_offset_i);
                 this->parse_error=true;
                 key_processed=true;
                 break;
@@ -640,6 +666,7 @@ bool macro_buffer_process_next(macro_buffer_t* this,bool print_debug){//Returns 
                         if(parsed_num[parsed_num_i]>255){
                             fprintf(stderr,"Number should be between 0 and 255 at %d char %d state %s.\n",this->line_num,this->char_num,ReadStateStrings[read_state]);
                             print_where_error_is(this->contents,this->token_i,read_i+read_offset_i);
+                            this->token_i+=error_move_offset(this->contents+this->token_i+read_i+read_offset_i);
                             this->parse_error=true;
                             key_processed=true;
                             break;
@@ -651,6 +678,7 @@ bool macro_buffer_process_next(macro_buffer_t* this,bool print_debug){//Returns 
                     }
                     fprintf(stderr,"There should only be 4 numbers separated by 3 ',' at %d char %d state %s.\n",this->line_num,this->char_num,ReadStateStrings[read_state]);
                     print_where_error_is(this->contents,this->token_i,read_i+read_offset_i);
+                    this->token_i+=error_move_offset(this->contents+this->token_i+read_i+read_offset_i);
                     this->parse_error=true;
                     key_processed=true;
                     break;
@@ -666,6 +694,7 @@ bool macro_buffer_process_next(macro_buffer_t* this,bool print_debug){//Returns 
                         if(parsed_num[parsed_num_i]>255){
                             fprintf(stderr,"Number should be between 0 and 255 at %d char %d state %s.\n",this->line_num,this->char_num,ReadStateStrings[read_state]);
                             print_where_error_is(this->contents,this->token_i,read_i+read_offset_i);
+                            this->token_i+=error_move_offset(this->contents+this->token_i+read_i+read_offset_i);
                             this->parse_error=true;
                             key_processed=true;
                             break;
@@ -682,12 +711,14 @@ bool macro_buffer_process_next(macro_buffer_t* this,bool print_debug){//Returns 
                     }
                     fprintf(stderr,"There should only be 4 numbers separated by 3 ',' at %d char %d state %s.\n",this->line_num,this->char_num,ReadStateStrings[read_state]);
                     print_where_error_is(this->contents,this->token_i,read_i+read_offset_i);
+                    this->token_i+=error_move_offset(this->contents+this->token_i+read_i+read_offset_i);
                     this->parse_error=true;
                     key_processed=true;
                     break;
                 }
                 fprintf(stderr,"Unexpected character '%c' at line %d char %d state %s.\n",current_char,this->line_num,this->char_num,ReadStateStrings[read_state]);
                 print_where_error_is(this->contents,this->token_i,read_i+read_offset_i);
+                this->token_i+=error_move_offset(this->contents+this->token_i+read_i+read_offset_i);
                 this->parse_error=true;
                 key_processed=true;
                 break;
@@ -714,6 +745,7 @@ bool macro_buffer_process_next(macro_buffer_t* this,bool print_debug){//Returns 
                 }
                 fprintf(stderr,"Unexpected character '%c' at line %d char %d state %s.\n",current_char,this->line_num,this->char_num,ReadStateStrings[read_state]);
                 print_where_error_is(this->contents,this->token_i,read_i+read_offset_i);
+                this->token_i+=error_move_offset(this->contents+this->token_i+read_i+read_offset_i);
                 this->parse_error=true;
                 key_processed=true;
                 break;
@@ -738,6 +770,7 @@ bool macro_buffer_process_next(macro_buffer_t* this,bool print_debug){//Returns 
                 }
                 fprintf(stderr,"Unexpected character '%c' at line %d char %d state %s.\n",current_char,this->line_num,this->char_num,ReadStateStrings[read_state]);
                 print_where_error_is(this->contents,this->token_i,read_i+read_offset_i);
+                this->token_i+=error_move_offset(this->contents+this->token_i+read_i+read_offset_i);
                 this->parse_error=true;
                 key_processed=true;
                 break;
@@ -758,6 +791,7 @@ bool macro_buffer_process_next(macro_buffer_t* this,bool print_debug){//Returns 
                     }
                     fprintf(stderr,"There should only be 4 numbers separated by 3 ',' at %d char %d state %s.\n",this->line_num,this->char_num,ReadStateStrings[read_state]);
                     print_where_error_is(this->contents,this->token_i,read_i+read_offset_i);
+                    this->token_i+=error_move_offset(this->contents+this->token_i+read_i+read_offset_i);
                     this->parse_error=true;
                     key_processed=true;
                     break;
@@ -782,12 +816,14 @@ bool macro_buffer_process_next(macro_buffer_t* this,bool print_debug){//Returns 
                     }
                     fprintf(stderr,"There should only be 4 numbers separated by 3 ',' at %d char %d state %s.\n",this->line_num,this->char_num,ReadStateStrings[read_state]);
                     print_where_error_is(this->contents,this->token_i,read_i+read_offset_i);
+                    this->token_i+=error_move_offset(this->contents+this->token_i+read_i+read_offset_i);
                     this->parse_error=true;
                     key_processed=true;
                     break;
                 }
                 fprintf(stderr,"Unexpected character '%c' at line %d char %d state %s.\n",current_char,this->line_num,this->char_num,ReadStateStrings[read_state]);
                 print_where_error_is(this->contents,this->token_i,read_i+read_offset_i);
+                this->token_i+=error_move_offset(this->contents+this->token_i+read_i+read_offset_i);
                 this->parse_error=true;
                 key_processed=true;
                 break;
