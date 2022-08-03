@@ -328,9 +328,9 @@ bool pop_cmd_index(int* cmd_i){
 }
 #include <X11/extensions/XTest.h>
 //Based from xdo.c file using xdo_move_mouse_relative's functions, as XWarpPointer makes the mouse not click properly.
-int custom_xdo_move_mouse_absolute(const xdo_t *xdo,int x,int y,int* screen){
-    int ret=0,last_mouse_x,last_mouse_y;
-    xdo_get_mouse_location(xdo,&last_mouse_x,&last_mouse_y,screen);
+int custom_xdo_move_mouse_absolute(const xdo_t *xdo,int x,int y){
+    int ret,last_mouse_x,last_mouse_y;
+    xdo_get_mouse_location(xdo,&last_mouse_x,&last_mouse_y,0);
     ret=XTestFakeRelativeMotionEvent(xdo->xdpy,x-last_mouse_x,y-last_mouse_y,CurrentTime);
     XFlush(xdo->xdpy);
     return ret==0;
@@ -519,7 +519,7 @@ bool run_program(command_array_t* cmd_arr, Config config, xdo_t* xdo_obj){
             case CMD_MoveMouse:
                 cmdprintf("Mouse move at (%d,%d) (%s).",cmd_u.mouse_move.x,cmd_u.mouse_move.y,cmd_u.mouse_move.is_absolute?"absolute":"relative");
                 pthread_mutex_lock(&input_mutex);
-                if(cmd_u.mouse_move.is_absolute) custom_xdo_move_mouse_absolute(xdo_obj,cmd_u.mouse_move.x,cmd_u.mouse_move.y,0);
+                if(cmd_u.mouse_move.is_absolute) custom_xdo_move_mouse_absolute(xdo_obj,cmd_u.mouse_move.x,cmd_u.mouse_move.y);
                 else xdo_move_mouse_relative(xdo_obj,cmd_u.mouse_move.x,cmd_u.mouse_move.y);
                 if(config.debug_print_type==DBP_AllCommands||this_cmd.print_cmd){
                     xdo_get_mouse_location(xdo_obj,&x_mouse,&y_mouse,0);//To check mouse location.
@@ -577,7 +577,7 @@ bool run_program(command_array_t* cmd_arr, Config config, xdo_t* xdo_obj){
             case CMD_LoadMouseCoords:
                 cmdprintf("Moving to stored mouse coordinates x: %d y: %d\n",x_mouse_store,y_mouse_store);
                 pthread_mutex_lock(&input_mutex);
-                custom_xdo_move_mouse_absolute(xdo_obj,x_mouse_store,y_mouse_store,0);
+                custom_xdo_move_mouse_absolute(xdo_obj,x_mouse_store,y_mouse_store);
                 pthread_mutex_unlock(&input_mutex);
                 PrintLastCommand(LastKey);
                 break;

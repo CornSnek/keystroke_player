@@ -329,7 +329,7 @@ bool char_is_delay(char c){
     return (c=='m')||(c=='u')||(c=='s')||(c=='M')||(c=='U')||(c=='S');
 }
 //Returns string from start_p char to end_p char [[nodiscard]] returns pointer that needs to be freed.
-char* char_string_slice(char* start_p,char* end_p){
+char* char_string_slice(const char* start_p,const char* end_p){
     assert(start_p<=end_p);
     char* char_p=malloc(sizeof(char)*(end_p-start_p+2));//+1 to count characters and +1 for '\0'
     EXIT_IF_NULL(char_p,char)
@@ -342,6 +342,8 @@ Assign pointers find_begin_p and find_end_p to the innermost bracket in search_s
 Int means + if more begin brackets, -1 if one more end bracket (terminates immediately), or 0 if brackets all match.
 */
 int first_innermost_bracket(const char* search_str,const char* begin_bracket,const char* end_bracket,const char** find_begin_p,const char** find_end_p){
+    *find_begin_p=0;//If no more brackets, return null.
+    *find_end_p=0;
     int depth=0;
     int max_depth=0;
     bool find_end_b=false;
