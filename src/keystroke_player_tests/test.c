@@ -113,7 +113,7 @@ START_TEST(innermost_test){
         }
         const char* begin_p,* end_p;
         ck_assert_int_eq(first_innermost_bracket(bracket_str,START_B,END_B,&begin_p,&end_p),0);
-        printf("%s\n",bracket_str);
+        //printf("%s\n",bracket_str);
     }
     free(bracket_str);
 }
@@ -141,7 +141,13 @@ START_TEST(macro_paster_test){
     ck_assert_int_eq(macro_paster_write_var_by_ind(mp,"AAA",1,"value_1"),0);
     ck_assert_int_eq(macro_paster_write_var_by_ind(mp,"AAA",0,"value_1"),1);
     ck_assert_int_eq(macro_paster_write_var_by_ind(mp,"AAA",0,"value_2"),1);
+    ck_assert_int_eq(macro_paster_write_macro_string(mp,"BBC","%def+%ghi;(%def*%ghi)"),0);
+    ck_assert_int_eq(macro_paster_write_macro_string(mp,"BBB","%def+%ghi;(%def*%ghi)"),1);
     macro_paster_print(mp);
+    char* str=0;
+    macro_paster_get_string(mp,"BBB",'%',&str);
+    printf("%s\n",str);
+    free(str);
     macro_paster_free(mp);
 }
 END_TEST

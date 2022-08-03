@@ -10,6 +10,7 @@ typedef struct shared_string_manager_s{//Container of strings that point to the 
 typedef struct macro_paster_s{
     int count;
     char** str_names;
+    char** macro_string;
     int* str_var_count;
     char*** str_vars; //Or an array of "variable strings" for each "string name" in str_names
     char*** str_var_values;
@@ -23,9 +24,11 @@ void SSManager_free(shared_string_manager_t* this);
 macro_paster_t* macro_paster_new(void);
 bool macro_paster_add_name(macro_paster_t* this,const char* str_name);
 bool macro_paster_add_var(macro_paster_t* this,const char* str_name,const char* var_name);
+bool macro_paster_write_macro_string(macro_paster_t* this,const char* str_name,const char* str_value);
 bool macro_paster_write_var_by_str(macro_paster_t* this,const char* str_name,const char* var_name,const char* var_value);
 bool macro_paster_write_var_by_ind(macro_paster_t* this,const char* str_name,int var_i,const char* var_value);
-void macro_paster_print(macro_paster_t* this);
+bool macro_paster_get_string(const macro_paster_t* this,const char* str_name,char prefix,char** output_owner);
+void macro_paster_print(const macro_paster_t* this);
 void macro_paster_free(macro_paster_t* this);
 int trim_whitespace(char** strptr_owner);
 void replace_str(char** strptr, const char* replace, const char* with);

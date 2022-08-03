@@ -93,16 +93,19 @@ bool macro_paster_add_name(macro_paster_t* this,const char* str_name){
     this->count++;
     if(this->str_names){
         this->str_names=(char**)realloc(this->str_names,sizeof(char*)*(this->count));
+        this->macro_string=(char**)realloc(this->macro_string,sizeof(char*)*(this->count));
         this->str_var_count=(int*)realloc(this->str_var_count,sizeof(int)*(this->count));
         this->str_vars=(char***)realloc(this->str_vars,sizeof(char**)*(this->count));
         this->str_var_values=(char***)realloc(this->str_var_values,sizeof(char**)*(this->count));
     }else{
         this->str_names=(char**)malloc(sizeof(char*));
+        this->macro_string=(char**)malloc(sizeof(char*));
         this->str_var_count=(int*)malloc(sizeof(int));
         this->str_vars=(char***)malloc(sizeof(char**));
         this->str_var_values=(char***)malloc(sizeof(char**));
     }
     EXIT_IF_NULL(this->str_names,char**)
+    EXIT_IF_NULL(this->macro_string,char**)
     EXIT_IF_NULL(this->str_var_count,int*)
     EXIT_IF_NULL(this->str_vars,char***)
     EXIT_IF_NULL(this->str_var_values,char***)
@@ -110,6 +113,8 @@ bool macro_paster_add_name(macro_paster_t* this,const char* str_name){
     this->str_names[add_i]=(char*)malloc(sizeof(char)*(strlen(str_name)+1));
     EXIT_IF_NULL(this->str_names[add_i],char*)
     strcpy(this->str_names[add_i],str_name);
+    this->macro_string[add_i]=(char*)calloc(1,sizeof(char));//Null character.
+    EXIT_IF_NULL(this->macro_string[add_i],char*)
     this->str_var_count[add_i]=0;
     this->str_vars[add_i]=0;
     this->str_var_values[add_i]=0;
@@ -150,6 +155,22 @@ bool macro_paster_add_var(macro_paster_t* this,const char* str_name,const char* 
     EXIT_IF_NULL((*var_array)[*var_count-1],char*)
     EXIT_IF_NULL((*var_value_array)[*var_count-1],char*)
     strcpy((*var_array)[*var_count-1],var_name);
+    return true;
+}
+bool macro_paster_write_macro_string(macro_paster_t* this,const char* str_name,const char* str_value){
+    int str_name_i;
+    for(int i=0;i<this->count;i++){
+        if(!strcmp(this->str_names[i],str_name)){
+            str_name_i=i;
+            goto string_exists;
+        }
+    }
+    fprintf(stderr,"In macro_paster, string '%s' does not exist. Did not write macro string value '%s'.\n",str_name,str_value);
+    return false;
+    string_exists:
+    this->macro_string[str_name_i]=(char*)realloc(this->macro_string[str_name_i],sizeof(char)*(strlen(str_value)+1));
+    EXIT_IF_NULL(this->macro_string[str_name_i],char*)
+    strcpy(this->macro_string[str_name_i],str_value);
     return true;
 }
 void _macro_paster_write_var_value(macro_paster_t* this,int str_name_i,int var_name_i,const char* var_value){
@@ -201,7 +222,32 @@ bool macro_paster_write_var_by_ind(macro_paster_t* this,const char* str_name,int
         return false;
     }
 }
-void macro_paster_print(macro_paster_t* this){
+bool macro_paster_get_string(const macro_paster_t* this,const char* str_name,char prefix,char** output){
+    int str_name_i;
+    char* string_output;
+    for(int i=0;i<this->count;i++){
+        if(!strcmp(this->str_names[i],str_name)){
+            str_name_i=i;
+            goto string_exists;
+        }
+    }
+    fprintf(stderr,"In macro_paster, string '%s' does not exist. Did not write output.\n",str_name);
+    return false;
+    string_exists:
+    string_output=(char*)malloc(sizeof(char)*(strlen(this->macro_string[str_name_i])+1));
+    strcpy(string_output,this->macro_string[str_name_i]);
+    for(int str_var_i=0;str_var_i<this->str_var_count[str_name_i];str_var_i++){
+        char* prefix_str=(char*)malloc(sizeof(char)*(strlen(this->str_vars[str_name_i][str_var_i])+2));
+        EXIT_IF_NULL(prefix_str,char*)
+        prefix_str[0]=prefix;
+        strcpy(prefix_str+1,this->str_vars[str_name_i][str_var_i]);
+        replace_str(&string_output,prefix_str,this->str_var_values[str_name_i][str_var_i]);//Replace all instances of the prefixed variable with the value.
+        free(prefix_str);
+    }
+    *output=string_output;
+    return true;
+}
+void macro_paster_print(const macro_paster_t* this){
     for(int str_i=0;str_i<this->count;str_i++){
         printf("Macro name: %s: ",this->str_names[str_i]);
         printf("Variables:[");
@@ -209,12 +255,14 @@ void macro_paster_print(macro_paster_t* this){
             char* const str_value=this->str_var_values[str_i][var_i];
             printf("%s=%s%s",this->str_vars[str_i][var_i],(str_value[0])?str_value:"(NULL)",(var_i!=this->str_var_count[str_i]-1)?",":"");
         }
+        printf("], Macro String:[%s",this->macro_string[str_i][0]?this->macro_string[str_i]:"(NULL)");
         printf("]\n");
     }
 }
 void macro_paster_free(macro_paster_t* this){
     for(int str_i=0;str_i<this->count;str_i++){
         free(this->str_names[str_i]);
+        free(this->macro_string[str_i]);
         for(int var_i=0;var_i<this->str_var_count[str_i];var_i++){
             free(this->str_vars[str_i][var_i]);
             free(this->str_var_values[str_i][var_i]);
@@ -223,6 +271,7 @@ void macro_paster_free(macro_paster_t* this){
         free(this->str_var_values[str_i]);
     }
     free(this->str_names);
+    free(this->macro_string);
     free(this->str_var_count);
     free(this->str_vars);
     free(this->str_var_values);
@@ -249,7 +298,7 @@ void replace_str(char** strptr_owner, const char* replace, const char* with){//A
     const int with_len=strlen(with);
     char current_char;
     while((current_char=(*strptr_owner)[strptr_i])){
-        if(current_char==*replace&&!strncmp((*strptr_owner+strptr_i),replace,replace_len)){//0 in strncmp for same string contents.
+        if(current_char==replace[0]&&!strncmp((*strptr_owner+strptr_i),replace,replace_len)){//0 in strncmp for same string contents.
             new_strptr=(char*)(realloc(new_strptr,sizeof(char)*(new_strptr_i+1+with_len)));
             EXIT_IF_NULL(new_strptr,char*)
             for(int with_i=0;with_i<with_len;with_i++){

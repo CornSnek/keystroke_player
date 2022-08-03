@@ -108,7 +108,7 @@ int main(void){
                 if(write_to_config(config)) printf("Changes written to config.bin\n");
                 else printf("Didn't write. An error has occured when writing.\n");
                 printf("Press enter to continue.");
-                fgets(input_str,2,stdin);
+                fgets(input_str,INPUT_BUFFER_LEN,stdin);
                 input_state=IS_Start;
                 break;
             case IS_RunFile:
@@ -269,7 +269,7 @@ void* keyboard_check_listener(void* srs_v){
     delay_ns_t key_check_delay=srs_p->key_check_delay;
     Display* xdpy=((shared_rs*)srs_v)->xdo_obj->xdpy;
     int scr=DefaultScreen(xdpy);
-    XGrabKey(xdpy,XKeysymToKeycode(xdpy,XK_Escape),None,RootWindow(xdpy,scr),True,GrabModeSync,GrabModeAsync);
+    XGrabKey(xdpy,XKeysymToKeycode(xdpy,XK_Escape),None,RootWindow(xdpy,scr),False,GrabModeAsync,GrabModeAsync);
     XEvent e={0};
     while(!srs_p->program_done){
         pthread_mutex_unlock(&input_mutex);
@@ -277,12 +277,9 @@ void* keyboard_check_listener(void* srs_v){
         pthread_mutex_lock(&input_mutex);
         while(XPending(xdpy)){ //XPending doesn't make XNextEvent block if 0 events.
             XNextEvent(xdpy,&e); 
-            switch(e.type){
-                case KeyPress:
-                    printf("Escape key pressed. Stopping macro script.\n");
-                    srs_p->program_done=true;
-                    break;
-                default: break;
+            if(e.type==KeyPress){
+                printf("Escape key pressed. Stopping macro script.\n");
+                srs_p->program_done=true;
             }
         }
     }

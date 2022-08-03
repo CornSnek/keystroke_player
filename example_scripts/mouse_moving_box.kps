@@ -1,9 +1,13 @@
 ?within=435,300,1294,1127?JT>WithinBox;mma=1085,1077;JF>WithinBox;
 JF>UpLeft;mmr=-5,-1;.m5;?coords=y<300?JT>DownLeft;
-    ?coords=x<435?JT>UpRight;JT>UpLeft;
+    ?coords=x<435?JT>UpRight;
+    JT>UpLeft;
 JF>UpRight;mmr=5,-1;.m5;?coords=y<300?JT>DownRight;
-    ?coords=x>1294?JT>UpLeft;JT>UpRight;
+    ?coords=x>1294?JT>UpLeft;
+    JT>UpRight;
 JF>DownLeft;mmr=-5,1;.m5;?coords=y>1127?JT>UpLeft;
-    ?coords=x<435?JT>DownRight;JT>DownLeft;
+    ?coords=x<435?JT>DownRight;
+    JT>DownLeft;
 JF>DownRight;mmr=5,1;.m5;?coords=y>1127?JT>UpRight;
-    ?coords=x>1294?JT>DownLeft;JT>DownRight;
+    ?coords=x>1294?JT>DownLeft;
+    JT>DownRight;

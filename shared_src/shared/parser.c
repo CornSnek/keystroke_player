@@ -173,7 +173,7 @@ bool macro_buffer_process_next(macro_buffer_t* this,bool print_debug){//Returns 
                     case ';'://Fallthough
                     case '\0':
                         this->token_i+=read_i+read_offset_i+1;//Don't add string slice to null characters or semi-colon.
-                        return true;
+                        return !this->parse_error;
                         break;
                     case '\n':
                         start_p++;
@@ -215,7 +215,7 @@ bool macro_buffer_process_next(macro_buffer_t* this,bool print_debug){//Returns 
                     read_state=RS_Start;
                 }else if(current_char=='\0'){//Don't add string slice to null characters.
                     this->token_i+=read_i+read_offset_i+1;
-                    return true;
+                    return !this->parse_error;
                 }
                 break; //No need for errors here.
             case RS_RepeatStart:
