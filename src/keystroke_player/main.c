@@ -328,9 +328,9 @@ bool pop_cmd_index(int* cmd_i){
 }
 #include <X11/extensions/XTest.h>
 //Based from xdo.c file using xdo_move_mouse_relative's functions, as XWarpPointer makes the mouse not click properly.
-int custom_xdo_move_mouse_absolute(const xdo_t *xdo,int x,int y,int screen){
+int custom_xdo_move_mouse_absolute(const xdo_t *xdo,int x,int y,int* screen){
     int ret=0,last_mouse_x,last_mouse_y;
-    xdo_get_mouse_location(xdo,&last_mouse_x,&last_mouse_y,&screen);
+    xdo_get_mouse_location(xdo,&last_mouse_x,&last_mouse_y,screen);
     ret=XTestFakeRelativeMotionEvent(xdo->xdpy,x-last_mouse_x,y-last_mouse_y,CurrentTime);
     XFlush(xdo->xdpy);
     return ret==0;
