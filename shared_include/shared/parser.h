@@ -5,7 +5,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdbool.h>
-//Hackish way of stringifying enums separately. Add e(number) for a new state.
+//Sringifying enums separately. Add e(number) and #e(number) for a new enum and string.
 #define __STR_READ_ENUMS(e1,e2,e3,e4,e5,e6,e7,e8,e9,e10,e11,e12,e13,e14,e15,e16,e17,e18,e19,ecount)\
 #e1,#e2,#e3,#e4,#e5,#e6,#e7,#e8,#e9,#e10,#e11,#e12,#e13,#e14,#e15,#e16,#e17,#e18,#e19
 //For .h file.
@@ -13,7 +13,7 @@
 extern const char* ReadStateStrings[RS_Count];
 //Defining strings in .c file.
 #define __ReadStateWithStringDef(...) const char* ReadStateStrings[RS_Count]={__STR_READ_ENUMS(__VA_ARGS__)};
-//One source of enums here.
+//Editing enums in .h file only.
 #define __ReadStateEnums\
     RS_Start,\
     RS_Comments,\

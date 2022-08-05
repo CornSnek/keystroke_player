@@ -1,0 +1,22 @@
+[!!
+[!L_X:=435!]
+[!L_Y:=300!]
+[!H_X:=1294!]
+[!H_Y:=1127!]
+[!OTHER:a:bc:=:a:bc!]
+!!]
+#Macros are defined inside the [!! !!] brackets. Each macro is defined in the [! := !] brackets, where L.H.S. is the name,
+#and R.H.S. is the definition.
+?within=435,300,1294,1127?JT>WithinBox;mma=1085,1077;JF>WithinBox;
+JF>UpLeft;mmr=-5,-1;.m5;?coords=y<300?JT>DownLeft;
+    ?coords=x<435?JT>UpRight;
+    JT>UpLeft;
+JF>UpRight;mmr=5,-1;.m5;?coords=y<300?JT>DownRight;
+    ?coords=x>1294?JT>UpLeft;
+    JT>UpRight;
+JF>DownLeft;mmr=-5,1;.m5;?coords=y>1127?JT>UpLeft;
+    ?coords=x<435?JT>DownRight;
+    JT>DownLeft;
+JF>DownRight;mmr=5,1;.m5;?coords=y>1127?JT>UpRight;
+    ?coords=x>1294?JT>DownLeft;
+    JT>DownRight;

@@ -16,7 +16,7 @@ int usleep(useconds_t usec);
 #define NSEC_TO_SEC 1000000000
 #define MICSEC_TO_SEC 1000000
 //101 to include '\0'.
-#define INPUT_BUFFER_LEN 100
+#define INPUT_BUFFER_LEN 200
 #define LAST_CMD_BUFFER_LEN 100
 #define LAST_COMMANDS_LEN 50
 
@@ -208,7 +208,7 @@ char* read_default_file(void){
     if(!f_obj) return 0;
     fseek(f_obj,0,SEEK_END);
     size_t str_len=ftell(f_obj);
-    fseek(f_obj,0,SEEK_SET);
+    rewind(f_obj);
     df_str=malloc(sizeof(char)*(str_len+1));//To include '\0'
     fread(df_str,str_len,1,f_obj);
     df_str[str_len]='\0';
@@ -230,7 +230,7 @@ ProgramStatus parse_file(const char* path, xdo_t* xdo_obj, Config config, bool a
     if(!f_obj) return PS_ReadError;
     fseek(f_obj,0,SEEK_END);
     size_t str_len=ftell(f_obj);
-    fseek(f_obj,0,SEEK_SET);
+    rewind(f_obj);
     file_str=malloc(sizeof(char)*(str_len+1));//To include '\0'
     fread(file_str,str_len,1,f_obj);
     file_str[str_len]='\0';
@@ -270,7 +270,7 @@ void* keyboard_check_listener(void* srs_v){
     delay_ns_t key_check_delay=srs_p->key_check_delay;
     Display* xdpy=((shared_rs*)srs_v)->xdo_obj->xdpy;
     int scr=DefaultScreen(xdpy);
-    XGrabKey(xdpy,XKeysymToKeycode(xdpy,XK_Escape),None,RootWindow(xdpy,scr),False,GrabModeAsync,GrabModeAsync);
+    XGrabKey(xdpy,XKeysymToKeycode(xdpy,XK_Escape),None,RootWindow(xdpy,scr),True,GrabModeAsync,GrabModeAsync);
     XEvent e={0};
     while(!srs_p->program_done){
         pthread_mutex_unlock(&input_mutex);

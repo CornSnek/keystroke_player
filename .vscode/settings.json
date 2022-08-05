@@ -42,7 +42,10 @@
         "typeindex": "c",
         "math.h": "c",
         "cstdlib": "c",
-        "pthread.h": "c"
+        "pthread.h": "c",
+        "numbers": "c",
+        "random": "c",
+        "thread": "c"
     },
     //"editor.autoClosingBrackets": "never",
     //"editor.autoClosingDelete": "never",

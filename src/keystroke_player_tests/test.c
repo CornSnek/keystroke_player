@@ -113,11 +113,31 @@ START_TEST(innermost_test){
         }
         const char* begin_p,* end_p;
         ck_assert_int_eq(first_innermost_bracket(bracket_str,START_B,END_B,&begin_p,&end_p),0);
+        ck_assert_int_eq(first_outermost_bracket(bracket_str,START_B,END_B,&begin_p,&end_p),0);
         //printf("%s\n",bracket_str);
     }
     free(bracket_str);
+    const char* begin_p,* end_p;
+    first_outermost_bracket("[![!!]!][!!]","[!","!]",&begin_p,&end_p);
+    printf("'%s','%s'\n",begin_p,end_p);
 }
 END_TEST
+#define MACRO_FILE_F "example_scripts/macro_test.kps"
+/**nodiscard - Function gives pointer ownership.*/
+char* read_macro_file(void){
+    FILE* f_obj;
+    char* df_str;
+    f_obj=fopen(MACRO_FILE_F,"r");
+    if(!f_obj) return 0;
+    fseek(f_obj,0,SEEK_END);
+    size_t str_len=ftell(f_obj);
+    rewind(f_obj);
+    df_str=malloc(sizeof(char)*(str_len+1));//To include '\0'
+    fread(df_str,str_len,1,f_obj);
+    df_str[str_len]='\0';
+    fclose(f_obj);
+    return df_str;
+}
 START_TEST(macro_paster_test){
     macro_paster_t* mp=macro_paster_new();
     ck_assert_int_eq(macro_paster_add_name(mp,"AAA"),1);
@@ -141,14 +161,23 @@ START_TEST(macro_paster_test){
     ck_assert_int_eq(macro_paster_write_var_by_ind(mp,"AAA",1,"value_1"),0);
     ck_assert_int_eq(macro_paster_write_var_by_ind(mp,"AAA",0,"value_1"),1);
     ck_assert_int_eq(macro_paster_write_var_by_ind(mp,"AAA",0,"value_2"),1);
-    ck_assert_int_eq(macro_paster_write_macro_string(mp,"BBC","%def+%ghi;(%def*%ghi)"),0);
-    ck_assert_int_eq(macro_paster_write_macro_string(mp,"BBB","%def+%ghi;(%def*%ghi)"),1);
+    ck_assert_int_eq(macro_paster_write_macro_def(mp,"BBC","%def+%ghi;(%def*%ghi)"),0);
+    ck_assert_int_eq(macro_paster_write_macro_def(mp,"BBB","%def+%ghi;(%def*%ghi)"),1);
     macro_paster_print(mp);
     char* str=0;
     macro_paster_get_string(mp,"BBB",'%',&str);
     printf("%s\n",str);
     free(str);
     macro_paster_free(mp);
+    macro_paster_t* mp2=macro_paster_new();
+    char* file_str=read_macro_file();
+    ck_assert_ptr_ne(file_str,0);
+    const char* MacrosStartB="[!!",* MacrosEndB="!!]",* MacroStartB="[!",* MacroEndB="!]",* DefSep=":=";
+    const char VarSep=':';
+    macro_paster_process_macros(mp2,file_str,MacrosStartB,MacrosEndB,MacroStartB,MacroEndB,DefSep,VarSep);
+    macro_paster_print(mp2);
+    macro_paster_free(mp2);
+    free(file_str);
 }
 END_TEST
 Suite* test_suite(void){

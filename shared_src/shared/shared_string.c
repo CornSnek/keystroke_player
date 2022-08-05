@@ -93,19 +93,19 @@ bool macro_paster_add_name(macro_paster_t* this,const char* str_name){
     this->count++;
     if(this->str_names){
         this->str_names=(char**)realloc(this->str_names,sizeof(char*)*(this->count));
-        this->macro_string=(char**)realloc(this->macro_string,sizeof(char*)*(this->count));
+        this->macro_definition=(char**)realloc(this->macro_definition,sizeof(char*)*(this->count));
         this->str_var_count=(int*)realloc(this->str_var_count,sizeof(int)*(this->count));
         this->str_vars=(char***)realloc(this->str_vars,sizeof(char**)*(this->count));
         this->str_var_values=(char***)realloc(this->str_var_values,sizeof(char**)*(this->count));
     }else{
         this->str_names=(char**)malloc(sizeof(char*));
-        this->macro_string=(char**)malloc(sizeof(char*));
+        this->macro_definition=(char**)malloc(sizeof(char*));
         this->str_var_count=(int*)malloc(sizeof(int));
         this->str_vars=(char***)malloc(sizeof(char**));
         this->str_var_values=(char***)malloc(sizeof(char**));
     }
     EXIT_IF_NULL(this->str_names,char**)
-    EXIT_IF_NULL(this->macro_string,char**)
+    EXIT_IF_NULL(this->macro_definition,char**)
     EXIT_IF_NULL(this->str_var_count,int*)
     EXIT_IF_NULL(this->str_vars,char***)
     EXIT_IF_NULL(this->str_var_values,char***)
@@ -113,8 +113,8 @@ bool macro_paster_add_name(macro_paster_t* this,const char* str_name){
     this->str_names[add_i]=(char*)malloc(sizeof(char)*(strlen(str_name)+1));
     EXIT_IF_NULL(this->str_names[add_i],char*)
     strcpy(this->str_names[add_i],str_name);
-    this->macro_string[add_i]=(char*)calloc(1,sizeof(char));//Null character.
-    EXIT_IF_NULL(this->macro_string[add_i],char*)
+    this->macro_definition[add_i]=(char*)calloc(1,sizeof(char));//Null character.
+    EXIT_IF_NULL(this->macro_definition[add_i],char*)
     this->str_var_count[add_i]=0;
     this->str_vars[add_i]=0;
     this->str_var_values[add_i]=0;
@@ -157,7 +157,7 @@ bool macro_paster_add_var(macro_paster_t* this,const char* str_name,const char* 
     strcpy((*var_array)[*var_count-1],var_name);
     return true;
 }
-bool macro_paster_write_macro_string(macro_paster_t* this,const char* str_name,const char* str_value){
+bool macro_paster_write_macro_def(macro_paster_t* this,const char* str_name,const char* str_value){
     int str_name_i;
     for(int i=0;i<this->count;i++){
         if(!strcmp(this->str_names[i],str_name)){
@@ -168,9 +168,9 @@ bool macro_paster_write_macro_string(macro_paster_t* this,const char* str_name,c
     fprintf(stderr,"In macro_paster, string '%s' does not exist. Did not write macro string value '%s'.\n",str_name,str_value);
     return false;
     string_exists:
-    this->macro_string[str_name_i]=(char*)realloc(this->macro_string[str_name_i],sizeof(char)*(strlen(str_value)+1));
-    EXIT_IF_NULL(this->macro_string[str_name_i],char*)
-    strcpy(this->macro_string[str_name_i],str_value);
+    this->macro_definition[str_name_i]=(char*)realloc(this->macro_definition[str_name_i],sizeof(char)*(strlen(str_value)+1));
+    EXIT_IF_NULL(this->macro_definition[str_name_i],char*)
+    strcpy(this->macro_definition[str_name_i],str_value);
     return true;
 }
 void _macro_paster_write_var_value(macro_paster_t* this,int str_name_i,int var_name_i,const char* var_value){
@@ -222,6 +222,79 @@ bool macro_paster_write_var_by_ind(macro_paster_t* this,const char* str_name,int
         return false;
     }
 }
+bool macro_paster_process_macros(macro_paster_t* this,const char* file_str,const char* start_m,const char* end_m,const char*start_b,const char* end_b,const char* def_sep,char var_sep){
+    const char* s_p,* e_p;
+    int depth=first_outermost_bracket(file_str,start_m,end_m,&s_p,&e_p);
+    if(depth){
+        fprintf(stderr,"Macro definitions need to be separated by %s and %s.\n",start_m,end_m);
+        return false;
+    }
+    char* macros_def=char_string_slice_no_brackets(s_p,e_p,start_m);
+    const char* macros_p=macros_def;//macros_p to loop until end of macros_def
+    while(true){
+        depth=first_outermost_bracket(macros_p,start_b,end_b,&s_p,&e_p);
+        if(!depth&&!s_p) break;
+        char* full_macro_str=char_string_slice_no_brackets(s_p,e_p,start_b),* macro_vars_str,* macro_name_str=0,* macro_vars_p,* def_str;
+        const char* def_p;
+        int macro_name_len, def_len;
+        split_at_sep(full_macro_str,def_sep,&def_p,&macro_name_len,&def_len);
+        macro_vars_str=(char*)calloc(1,sizeof(char)*(macro_name_len+1));
+        def_str=(char*)calloc(1,sizeof(char)*(def_len+1));
+        strncpy(macro_vars_str,full_macro_str,macro_name_len);
+        strncpy(def_str,def_p,def_len);
+        free(full_macro_str);
+        macro_vars_p=macro_vars_str;
+        bool macro_name_set=false;
+        for(size_t i=0,str_len=0;i<=strlen(macro_vars_str);i++){//i<=strlen to include '\0'.
+            if(macro_vars_str[i]==var_sep||macro_vars_str[i]=='\0'){
+                char* str=(char*)calloc(1,sizeof(char)*(str_len+1));
+                bool success;
+                strncpy(str,macro_vars_p,str_len);
+                if(macro_name_set){
+                    success=macro_paster_add_var(this,macro_name_str,str);
+                    if(!success){
+                        free(macro_vars_str);
+                        free(str);
+                        free(def_str);
+                        free(macros_def);
+                        return false;
+                    }
+                    free(str);
+                }else{
+                    success=macro_paster_add_name(this,str);
+                    if(!success){
+                        free(macro_vars_str);
+                        free(str);
+                        free(def_str);
+                        free(macros_def);
+                        return false;
+                    }
+                    macro_name_str=str;//Free name later.
+                    macro_name_set=true;
+                }
+                macro_vars_p+=str_len+1;//+1 To exclude var separator.
+                str_len=0;
+                continue;
+            }
+            str_len++;
+            if(!char_is_key(macro_vars_str[i])){
+                fprintf(stderr,"Invalid character '%c' for macro name/variable.\n",macro_vars_str[i]);
+                free(macro_vars_str);
+                free(macro_name_str);
+                free(def_str);
+                free(macros_def);
+                return false;
+            }
+        }
+        free(macro_vars_str);
+        macro_paster_write_macro_def(this,macro_name_str,def_str);
+        free(macro_name_str);
+        free(def_str);
+        macros_p=e_p+strlen(end_b);//Get next macro to process.
+    }
+    free(macros_def);
+    return true;
+}
 bool macro_paster_get_string(const macro_paster_t* this,const char* str_name,char prefix,char** output){
     int str_name_i;
     char* string_output;
@@ -234,8 +307,8 @@ bool macro_paster_get_string(const macro_paster_t* this,const char* str_name,cha
     fprintf(stderr,"In macro_paster, string '%s' does not exist. Did not write output.\n",str_name);
     return false;
     string_exists:
-    string_output=(char*)malloc(sizeof(char)*(strlen(this->macro_string[str_name_i])+1));
-    strcpy(string_output,this->macro_string[str_name_i]);
+    string_output=(char*)malloc(sizeof(char)*(strlen(this->macro_definition[str_name_i])+1));
+    strcpy(string_output,this->macro_definition[str_name_i]);
     for(int str_var_i=0;str_var_i<this->str_var_count[str_name_i];str_var_i++){
         char* prefix_str=(char*)malloc(sizeof(char)*(strlen(this->str_vars[str_name_i][str_var_i])+2));
         EXIT_IF_NULL(prefix_str,char*)
@@ -255,14 +328,14 @@ void macro_paster_print(const macro_paster_t* this){
             char* const str_value=this->str_var_values[str_i][var_i];
             printf("%s=%s%s",this->str_vars[str_i][var_i],(str_value[0])?str_value:"(NULL)",(var_i!=this->str_var_count[str_i]-1)?",":"");
         }
-        printf("], Macro String:[%s",this->macro_string[str_i][0]?this->macro_string[str_i]:"(NULL)");
+        printf("], Macro Definition:[%s",this->macro_definition[str_i][0]?this->macro_definition[str_i]:"(NULL)");
         printf("]\n");
     }
 }
 void macro_paster_free(macro_paster_t* this){
     for(int str_i=0;str_i<this->count;str_i++){
         free(this->str_names[str_i]);
-        free(this->macro_string[str_i]);
+        free(this->macro_definition[str_i]);
         for(int var_i=0;var_i<this->str_var_count[str_i];var_i++){
             free(this->str_vars[str_i][var_i]);
             free(this->str_var_values[str_i][var_i]);
@@ -271,7 +344,7 @@ void macro_paster_free(macro_paster_t* this){
         free(this->str_var_values[str_i]);
     }
     free(this->str_names);
-    free(this->macro_string);
+    free(this->macro_definition);
     free(this->str_var_count);
     free(this->str_vars);
     free(this->str_var_values);
@@ -342,7 +415,7 @@ Assign pointers find_begin_p and find_end_p to the innermost bracket in search_s
 Int means + if more begin brackets, -1 if one more end bracket (terminates immediately), or 0 if brackets all match.
 */
 int first_innermost_bracket(const char* search_str,const char* begin_bracket,const char* end_bracket,const char** find_begin_p,const char** find_end_p){
-    *find_begin_p=0;//If no more brackets, return null.
+    *find_begin_p=0;//If no brackets, return null.
     *find_end_p=0;
     int depth=0;
     int max_depth=0;
@@ -368,5 +441,47 @@ int first_innermost_bracket(const char* search_str,const char* begin_bracket,con
             }
         }
     }
-    return depth;//No mismatched brackets.
+    return depth;//0 == No mismatched brackets.
+}
+//Same as above, but for outermost brackets instead. TODO: Check.
+int first_outermost_bracket(const char* search_str,const char* begin_bracket,const char* end_bracket,const char** find_begin_p,const char** find_end_p){
+    *find_begin_p=0;
+    *find_end_p=0;
+    int depth=0;
+    bool find_end_b=false;
+    for(size_t str_i=0;str_i<strlen(search_str);str_i++){
+        if(search_str[str_i]==begin_bracket[0]){
+            if(!strncmp(search_str+str_i,begin_bracket,strlen(begin_bracket))){
+                ++depth;
+                if(!*find_begin_p){//Only do it once.
+                    *find_begin_p=search_str+str_i;
+                    find_end_b=true;
+                }
+                str_i+=strlen(begin_bracket)-1;
+            }
+        }else if(search_str[str_i]==end_bracket[0]){
+            if(!strncmp(search_str+str_i,end_bracket,strlen(end_bracket))){
+                if(--depth<0) return -1;
+                if(find_end_b&&!depth){//Depth is 0.
+                    *find_end_p=search_str+str_i;
+                    find_end_b=false;//Continue the code to check depth.
+                }
+                str_i+=strlen(end_bracket)-1;
+            }
+        }
+    }
+    return depth;
+}
+//Gets string length of start (start_len), pointer after the split seperator (split_p), and the length of the second split string (end_len).
+void split_at_sep(const char* search_str,const char* sep,const char** split_p,int* start_len,int* end_len){
+    *start_len=*end_len=0;
+    *split_p=0;
+    for(size_t str_i=0;str_i<strlen(search_str);str_i++){
+        if(search_str[str_i]==sep[0]&&!strncmp(search_str+str_i,sep,strlen(sep))){
+            *start_len=(int)str_i;
+            *split_p=search_str+str_i+strlen(sep);
+            *end_len=strlen(search_str)-strlen(sep)-str_i;
+            break;
+        }
+    }
 }
