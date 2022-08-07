@@ -84,6 +84,10 @@ macro_paster_t* macro_paster_new(void){
     return this;
 }
 bool macro_paster_add_name(macro_paster_t* this,const char* str_name){
+    if(!str_name[0]){
+        fprintf(stderr,"Macro name shouldn't be empty.\n");
+        return false;
+    }
     for(int i=0;i<this->count;i++){
         if(!strcmp(this->str_names[i],str_name)){
             fprintf(stderr,"In macro_paster, string '%s' already exists as a macro name.\n",str_name);
@@ -121,6 +125,10 @@ bool macro_paster_add_name(macro_paster_t* this,const char* str_name){
     return true;
 }
 bool macro_paster_add_var(macro_paster_t* this,const char* str_name,const char* var_name){
+    if(!var_name[0]){
+        fprintf(stderr,"One of the variable names in a macro shouldn't be empty.\n");
+        return false;
+    }
     int str_name_i;
     for(int i=0;i<this->count;i++){
         if(!strcmp(this->str_names[i],str_name)){
@@ -234,10 +242,20 @@ bool macro_paster_process_macros(macro_paster_t* this,const char* file_str,const
     while(true){
         depth=first_outermost_bracket(macros_p,start_b,end_b,&s_p,&e_p);
         if(!depth&&!s_p) break;
+        if(depth){
+            fprintf(stderr,"One of the Macros have misplaced start brackets '%s' and end brackets '%s'.\n",start_b,end_b);
+            free(macros_def);
+            return false;
+        }
         char* full_macro_str=char_string_slice_no_brackets(s_p,e_p,start_b),* macro_vars_str,* macro_name_str=0,* macro_vars_p,* def_str;
         const char* def_p;
         int macro_name_len, def_len;
         split_at_sep(full_macro_str,def_sep,&def_p,&macro_name_len,&def_len);
+        if(!def_p){
+            fprintf(stderr,"Separator %s not found.\n",def_sep);
+            free(macros_def);
+            return false;
+        }
         macro_vars_str=(char*)calloc(1,sizeof(char)*(macro_name_len+1));
         def_str=(char*)calloc(1,sizeof(char)*(def_len+1));
         strncpy(macro_vars_str,full_macro_str,macro_name_len);
@@ -295,6 +313,9 @@ bool macro_paster_process_macros(macro_paster_t* this,const char* file_str,const
     free(macros_def);
     return true;
 }
+bool macro_paster_expand_macros(const macro_paster_t* this,const char* file_str,const char* end_m,const char*start_b,const char* end_b,const char* def_sep,char var_sep){
+    return false;
+}
 bool macro_paster_get_string(const macro_paster_t* this,const char* str_name,char prefix,char** output){
     int str_name_i;
     char* string_output;
@@ -322,14 +343,13 @@ bool macro_paster_get_string(const macro_paster_t* this,const char* str_name,cha
 }
 void macro_paster_print(const macro_paster_t* this){
     for(int str_i=0;str_i<this->count;str_i++){
-        printf("Macro name: %s: ",this->str_names[str_i]);
+        printf("Macro name: ['%s'], ",this->str_names[str_i]);
         printf("Variables:[");
         for(int var_i=0;var_i<this->str_var_count[str_i];var_i++){
             char* const str_value=this->str_var_values[str_i][var_i];
             printf("%s=%s%s",this->str_vars[str_i][var_i],(str_value[0])?str_value:"(NULL)",(var_i!=this->str_var_count[str_i]-1)?",":"");
         }
-        printf("], Macro Definition:[%s",this->macro_definition[str_i][0]?this->macro_definition[str_i]:"(NULL)");
-        printf("]\n");
+        printf("], Macro Definition=['%s']\n",this->macro_definition[str_i][0]?this->macro_definition[str_i]:"(NULL)");
     }
 }
 void macro_paster_free(macro_paster_t* this){
@@ -362,8 +382,15 @@ int trim_whitespace(char** strptr){//For null-terminated strings only, and reedi
     EXIT_IF_NULL(*strptr,char*);
     return str_i-whitespace_count;
 }
+//Goal: Sort words that may "overlap" the first few characters, with the biggest strings first.
+//Ex: String starting with "a3bd" should be before strings "a3b", "a3", "a"... etc.
+int replace_node_biggest_first(const void* lhs_v,const void* rhs_v){
+    return strcmp(((const replace_node_t*)rhs_v)->r,((const replace_node_t*)lhs_v)->r);
+}
+_Pragma("GCC diagnostic push")
+_Pragma("GCC diagnostic ignored \"-Wstringop-truncation\"")
 void replace_str(char** strptr_owner, const char* replace, const char* with){//Assume all null-terminated.
-    char* new_strptr=(char*)(malloc(sizeof(char)*1));
+    char* new_strptr=(char*)(malloc(sizeof(char)));
     EXIT_IF_NULL(new_strptr,char*)
     int strptr_i=0;
     int new_strptr_i=0;
@@ -374,9 +401,11 @@ void replace_str(char** strptr_owner, const char* replace, const char* with){//A
         if(current_char==replace[0]&&!strncmp((*strptr_owner+strptr_i),replace,replace_len)){//0 in strncmp for same string contents.
             new_strptr=(char*)(realloc(new_strptr,sizeof(char)*(new_strptr_i+1+with_len)));
             EXIT_IF_NULL(new_strptr,char*)
-            for(int with_i=0;with_i<with_len;with_i++){
+            /*for(int with_i=0;with_i<with_len;with_i++){
                 new_strptr[new_strptr_i++]=with[with_i];
-            }
+            }*/
+            strncpy(new_strptr+new_strptr_i,with,with_len);//-Wstringop-truncation here (It null terminates after while loop)
+            new_strptr_i+=with_len;
             strptr_i+=replace_len;
             continue;
         }
@@ -384,6 +413,40 @@ void replace_str(char** strptr_owner, const char* replace, const char* with){//A
         strptr_i++;
         new_strptr=(char*)(realloc(new_strptr,sizeof(char)*new_strptr_i+1));
         EXIT_IF_NULL(new_strptr,char*)
+    }
+    new_strptr[new_strptr_i]='\0';//Null-terminate.
+    free(*strptr_owner);
+    *strptr_owner=new_strptr;//Change freed pointer to new pointer.
+}
+_Pragma("GCC diagnostic pop")
+void replace_str_list(char** strptr_owner,replace_node_t* rep_list,size_t rep_list_size){
+    qsort(rep_list,rep_list_size,sizeof(replace_node_t),replace_node_biggest_first);//Replace with the priority of largest to smallest word in the list.
+    /*for(size_t i=0;i<rep_list_size;i++){
+        printf("r:'%s' w:'%s'\n",rep_list[i].r,rep_list[i].w);
+    }*/
+    char* new_strptr=(char*)(malloc(sizeof(char)));
+    EXIT_IF_NULL(new_strptr,char*)
+    int strptr_i=0;
+    int new_strptr_i=0;
+    char current_char;
+    while((current_char=(*strptr_owner)[strptr_i])){
+        for(size_t i=0;i<rep_list_size;i++){
+            const char* const replace=rep_list[i].r,* const with=rep_list[i].w;
+            const size_t replace_len=strlen(replace),with_len=strlen(with);
+            if(current_char==replace[0]&&!strncmp((*strptr_owner+strptr_i),replace,replace_len)){//0 in strncmp for same string contents.
+                new_strptr=(char*)(realloc(new_strptr,sizeof(char)*(new_strptr_i+1+with_len)));
+                EXIT_IF_NULL(new_strptr,char*)
+                strncpy(new_strptr+new_strptr_i,with,with_len);
+                new_strptr_i+=with_len;
+                strptr_i+=replace_len;
+                goto do_next_char;
+            }
+        }
+        new_strptr[new_strptr_i++]=current_char;
+        strptr_i++;
+        new_strptr=(char*)(realloc(new_strptr,sizeof(char)*new_strptr_i+1));
+        EXIT_IF_NULL(new_strptr,char*)
+        do_next_char: continue;
     }
     new_strptr[new_strptr_i]='\0';//Null-terminate.
     free(*strptr_owner);

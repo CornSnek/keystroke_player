@@ -16,6 +16,10 @@ typedef struct macro_paster_s{
     char*** str_vars; //Or an array of "variable strings" for each "string name" in str_names
     char*** str_var_values;
 }macro_paster_t;
+typedef struct replace_node_s{//To sort and replace words from r to w.
+    const char* r;
+    const char* w;
+}replace_node_t;
 shared_string_manager_t* SSManager_new(void);
 char* SSManager_add_string(shared_string_manager_t* this, char** str_p_owned);
 int SSManager_count_string(const shared_string_manager_t* this, const char* str_cmp);
@@ -29,11 +33,14 @@ bool macro_paster_write_macro_def(macro_paster_t* this,const char* str_name,cons
 bool macro_paster_write_var_by_str(macro_paster_t* this,const char* str_name,const char* var_name,const char* var_value);
 bool macro_paster_write_var_by_ind(macro_paster_t* this,const char* str_name,int var_i,const char* var_value);
 bool macro_paster_process_macros(macro_paster_t* this,const char* file_str,const char* start_m,const char* end_m,const char*start_b,const char* end_b,const char* def_sep,char var_sep);
+bool macro_paster_expand_macros(const macro_paster_t* this,const char* file_str,const char* end_m,const char*start_b,const char* end_b,const char* def_sep,char var_sep);
 bool macro_paster_get_string(const macro_paster_t* this,const char* str_name,char prefix,char** output_owner);
 void macro_paster_print(const macro_paster_t* this);
 void macro_paster_free(macro_paster_t* this);
 int trim_whitespace(char** strptr_owner);
+int replace_node_biggest_first(const void* lhs_v,const void* rhs_v);
 void replace_str(char** strptr, const char* replace, const char* with);
+void replace_str_list(char** strptr_owner,replace_node_t* rep_list,size_t rep_list_size);
 bool char_is_key(char c);
 bool char_is_keystate(char c);
 bool char_is_whitespace(char c);

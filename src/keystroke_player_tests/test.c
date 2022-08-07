@@ -3,6 +3,7 @@
 #include "test_utils.h"
 #include <string.h>
 #include <check.h>
+#include <assert.h>
 START_TEST(parse_from_string){
     printf("Starting Test parse_from_string\n");
     char a_string_stack[]="(A;Ctrl+Alt+Delete=d;m1=u;.30;)A;";
@@ -161,11 +162,11 @@ START_TEST(macro_paster_test){
     ck_assert_int_eq(macro_paster_write_var_by_ind(mp,"AAA",1,"value_1"),0);
     ck_assert_int_eq(macro_paster_write_var_by_ind(mp,"AAA",0,"value_1"),1);
     ck_assert_int_eq(macro_paster_write_var_by_ind(mp,"AAA",0,"value_2"),1);
-    ck_assert_int_eq(macro_paster_write_macro_def(mp,"BBC","%def+%ghi;(%def*%ghi)"),0);
-    ck_assert_int_eq(macro_paster_write_macro_def(mp,"BBB","%def+%ghi;(%def*%ghi)"),1);
+    ck_assert_int_eq(macro_paster_write_macro_def(mp,"BBC",":def+:ghi;(:def*:ghi)"),0);
+    ck_assert_int_eq(macro_paster_write_macro_def(mp,"BBB",":def+:ghi;(:def*:ghi)"),1);
     macro_paster_print(mp);
     char* str=0;
-    macro_paster_get_string(mp,"BBB",'%',&str);
+    macro_paster_get_string(mp,"BBB",':',&str);
     printf("%s\n",str);
     free(str);
     macro_paster_free(mp);
@@ -178,6 +179,24 @@ START_TEST(macro_paster_test){
     macro_paster_print(mp2);
     macro_paster_free(mp2);
     free(file_str);
+    replace_node_t WordList[]={
+        {"ab","Word1"}
+        ,{"acb","Word2"}
+        ,{"abc","Word3"}
+        ,{"abcd","Word4"}
+        ,{"acbde","Word5"}
+        ,{"abcdef","Word6"}
+        ,{"babcde","Word7"}
+    };
+    const size_t WordList_len=sizeof(WordList)/sizeof(replace_node_t);
+    const char* dummy_str="abcdef abcde ab acb abc abf abcd acbde abcdef babcde";
+    char* dummy_str_heap=(char*)malloc(sizeof(char)*(strlen(dummy_str)+1));//This will be changed.
+    EXIT_IF_NULL(dummy_str_heap,char*)
+    strcpy(dummy_str_heap,dummy_str);
+    printf("%s\n",dummy_str_heap);
+    replace_str_list(&dummy_str_heap,WordList,WordList_len);
+    printf("%s\n",dummy_str_heap);
+    free(dummy_str_heap);
 }
 END_TEST
 Suite* test_suite(void){

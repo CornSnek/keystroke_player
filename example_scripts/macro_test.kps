@@ -3,10 +3,11 @@
 [!L_Y:=300!]
 [!H_X:=1294!]
 [!H_Y:=1127!]
-[!OTHER:a:bc:=:a:bc!]
+[!OTHER:A:B:=:A:B[!OTHER!]!]
 !!]
 #Macros are defined inside the [!! !!] brackets. Each macro is defined in the [! := !] brackets, where L.H.S. is the name,
 #and R.H.S. is the definition.
+#Macros within the commands are defined as [!Name:var_1_value:var_2_value:...!]. TODO: Check if recursion works.
 ?within=435,300,1294,1127?JT>WithinBox;mma=1085,1077;JF>WithinBox;
 JF>UpLeft;mmr=-5,-1;.m5;?coords=y<300?JT>DownLeft;
     ?coords=x<435?JT>UpRight;
