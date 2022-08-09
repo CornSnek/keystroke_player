@@ -24,7 +24,7 @@ typedef struct{
     DebugPrintType debug_print_type;
 }Config;
 const Config InitConfig={
-    .init_delay=2000000,.key_check_delay=100000,.debug_print_type=DBP_None
+    .init_delay=2000000,.key_check_delay=100000,.debug_print_type=DBP_AllCommands
 };
 bool fgets_change(char* str,int buffer_len);
 bool write_to_config(const Config config);

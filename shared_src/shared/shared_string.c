@@ -693,24 +693,34 @@ void split_at_sep(const char* search_str,const char* sep,const char** split_p,in
         }
     }
 }
-//Where current_p>=begin_p. Line and column numbers (excluding characters like \n) start at 1.
-void get_line_column_positions(const char* begin_p,const char* current_p,size_t* line_num,size_t* col_num){
-    *col_num=0;*line_num=0;
-    bool p_still_ahead;
-    while((p_still_ahead=current_p>=begin_p)){
-        if(*current_p=='\n'){
-            (*line_num)++;
-            break;
-        }
+static inline void _get_line_column_positions(const char* begin_p,const char* current_p,size_t* line_num,size_t* col_num){
+    while(current_p>=begin_p){
+        if(*current_p=='\n') break;
         (*col_num)++;
         current_p--;
     }
-    if(!p_still_ahead){//If still in line 1, or current_p is behind.
-        *line_num=1;
-        return;
-    }
-    while(current_p>=begin_p){//Now count for only lines.
+    while(current_p>=begin_p){ //Now count for only lines.
         if(*current_p=='\n') (*line_num)++;
         current_p--;
     }
+}
+//Where begin_p>=current_p>=(End of String). Line and column numbers (excluding characters like \n) start at 0.
+void get_line_column_positions(const char* begin_p,const char* current_p,size_t* line_num,size_t* col_num){
+    *col_num=-1;*line_num=0; _get_line_column_positions(begin_p,current_p,line_num,col_num);
+}
+//For numbers 1 and above.
+void get_line_column_positions_p1(const char* begin_p,const char* current_p,size_t* line_num,size_t* col_num){
+    *col_num=0;*line_num=1; _get_line_column_positions(begin_p,current_p,line_num,col_num);
+}
+//Null-terminated string with line and column numbers 0 or greater. Returns NULL if line/column is out of bounds.
+const char* get_pointer_position(const char* str_p,size_t line_num,size_t col_num){
+    const char* current_p=(line_num>0)?str_p:str_p-1;//Adjust for 0th line because it doesn't go to the first loop.
+    while(current_p&&line_num--){
+        current_p++;
+        current_p=strchr(current_p,'\n');
+    }
+    if(current_p==0) return 0; //Out of bounds for line_num.
+    do if(!*(++current_p)||*(current_p)=='\n') return 0; //Out of bounds for col_num.
+    while(col_num--);
+    return current_p;
 }
