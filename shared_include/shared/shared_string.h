@@ -77,4 +77,5 @@ static inline char* char_string_slice_with_brackets(const char* start_p,const ch
 int first_innermost_bracket(const char* search_str,const char* begin_bracket,const char* end_bracket,const char** find_begin_p,const char** find_end_p);
 int first_outermost_bracket(const char* search_str,const char* begin_bracket,const char* end_bracket,const char** find_begin_p,const char** find_end_p);
 void split_at_sep(const char* search_str,const char* sep,const char** split_p,int* start_len,int* end_len);
+void get_line_column_positions(const char* begin_p,const char* current_p,size_t* line_num,size_t* char_num);
 #endif

@@ -693,3 +693,24 @@ void split_at_sep(const char* search_str,const char* sep,const char** split_p,in
         }
     }
 }
+//Where current_p>=begin_p. Line and column numbers (excluding characters like \n) start at 1.
+void get_line_column_positions(const char* begin_p,const char* current_p,size_t* line_num,size_t* col_num){
+    *col_num=0;*line_num=0;
+    bool p_still_ahead;
+    while((p_still_ahead=current_p>=begin_p)){
+        if(*current_p=='\n'){
+            (*line_num)++;
+            break;
+        }
+        (*col_num)++;
+        current_p--;
+    }
+    if(!p_still_ahead){//If still in line 1, or current_p is behind.
+        *line_num=1;
+        return;
+    }
+    while(current_p>=begin_p){//Now count for only lines.
+        if(*current_p=='\n') (*line_num)++;
+        current_p--;
+    }
+}
