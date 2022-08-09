@@ -156,7 +156,7 @@ bool macro_buffer_process_next(macro_buffer_t* this,bool print_debug){//Returns 
                         read_state=RS_MouseClickType;
                         break;
                     }
-                    read_state=RS_KeyOrMouse;
+                    read_state=RS_Keys;
                     break;
                 }
                 switch(current_char){
@@ -325,8 +325,8 @@ bool macro_buffer_process_next(macro_buffer_t* this,bool print_debug){//Returns 
                 this->parse_error=true;
                 key_processed=true;
                 break;
-            case RS_KeyOrMouse:
-                if(char_is_key(current_char)) break;
+            case RS_Keys:
+                if(char_is_x11_key(current_char)) break;
                 else if(current_char=='='){
                     read_state=RS_KeyState;
                     added_keystate=false;
@@ -1044,7 +1044,7 @@ void command_array_print(const command_array_t* this){
                 printf("RepeatEnd RepeatAtIndex: %d MaxCounter: %d str_i: %d\n",cmd.repeat_end.cmd_index,cmd.repeat_end.counter_max,cmd.repeat_start.str_index);
                 break;
             case CMD_RepeatResetCounters:
-                printf("RepeatResetCounters\n");
+                puts("RepeatResetCounters");
                 break;
             case CMD_MouseClick:
                 printf("MouseClick MouseType: %d MouseState: %d\n",cmd.mouse_click.mouse_type,cmd.mouse_click.mouse_state);
@@ -1053,10 +1053,10 @@ void command_array_print(const command_array_t* this){
                 printf("MoveMouse x: %d y: %d is_absolute: %d\n",cmd.mouse_move.x,cmd.mouse_move.y,cmd.mouse_move.is_absolute);
                 break;
             case CMD_Exit:
-                printf("ExitProgram\n");
+                puts("ExitProgram");
                 break;
             case CMD_Pass:
-                printf("Pass\n");
+                puts("Pass");
                 break;
             case CMD_JumpTo:
                 printf("JumpTo cmd_i: %d str_i: %d store_i: %d\n",cmd.jump_to.cmd_index,cmd.jump_to.str_index,cmd.jump_to.store_index);
@@ -1065,13 +1065,13 @@ void command_array_print(const command_array_t* this){
                 printf("JumpFrom str_i: %d\n",cmd.jump_from.str_index);
                 break;
             case CMD_JumpBack:
-                printf("JumpBack\n");
+                puts("JumpBack");
                 break;
             case CMD_SaveMouseCoords:
-                printf("SaveMouseCoords\n");
+                puts("SaveMouseCoords");
                 break;
             case CMD_LoadMouseCoords:
-                printf("LoadMouseCoords\n");
+                puts("LoadMouseCoords");
                 break;
             case CMD_QueryComparePixel:
                 printf("QueryComparePixel r: %d g: %d b: %d threshold: %d\n",cmd.pixel_compare.r,cmd.pixel_compare.g,cmd.pixel_compare.b,cmd.pixel_compare.thr);

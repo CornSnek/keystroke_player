@@ -71,7 +71,8 @@
         "streambuf": "c",
         "system_error": "c",
         "version": "c",
-        "*.inc": "c"
+        "*.inc": "c",
+        "assert.h": "c"
     },
     //"editor.autoClosingBrackets": "never",
     //"editor.autoClosingDelete": "never",

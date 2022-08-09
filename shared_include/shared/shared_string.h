@@ -33,6 +33,13 @@ bool macro_paster_add_var(macro_paster_t* this,const char* str_name,const char* 
 bool macro_paster_write_macro_def(macro_paster_t* this,const char* str_name,const char* str_value);
 bool macro_paster_write_var_by_str(macro_paster_t* this,const char* str_name,const char* var_name,const char* var_value);
 bool macro_paster_write_var_by_ind(macro_paster_t* this,const char* str_name,int var_i,const char* var_value);
+typedef enum _MacroProcessStatus{
+    MPS_NoMacros,
+    MPS_ImproperBrackets,
+    MPS_HasDefinitions,
+    MPS_HasBuiltins //TODO
+}MacroProcessStatus;
+MacroProcessStatus file_contains_macro_definitions(const char* file_str,const char* start_m,const char* end_m);
 bool macro_paster_process_macros(macro_paster_t* this,const char* file_str,const char* start_m,const char* end_m,const char*start_b,const char* end_b,const char* def_sep,char var_sep);
 bool macro_paster_expand_macros(macro_paster_t* this,const char* file_str,const char* end_m,const char*start_b,const char* end_b,char var_sep,char** output);
 bool macro_paster_get_val_string(const macro_paster_t* this,const char* str_name,char prefix,char** output_owner);
@@ -44,8 +51,11 @@ int replace_node_biggest_first(const void* lhs_v,const void* rhs_v);
 void replace_str(char** strptr, const char* replace, const char* with);
 void replace_str_at(char** strptr_owner, const char* replace, const char* with,const char* begin,const char* end);
 void replace_str_list(char** strptr_owner,replace_node_t* rep_list,size_t rep_list_size);
-static inline bool char_is_key(char c){
+static inline bool char_is_x11_key(char c){
     return isalnum(c)||(c=='_')||(c=='+');
+}
+static inline bool char_is_key(char c){
+    return isalnum(c)||(c=='_');
 }
 static inline bool char_is_keystate(char c){
     return (c=='u')||(c=='d')||(c=='c')||(c=='U')||(c=='D')||(c=='C');

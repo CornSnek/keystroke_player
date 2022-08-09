@@ -44,7 +44,7 @@ int SSManager_count_string(const shared_string_manager_t* this, const char* str_
 void SSManager_print_strings(const shared_string_manager_t* this){
     printf("shared_strings: {");
     for(int i=0;i<this->count;i++) printf("(\"%s\",x%d)%s",this->c_strs[i],this->c_str_rc[i],i<this->count-1?", ":"");
-    printf("}\n");
+    puts("}");
 }
 void SSManager_free_string(shared_string_manager_t* this, const char* str_del){
     for(int del_i=0;del_i<this->count;del_i++){
@@ -218,11 +218,44 @@ bool macro_paster_write_var_by_ind(macro_paster_t* this,const char* str_name,int
         return false;
     }
 }
+MacroProcessStatus file_contains_macro_definitions(const char* file_str,const char* start_m,const char* end_m){
+    const char* file_str_p=file_str;
+    bool has_begin_bracket=false;
+    bool has_end_bracket=false;
+    while((file_str_p=strchr(file_str_p,start_m[0]))){
+        if(!strncmp(file_str_p++,start_m,strlen(start_m))){
+            has_begin_bracket=true;
+            break;
+        }
+    }
+    if(!has_begin_bracket){
+        puts("File does not contain macro definitions. Using this file to process commands.");
+        return MPS_NoMacros;
+    }
+    while((file_str_p=strchr(file_str_p,end_m[0]))){
+        if(!strncmp(file_str_p++,end_m,strlen(end_m))){
+            has_end_bracket=true;
+            break;
+        }
+    }
+    if(!has_end_bracket){
+        fprintf(stderr,"Macro definitions processing error: End bracket '%s' missing.\n",end_m);
+        return MPS_ImproperBrackets;
+    }
+    while((file_str_p=strchr(file_str_p,start_m[0]))){
+        if(!strncmp(file_str_p++,start_m,strlen(start_m))){
+            fprintf(stderr,"Macro definitions processing error: There should only be one set of '%s' and '%s' to contain the macro definitions.\n",start_m,end_m);
+            return MPS_ImproperBrackets;
+        }
+    }
+    puts("This file contains macro definitions. Expanding macros to file "MACRO_PROCESS_F" and processing its commands.");
+    return MPS_HasDefinitions;
+}
 bool macro_paster_process_macros(macro_paster_t* this,const char* file_str,const char* start_m,const char* end_m,const char*start_b,const char* end_b,const char* def_sep,char var_sep){
     const char* s_p,* e_p;
     int depth=first_outermost_bracket(file_str,start_m,end_m,&s_p,&e_p);
     if(depth){
-        fprintf(stderr,"Macro definitions need to be separated by %s and %s.\n",start_m,end_m);
+        fprintf(stderr,"Macro definitions need to be separated by %s and %s at the beginning of the file.\n",start_m,end_m);
         return false;
     }
     char* macros_def=char_string_slice_no_brackets(s_p,e_p,start_m);
@@ -293,18 +326,29 @@ bool macro_paster_process_macros(macro_paster_t* this,const char* file_str,const
     free(macros_def);
     return true;
 }
+void _write_to_macro_output(const char* mo){
+    FILE* f_obj;
+    f_obj=fopen(MACRO_PROCESS_F,"w+");
+    if(!f_obj) return;
+    size_t wrote=fwrite(mo,strlen(mo),1,f_obj);
+    fclose(f_obj);
+    if(wrote){
+        printf("Macro expansion written to %s\n",MACRO_PROCESS_F);
+    }
+}
 bool macro_paster_expand_macros(macro_paster_t* this,const char* file_str,const char* end_m,const char*start_b,const char* end_b,char var_sep,char** output){
+    *output=0;
     const char* begin_cmd_p;
     int m_i,cmd_len;
     split_at_sep(file_str,end_m,&begin_cmd_p,&m_i,&cmd_len);
     char* cmd_str=(char*)malloc(sizeof(char)*(cmd_len+1));
     EXIT_IF_NULL(cmd_str,char*)
     strcpy(cmd_str,begin_cmd_p);
-    trim_comments(&cmd_str);
     size_t expansion_count=0;
     do{
         if(expansion_count>1000){
             fprintf(stderr,"Error: Possibly recursive macro in code. Ended recursion. Output:\n%s\n",cmd_str);
+            _write_to_macro_output(cmd_str);
             free(cmd_str);
             return false;
         }
@@ -312,6 +356,7 @@ bool macro_paster_expand_macros(macro_paster_t* this,const char* file_str,const 
         int depth=first_innermost_bracket(cmd_str,start_b,end_b,&begin_m_p,&end_m_p);
         if(depth){
             fprintf(stderr,"Mismatched macro brackets in code.\n");
+            _write_to_macro_output(cmd_str);
             free(cmd_str);
             return false;
         }
@@ -330,6 +375,7 @@ bool macro_paster_expand_macros(macro_paster_t* this,const char* file_str,const 
                 strncpy(str,macro_vars_p,str_len);
                 if(macro_name_set){
                     if(!macro_paster_write_var_by_ind(this,macro_name_str,var_i,str)){ //Out of range.
+                        _write_to_macro_output(cmd_str);
                         free(str); free(macro_name_str); free(macro_w_br); free(macro_n_br); free(cmd_str);
                         return false;
                     }
@@ -338,6 +384,7 @@ bool macro_paster_expand_macros(macro_paster_t* this,const char* file_str,const 
                 }else{
                     if(!_macro_paster_valid_name(this,str,&macro_name_i)){
                         fprintf(stderr,"Macro name '%s' is not a built-in macro or defined yet.\n",str);
+                        _write_to_macro_output(cmd_str);
                         free(str); free(macro_w_br); free(macro_n_br); free(cmd_str);
                         return false;
                     }
@@ -351,6 +398,7 @@ bool macro_paster_expand_macros(macro_paster_t* this,const char* file_str,const 
             str_len++;
             if(!macro_name_set&&!char_is_key(macro_n_br[parse_i])){
                 fprintf(stderr,"Invalid character '%c' for macro name.\n",macro_n_br[parse_i]);
+                _write_to_macro_output(cmd_str);
                 free(macro_w_br); free(macro_n_br); free(cmd_str);
                 return false;
             }
@@ -364,6 +412,7 @@ bool macro_paster_expand_macros(macro_paster_t* this,const char* file_str,const 
     }while(true);
     printf("Number of macro expansions: %lu\n",expansion_count);
     *output=cmd_str;
+    _write_to_macro_output(cmd_str);
     return true;
 }
 //String output needs to be freed.

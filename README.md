@@ -133,6 +133,40 @@ From example_scripts/run_in_circles.kps:
     (M8;m1=c;d+w=d;.m100;d+w=u;)M8=2;
     )A; #Loop forever.
 
+# Text Substitution Macros and Macro Expansion
+You can add text-substitution macros in the scripts. They are basically used to copy and paste code like in C. To make macros, they must be within these brackets `[!! !!]` at the start of the file. Each macro definition must be within `[! !]` and have a definition separator `:=`. It is of the format `[!MACRO_NAME:Var1:Var2:Var3:...:= (Macro Definition) !]`. Note that the macro definition can have whitespace, but it will be trimmed within the macro definition. To get the variable names for the macro definition so the macro call can substitute them, use `:(variable_name)` To call a macro in the code, just call it with the macro name and its arguments (if any). Example: The macro call `[!MACRO_CALL:abc:def:ghi!]`, where `[!MACRO_CALL:v1:v2:v3:= :v1+:v2*:v3 !]` is the definition of the macro becomes `abc+def*ghi`.
+
+Macro Definition syntax
+    
+    \[![a-zA-Z0-9_]+(:[a-zA-Z0-9_])*:=[^!\]*]!\]
+    where :[a-zA-Z0-9_]+ is to use a variable name in the r.h.s. of the macro definition.
+    Whitespace can be used on the r.h.s. after := only.
+
+Macro Call syntax
+
+    \[![a-zA-Z0-9_]+(:[a-zA-Z0-9_])*!\], where the (:[a-zA-Z0-9_])* are the variable names used within the macro (if any).
+
+Here is an example in example_scripts/macro_test.kps.
+
+    [!!
+    [!Mouse_D:=1085,1077!]
+    [!L_X:=435!][!L_Y:=300!]
+    [!H_X:=1294!][!H_Y:=1127!]
+    [!X_v:=5!][!Y_v:=2!]
+    !!]
+    ?within=[!L_X!],[!L_Y!],[!H_X!],[!H_Y!]?JT>WithinBox;mma=[!Mouse_D!];JF>WithinBox;
+    JF>UpLeft;mmr=-[!X_v!],-[!Y_v!];.m5;?coords=y<[!L_Y!]?JT>DownLeft;
+        ?coords=x<[!L_X!]?JT>UpRight;
+        JT>UpLeft;
+    JF>UpRight;mmr=[!X_v!],-[!Y_v!];.m5;?coords=y<[!L_Y!]?  JT>DownRight;
+        ?coords=x>[!H_X!]?JT>UpLeft;
+        JT>UpRight;
+    JF>DownLeft;mmr=-[!X_v!],[!Y_v!];.m5;?coords=y>[!H_Y!]?JT>UpLeft;
+        ?coords=x<[!L_X!]?JT>DownRight;
+        JT>DownLeft;
+    JF>DownRight;mmr=[!X_v!],[!Y_v!];.m5;?coords=y>[!H_Y!]?JT>UpRight;
+        ?coords=x>[!H_X!]?JT>DownLeft;
+        JT>DownRight;
 # Build
 source tasks.conf (In project folder)
 
@@ -145,4 +179,4 @@ Requires X11 library.
 Note: This has been built using Visual Studio Code under Arch Linux. Repositories for these libraries are in Arch Linux. It may also be readily available in other distributions of Linux.
 
 # TODO
-Adding more Command Queries.
+Adding more macro expansion capabilities.

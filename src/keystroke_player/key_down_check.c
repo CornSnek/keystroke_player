@@ -34,7 +34,7 @@ void key_down_check_print(const key_down_check_t* this){
     for(int i=0;i<this->len;i++){
         printf("%s ",this->keys[i]);
     }
-    printf("\n");
+    puts("");
 }
 void key_down_check_key_up(key_down_check_t* this,xdo_t* xdo_obj,Window window){
     for(int i=0;i<this->len;i++){

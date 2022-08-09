@@ -1,3 +1,4 @@
+#include "macros.h"
 #include "parser.h"
 #include "key_down_check.h"
 #include <math.h>
@@ -11,19 +12,8 @@ int usleep(useconds_t usec);
 #include <X11/Xlib.h>
 #include <X11/Xutil.h>
 #include <assert.h>
-
-#define CLEAR_TERM "\x1B[H\x1B[0J"
-#define NSEC_TO_SEC 1000000000
-#define MICSEC_TO_SEC 1000000
-//101 to include '\0'.
-#define INPUT_BUFFER_LEN 200
-#define LAST_CMD_BUFFER_LEN 100
-#define LAST_COMMANDS_LEN 50
-
-#define CONFIG_FILE_F "./config.bin"
-#define LAST_FILE_F "./last_file.conf"
 typedef enum _ProgramStatus{
-    PS_RunSuccess,PS_CompileSuccess,PS_ReadError,PS_ParseError,PS_ProgramError
+    PS_RunSuccess,PS_CompileSuccess,PS_MacroError,PS_ReadError,PS_ParseError,PS_ProgramError
 }ProgramStatus;
 typedef enum _DebugPrintType{
     DBP_None,DBP_AllCommands,DBP_CommandNumber
@@ -110,16 +100,16 @@ int main(void){
                 break;
             case MS_EditConfig:
                 config=read_config_file();
-                printf("Set value for init_delay (Microseconds before macro plays)\n");
+                puts("Set value for init_delay (Microseconds before macro plays)");
                 printf("Value right now is %lu (Enter nothing to skip): ",config.init_delay);
                 fgets(input_str,INPUT_BUFFER_LEN+1,stdin);
                 if(input_str[0]!='\n') config.init_delay=strtol(input_str,NULL,10);
-                printf("Set value for key_check_delay (Microseconds to check if q key is pressed)\n");
+                puts("Set value for key_check_delay (Microseconds to check if q key is pressed)");
                 printf("Value right now is %lu (Enter nothing to skip): ",config.key_check_delay);
                 fgets(input_str,INPUT_BUFFER_LEN+1,stdin);
                 if(input_str[0]!='\n') config.key_check_delay=strtol(input_str,NULL,10);
                 while(true){
-                    printf("Set value for debug_commands (Prints debug commands when playing macro)\n");
+                    puts("Set value for debug_commands (Prints debug commands when playing macro)");
                     printf("0 for no debug printing, 1 to print all commands (parsing and running program), 2 to print some command numbers and strings (clears terminal)\n");
                     printf("Value right now is %d (Enter 0/1/2 or nothing to skip): ",config.debug_print_type);
                     fgets(input_str,INPUT_BUFFER_LEN+1,stdin);
@@ -132,8 +122,8 @@ int main(void){
                     }
                 }
                 debug_print_type_valid:
-                if(write_to_config(config)) printf("Changes written to config.bin\n");
-                else printf("Didn't write. An error has occured when writing.\n");
+                if(write_to_config(config)) puts("Changes written to config.bin");
+                else puts("Didn't write. An error has occured when writing.");
                 printf("Press enter to continue.");
                 fgets(input_str,INPUT_BUFFER_LEN,stdin);
                 menu_state=MS_Start;
@@ -151,7 +141,7 @@ int main(void){
                     if(fgets_change(input_str,INPUT_BUFFER_LEN)) printf("Warning: String has been truncated to %d characters.\n",INPUT_BUFFER_LEN);
                 }else{//Enter pressed.
                     if(!file_str){
-                        printf("Needs a filepath (None given).\n");
+                        puts("Needs a filepath (None given).");
                         break;
                     }
                     strncpy(input_str,file_str,INPUT_BUFFER_LEN); //To input_str stack to be read.
@@ -164,13 +154,14 @@ int main(void){
                     write_to_default_file(input_str);
                 }
                 switch(ps){
-                    case PS_RunSuccess: printf("Macro script ran successfully.\n"); break;
-                    case PS_CompileSuccess: printf("Macro script compiled successfully.\n"); break;
-                    case PS_ReadError: printf("Macro script failed (File non-existent or read error).\n"); break;
-                    case PS_ParseError: printf("Macro script failed (File parsing errors).\n"); break;
-                    case PS_ProgramError: printf("Macro script failed (Runtime program errors).\n"); break;
+                    case PS_RunSuccess: puts("Macro script ran successfully."); break;
+                    case PS_CompileSuccess: puts("Macro script compiled successfully."); break;
+                    case PS_ReadError: puts("Macro script failed (File non-existent or read error)."); break;
+                    case PS_ParseError: puts("Macro script failed (File parsing errors)."); break;
+                    case PS_ProgramError: puts("Macro script failed (Runtime program errors)."); break;
+                    case PS_MacroError: puts("Macro script failed (Macro expansion errors).");
                 }
-                printf("Type y to build/run again or q to return to menu.\n");
+                puts("Type y to build/run again or q to return to menu.");
                 keypress_loop(xdo_obj->xdpy,(callback_t[2]){{
                     .func=input_state_func,
                     .args=&(ms_cont_t){.ms=&menu_state,.v=MS_Start},
@@ -182,7 +173,7 @@ int main(void){
                 }},2);
                 break;
             case MS_MouseCoords:
-                printf("Press t to test mouse/color coordinates. Press q to quit.\n");
+                puts("Press t to test mouse/color coordinates. Press q to quit.");
                 keypress_loop(xdo_obj->xdpy,(callback_t[2]){{
                     .func=test_mouse_func,
                     .args=xdo_obj,
@@ -272,8 +263,31 @@ ProgramStatus parse_file(const char* path, xdo_t* xdo_obj, Config config, bool a
     fread(file_str,str_len,1,f_obj);
     file_str[str_len]='\0';
     fclose(f_obj);
+    macro_paster_t* mp=macro_paster_new();
+    trim_comments(&file_str);//So that the program doesn't process commented macros.
+    MacroProcessStatus mps=file_contains_macro_definitions(file_str,MACROS_DEF_START_B,MACROS_DEF_END_B);
+    char* cmd_output;
+    if(mps==MPS_NoMacros){
+        cmd_output=file_str;
+    }else if(mps==MPS_HasDefinitions){
+        if(!macro_paster_process_macros(mp,file_str,MACROS_DEF_START_B,MACROS_DEF_END_B,MACRO_START_B,MACRO_END_B,MACRO_DEF_SEP,MACRO_VAR_SEP)){
+            macro_paster_free(mp);
+            free(file_str);
+            return PS_MacroError;
+        }
+        if(!macro_paster_expand_macros(mp,file_str,MACROS_DEF_END_B,MACRO_START_B,MACRO_END_B,MACRO_VAR_SEP,&cmd_output)){
+            macro_paster_free(mp);
+            free(file_str);
+            return PS_MacroError;
+        }
+    }else{
+        macro_paster_free(mp);
+        free(file_str);
+        return PS_MacroError;
+    }
+    macro_paster_free(mp);
     command_array_t* cmd_arr=command_array_new();
-    macro_buffer_t* mb=macro_buffer_new(file_str,cmd_arr);
+    macro_buffer_t* mb=macro_buffer_new(cmd_output,cmd_arr);
     while(true){
         macro_buffer_process_next(mb,config.debug_print_type==DBP_AllCommands);
         if(mb->token_i>mb->str_size) break;
@@ -317,7 +331,7 @@ void* keyboard_check_listener(void* srs_v){
         while(XPending(xdpy)){ //XPending doesn't make XNextEvent block if 0 events.
             XNextEvent(xdpy,&e); 
             if(e.type==KeyPress&&e.xkey.keycode==XKeysymToKeycode(xdpy,XK_Q)){
-                printf("q key pressed. Stopping macro script.\n");
+                puts("q key pressed. Stopping macro script.");
                 srs_p->program_done=true;
             }
         }
@@ -378,11 +392,11 @@ bool run_program(command_array_t* cmd_arr, Config config, xdo_t* xdo_obj){
     int cmd_arr_len=command_array_count(cmd_arr),cmd_arr_i=0,stack_cmd_i;
     key_down_check_t* kdc=key_down_check_new();
     shared_rs srs=(shared_rs){.xdo_obj=xdo_obj,.program_done=false,.key_check_delay=config.key_check_delay};
-    printf("Press s to execute the macro.\n");
+    puts("Press s to execute the macro.");
     wait_for_keypress(xdo_obj->xdpy,XK_S);
     printf("Starting script in %ld microseconds (%f seconds)\n",config.init_delay,(float)config.init_delay/1000000);
     usleep(config.init_delay);
-    printf("Running. Press q to stop the macro.\n");
+    puts("Running. Press q to stop the macro.");
     pthread_t keyboard_input_t;
     int ret=pthread_mutex_init(&input_mutex,PTHREAD_MUTEX_TIMED_NP);
     if(ret){
@@ -460,7 +474,7 @@ bool run_program(command_array_t* cmd_arr, Config config, xdo_t* xdo_obj){
                 if(contiguous_start_i!=contiguous_end_i) printf("%4d-%-4d",contiguous_end_i,contiguous_start_i);
                 else if(contiguous_start_i) printf("%4d     ",contiguous_start_i);
             }
-            printf("\n");
+            puts("");
         }
 #define cmdprintf(...) if((config.debug_print_type==DBP_AllCommands||this_cmd.print_cmd)) printf(__VA_ARGS__)
 #define PrintLastCommand(ToArray) if(config.debug_print_type==DBP_CommandNumber){ToArray##_n=0;memset(ToArray,0,LAST_CMD_BUFFER_LEN);strncpy(ToArray,this_cmd.start_cmd_p,(this_cmd.end_cmd_p-this_cmd.start_cmd_p+1<LAST_CMD_BUFFER_LEN)?(this_cmd.end_cmd_p-this_cmd.start_cmd_p+1):LAST_CMD_BUFFER_LEN);}
@@ -562,7 +576,7 @@ bool run_program(command_array_t* cmd_arr, Config config, xdo_t* xdo_obj){
                 else xdo_move_mouse_relative(xdo_obj,cmd_u.mouse_move.x,cmd_u.mouse_move.y);
                 if(config.debug_print_type==DBP_AllCommands||this_cmd.print_cmd){
                     xdo_get_mouse_location(xdo_obj,&x_mouse,&y_mouse,0);//To check mouse location.
-                    if(cmd_u.mouse_move.is_absolute) printf("\n");
+                    if(cmd_u.mouse_move.is_absolute) puts("");
                     else printf(" Mouse now at (%d,%d).\n",x_mouse,y_mouse);
                 } 
                 pthread_mutex_unlock(&input_mutex);
@@ -597,7 +611,7 @@ bool run_program(command_array_t* cmd_arr, Config config, xdo_t* xdo_obj){
                     if(not_empty) printf("Jumping back to command index #%d\n",stack_cmd_i+2);
                 }
                 if(!not_empty){
-                    printf("Stack is empty! Aborting program.\n");
+                    puts("Stack is empty! Aborting program.");
                     pthread_mutex_lock(&input_mutex);
                     srs.program_done=true;
                     no_error=false;

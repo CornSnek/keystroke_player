@@ -5,7 +5,7 @@
 #include <check.h>
 #include <assert.h>
 START_TEST(parse_from_string){
-    printf("Starting Test parse_from_string\n");
+    puts("Starting Test parse_from_string");
     char a_string_stack[]="(A;Ctrl+Alt+Delete=d;m1=u;.30;)A;";
     char* a_string_heap=(char*)malloc(sizeof(a_string_stack)/sizeof(char));
     strcpy(a_string_heap,a_string_stack);
@@ -21,7 +21,7 @@ START_TEST(parse_from_string){
 }
 END_TEST
 START_TEST(repeat_id_search_str_test){
-    printf("Starting Test repeat_id_search_str_test\n");
+    puts("Starting Test repeat_id_search_str_test");
     repeat_id_manager_t* rim=repeat_id_manager_new();
     const int num_of_strings=3;
     const int string_size=6;
@@ -41,7 +41,7 @@ START_TEST(repeat_id_search_str_test){
 }
 END_TEST
 START_TEST(shared_string_test){
-    printf("Starting Test shared_string_test\n");
+    puts("Starting Test shared_string_test");
     shared_string_manager_t* ssm=SSManager_new();
     const char* str0="AAA",* str1="BBB",* str2="AAA";
     char** string_heaps=(char**)malloc(sizeof(char*)*3);
@@ -178,12 +178,12 @@ START_TEST(macro_paster_test){
     macro_paster_t* mp2=macro_paster_new();
     char* file_str=read_macro_file();
     ck_assert_ptr_ne(file_str,0);
-    const char* MacrosStartB="[!!",* MacrosEndB="!!]",* MacroStartB="[!",* MacroEndB="!]",* DefSep=":=";
-    const char VarSep=':';
-    macro_paster_process_macros(mp2,file_str,MacrosStartB,MacrosEndB,MacroStartB,MacroEndB,DefSep,VarSep);
-    char* cmd_output;
-    if(macro_paster_expand_macros(mp2,file_str,MacrosEndB,MacroStartB,MacroEndB,VarSep,&cmd_output)){
-        printf("%s\n",cmd_output);
+    trim_comments(&file_str);//So that the program doesn't process commented macros.
+    MacroProcessStatus mps=file_contains_macro_definitions(file_str,MACROS_DEF_START_B,MACROS_DEF_END_B);
+    if(mps==MPS_HasDefinitions){
+        macro_paster_process_macros(mp2,file_str,MACROS_DEF_START_B,MACROS_DEF_END_B,MACRO_START_B,MACRO_END_B,MACRO_DEF_SEP,MACRO_VAR_SEP);
+        char* cmd_output;
+        macro_paster_expand_macros(mp2,file_str,MACROS_DEF_END_B,MACRO_START_B,MACRO_END_B,MACRO_VAR_SEP,&cmd_output);
         free(cmd_output);
     }
     macro_paster_free(mp2);

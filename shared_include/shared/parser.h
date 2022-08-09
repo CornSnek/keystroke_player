@@ -20,7 +20,7 @@ extern const char* ReadStateStrings[RS_Count];
     RS_RepeatStart,\
     RS_RepeatEnd,\
     RS_RepeatEndNumber,\
-    RS_KeyOrMouse,\
+    RS_Keys,\
     RS_KeyState,\
     RS_Delay,\
     RS_DelayNum,\
