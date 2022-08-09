@@ -3,21 +3,21 @@
 [!L_Y:=300!]
 [!H_X:=1294!]
 [!H_Y:=1127!]
-[!OTHER:A:B:=:A:B[!OTHER!]!]
+#Comment here
 !!]
 #Macros are defined inside the [!! !!] brackets. Each macro is defined in the [! := !] brackets, where L.H.S. is the name,
-#and R.H.S. is the definition.
-#Macros within the commands are defined as [!Name:var_1_value:var_2_value:...!]. TODO: Check if recursion works.
-?within=435,300,1294,1127?JT>WithinBox;mma=1085,1077;JF>WithinBox;
-JF>UpLeft;mmr=-5,-1;.m5;?coords=y<300?JT>DownLeft;
-    ?coords=x<435?JT>UpRight;
+#and R.H.S. is the definition. Whitespace can be used after the definition, but will be trimmed after being expanded in the commands below.
+#Macros within the commands are defined as [!Name:var_1_value:var_2_value:...!].
+?within=[!L_X!],[!L_Y!],[!H_X!],[!H_Y!]?JT>WithinBox;mma=1085,1077;JF>WithinBox;
+JF>UpLeft;mmr=-5,-1;.m5;?coords=y<[!L_Y!]?JT>DownLeft;
+    ?coords=x<[!L_X!]?JT>UpRight;
     JT>UpLeft;
-JF>UpRight;mmr=5,-1;.m5;?coords=y<300?JT>DownRight;
-    ?coords=x>1294?JT>UpLeft;
+JF>UpRight;mmr=5,-1;.m5;?coords=y<[!L_Y!]?JT>DownRight;
+    ?coords=x>[!H_X!]?JT>UpLeft;
     JT>UpRight;
-JF>DownLeft;mmr=-5,1;.m5;?coords=y>1127?JT>UpLeft;
-    ?coords=x<435?JT>DownRight;
+JF>DownLeft;mmr=-5,1;.m5;?coords=y>[!H_Y!]?JT>UpLeft;
+    ?coords=x<[!L_X!]?JT>DownRight;
     JT>DownLeft;
-JF>DownRight;mmr=5,1;.m5;?coords=y>1127?JT>UpRight;
-    ?coords=x>1294?JT>DownLeft;
+JF>DownRight;mmr=5,1;.m5;?coords=y>[!H_Y!]?JT>UpRight;
+    ?coords=x>[!H_X!]?JT>DownLeft;
     JT>DownRight;

@@ -29,7 +29,7 @@ bool key_down_check_remove(key_down_check_t* this,const char* rem_key){
     }
     return false;
 }
-void key_down_check_print(key_down_check_t* this){
+void key_down_check_print(const key_down_check_t* this){
     printf("Keys pressed: ");
     for(int i=0;i<this->len;i++){
         printf("%s ",this->keys[i]);
@@ -44,4 +44,49 @@ void key_down_check_key_up(key_down_check_t* this,xdo_t* xdo_obj,Window window){
 void key_down_check_free(key_down_check_t* this){
     free(this->keys);
     free(this);
+}
+void wait_for_keypress(Display* xdpy,KeySym ks){
+    int scr=DefaultScreen(xdpy);
+    XEvent e={0};
+    bool finished=false;
+    XGrabKey(xdpy,XKeysymToKeycode(xdpy,ks),None,RootWindow(xdpy,scr),False,GrabModeAsync,GrabModeAsync);
+    XFlush(xdpy);
+    while(!finished){
+        usleep(100000);
+        while(XPending(xdpy)){
+            XNextEvent(xdpy,&e); 
+            if(e.type==KeyPress&&e.xkey.keycode==XKeysymToKeycode(xdpy,ks)){
+                finished=true;
+            }
+        }
+    }
+    XUngrabKey(xdpy,XKeysymToKeycode(xdpy,ks),None,RootWindow(xdpy,scr));
+    XFlush(xdpy);
+}
+void keypress_loop(Display* xdpy,const callback_t* cb_list,size_t cb_list_len){
+    int scr=DefaultScreen(xdpy);
+    XEvent e={0};
+    bool keep_looping=true;
+    for(size_t i=0;i<cb_list_len;i++) XGrabKey(xdpy,XKeysymToKeycode(xdpy,cb_list[i].ks),None,RootWindow(xdpy,scr),False,GrabModeAsync,GrabModeAsync);
+    XFlush(xdpy);
+    while(keep_looping){
+        usleep(100000);
+        while(XPending(xdpy)){
+            XNextEvent(xdpy,&e);
+            if(e.type==KeyPress){
+                for(size_t i=0;i<cb_list_len;i++){
+                    if(e.xkey.keycode==XKeysymToKeycode(xdpy,cb_list[i].ks)){
+                        keep_looping&=cb_list[i].func(cb_list[i].args);//Keep looping until one is false.
+                        break;
+                    }
+                }
+            }
+        }
+    }
+    for(size_t i=0;i<cb_list_len;i++) XUngrabKey(xdpy,XKeysymToKeycode(xdpy,cb_list[i].ks),None,RootWindow(xdpy,scr));
+    XFlush(xdpy);
+}
+bool CallbackEndLoop(void* v){
+    (void)v;
+    return false;
 }

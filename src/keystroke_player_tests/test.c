@@ -70,14 +70,21 @@ START_TEST(shared_string_test){
     SSManager_free(ssm);
     char a_string_stack[]="Replacing the word, word, with another word";
     char* a_string_heap=(char*)malloc(sizeof(a_string_stack)/sizeof(char));
+    char* a_string_heap2=(char*)malloc(sizeof(a_string_stack)/sizeof(char));
     strcpy(a_string_heap,a_string_stack);
+    strcpy(a_string_heap2,a_string_stack);
     printf("%s\n",a_string_heap);
     replace_str(&a_string_heap,"word","farts");
     printf("%s\n",a_string_heap);
     replace_str(&a_string_heap,"an","");
     printf("%s\n",a_string_heap);
     ck_assert_int_eq(strcmp("Replacing the farts, farts, with other farts",a_string_heap),0);
+    const char* begin_w=strchr(a_string_heap2,'w'),* end_w=strchr(a_string_heap2,'d');
+    replace_str_at(&a_string_heap2,"word","first mention of 'word' only",begin_w,end_w);
+    printf("%s\n",a_string_heap2);
+    ck_assert_int_eq(strcmp("Replacing the first mention of 'word' only, word, with another word",a_string_heap2),0);
     free(a_string_heap);
+    free(a_string_heap2);
 }
 END_TEST
 START_TEST(innermost_test){
@@ -118,9 +125,6 @@ START_TEST(innermost_test){
         //printf("%s\n",bracket_str);
     }
     free(bracket_str);
-    const char* begin_p,* end_p;
-    first_outermost_bracket("[![!!]!][!!]","[!","!]",&begin_p,&end_p);
-    printf("'%s','%s'\n",begin_p,end_p);
 }
 END_TEST
 #define MACRO_FILE_F "example_scripts/macro_test.kps"
@@ -134,6 +138,7 @@ char* read_macro_file(void){
     size_t str_len=ftell(f_obj);
     rewind(f_obj);
     df_str=malloc(sizeof(char)*(str_len+1));//To include '\0'
+    EXIT_IF_NULL(df_str,char*)
     fread(df_str,str_len,1,f_obj);
     df_str[str_len]='\0';
     fclose(f_obj);
@@ -166,7 +171,7 @@ START_TEST(macro_paster_test){
     ck_assert_int_eq(macro_paster_write_macro_def(mp,"BBB",":def+:ghi;(:def*:ghi)"),1);
     macro_paster_print(mp);
     char* str=0;
-    macro_paster_get_string(mp,"BBB",':',&str);
+    macro_paster_get_val_string(mp,"BBB",':',&str);
     printf("%s\n",str);
     free(str);
     macro_paster_free(mp);
@@ -176,9 +181,16 @@ START_TEST(macro_paster_test){
     const char* MacrosStartB="[!!",* MacrosEndB="!!]",* MacroStartB="[!",* MacroEndB="!]",* DefSep=":=";
     const char VarSep=':';
     macro_paster_process_macros(mp2,file_str,MacrosStartB,MacrosEndB,MacroStartB,MacroEndB,DefSep,VarSep);
-    macro_paster_print(mp2);
+    char* cmd_output;
+    if(macro_paster_expand_macros(mp2,file_str,MacrosEndB,MacroStartB,MacroEndB,VarSep,&cmd_output)){
+        printf("%s\n",cmd_output);
+        free(cmd_output);
+    }
     macro_paster_free(mp2);
     free(file_str);
+}
+END_TEST
+START_TEST(replace_test){
     replace_node_t WordList[]={
         {"ab","Word1"}
         ,{"acb","Word2"}
@@ -197,6 +209,11 @@ START_TEST(macro_paster_test){
     replace_str_list(&dummy_str_heap,WordList,WordList_len);
     printf("%s\n",dummy_str_heap);
     free(dummy_str_heap);
+    const char* words="abcdefghijkl";
+    const char* words_split;
+    int words_s_l,words_e_l;
+    split_at_sep(words,"efg",&words_split,&words_s_l,&words_e_l);
+    printf("%s %s,%d %d\n",words,words_split,words_s_l,words_e_l);
 }
 END_TEST
 Suite* test_suite(void){
@@ -208,7 +225,9 @@ Suite* test_suite(void){
     tcase_add_test(tc_core,repeat_id_search_str_test);
     tcase_add_test(tc_core,shared_string_test);
     tcase_add_test(tc_core,innermost_test);
+    tcase_set_timeout(tc_core,60.);
     tcase_add_test(tc_core,macro_paster_test);
+    tcase_add_test(tc_core,replace_test);
     suite_add_tcase(s,tc_core);
     return s;
 }

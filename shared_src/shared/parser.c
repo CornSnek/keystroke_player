@@ -13,6 +13,7 @@ macro_buffer_t* macro_buffer_new(char* str_owned, command_array_t* cmd_arr){
 }
 void print_where_error_is(const char* contents,int begin_error,int end_error){
     char* str_to_print=(char*)malloc(sizeof(char)*(end_error+2)); //+2 to count a character and for '\0'.
+    EXIT_IF_NULL(str_to_print,char*)
     strncpy(str_to_print,contents+begin_error,end_error+1);
     str_to_print[end_error+1]='\0';
     printf("%s < Command where error occured.\n",str_to_print);
@@ -356,6 +357,7 @@ bool macro_buffer_process_next(macro_buffer_t* this,bool print_debug){//Returns 
                     break;
                 }else if(added_keystate&&current_char==';'){
                     str_name=malloc(sizeof(char)*read_offset_i-1);//-2 to exclude RS_KeyState modifiers, but -1 because null terminator.
+                    EXIT_IF_NULL(str_name,char*)
                     strncpy(str_name,this->contents+this->token_i+read_i,read_offset_i-2);
                     str_name[read_offset_i-2]='\0';\
                     command_array_add(this->cmd_arr,
@@ -422,6 +424,7 @@ bool macro_buffer_process_next(macro_buffer_t* this,bool print_debug){//Returns 
             case RS_MouseClickType:
                 if(isdigit(current_char)&&!first_number){
                     num_str=(char*)calloc(sizeof(char),2);
+                    EXIT_IF_NULL(num_str,char*)
                     num_str[0]=current_char;
                     parsed_num[0]=strtol(num_str,NULL,10);
                     free(num_str);
@@ -521,6 +524,7 @@ bool macro_buffer_process_next(macro_buffer_t* this,bool print_debug){//Returns 
                 if(char_is_key(current_char)) break;
                 if(current_char==';'){
                     str_name=(char*)malloc(sizeof(char)*read_offset_i+1);
+                    EXIT_IF_NULL(str_name,char*)
                     strncpy(str_name,this->contents+this->token_i+read_i,read_offset_i);
                     str_name[read_offset_i]='\0';
                     int jid_cmd_i=jump_id_manager_search_command_index(this->jim,str_name);
@@ -568,6 +572,7 @@ bool macro_buffer_process_next(macro_buffer_t* this,bool print_debug){//Returns 
                 if(char_is_key(current_char)) break;
                 if(current_char==';'){
                     str_name=(char*)malloc(sizeof(char)*read_offset_i+1);
+                    EXIT_IF_NULL(str_name,char*)
                     strncpy(str_name,this->contents+this->token_i+read_i,read_offset_i);
                     str_name[read_offset_i]='\0';
                     int jid_cmd_i=jump_id_manager_search_command_index(this->jim,str_name);
@@ -842,6 +847,7 @@ bool macro_buffer_process_next(macro_buffer_t* this,bool print_debug){//Returns 
 }
 void macro_buffer_str_id_check(macro_buffer_t* this){//Check if RepeatStart doesn't have a respective RepeatEnd, or if there are no JumpFroms.
     bool* id_check=calloc(this->rim->size,sizeof(bool));
+    EXIT_IF_NULL(id_check,bool*)
     for(int i=0;i<this->rim->size;i++){
         for(int j=0;j<this->cmd_arr->size;j++){
             const command_t cmd=this->cmd_arr->cmds[j];
@@ -856,6 +862,7 @@ void macro_buffer_str_id_check(macro_buffer_t* this){//Check if RepeatStart does
     }
     free(id_check);
     id_check=calloc(this->jim->size,sizeof(bool));
+    EXIT_IF_NULL(id_check,bool*)
     for(int i=0;i<this->jim->size;i++){
         for(int j=0;j<this->cmd_arr->size;j++){
             const command_t cmd=this->cmd_arr->cmds[j];

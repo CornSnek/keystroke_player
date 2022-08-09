@@ -1,7 +1,6 @@
 #include "shared_string.h"
 #include "macros.h"
 #include <string.h>
-#include <ctype.h>
 #include <assert.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -88,7 +87,7 @@ bool macro_paster_add_name(macro_paster_t* this,const char* str_name){
         fprintf(stderr,"Macro name shouldn't be empty.\n");
         return false;
     }
-    for(int i=0;i<this->count;i++){
+    for(size_t i=0;i<this->count;i++){
         if(!strcmp(this->str_names[i],str_name)){
             fprintf(stderr,"In macro_paster, string '%s' already exists as a macro name.\n",str_name);
             return false;
@@ -124,21 +123,25 @@ bool macro_paster_add_name(macro_paster_t* this,const char* str_name){
     this->str_var_values[add_i]=0;
     return true;
 }
+bool _macro_paster_valid_name(const macro_paster_t* this,const char* str_name,size_t* at_index){
+    for(size_t i=0;i<(size_t)this->count;i++){
+        if(!strcmp(this->str_names[i],str_name)){
+            *at_index=i;
+            return true;
+        }
+    }
+    return false;
+}
 bool macro_paster_add_var(macro_paster_t* this,const char* str_name,const char* var_name){
     if(!var_name[0]){
         fprintf(stderr,"One of the variable names in a macro shouldn't be empty.\n");
         return false;
     }
-    int str_name_i;
-    for(int i=0;i<this->count;i++){
-        if(!strcmp(this->str_names[i],str_name)){
-            str_name_i=i;
-            goto string_exists;
-        }
+    size_t str_name_i;
+    if(!_macro_paster_valid_name(this,str_name,&str_name_i)){
+        fprintf(stderr,"In macro_paster, string '%s' does not exist. Did not add variable string '%s'.\n",str_name,var_name);
+        return false;
     }
-    fprintf(stderr,"In macro_paster, string '%s' does not exist. Did not add variable string '%s'.\n",str_name,var_name);
-    return false;
-    string_exists:
     for(int i=0;i<this->str_var_count[str_name_i];i++){
         if(!strcmp(this->str_vars[str_name_i][i],var_name)){
             fprintf(stderr,"In macro_paster, variable '%s' already exists for string '%s'. Did not add variable.\n",var_name,str_name);
@@ -166,16 +169,11 @@ bool macro_paster_add_var(macro_paster_t* this,const char* str_name,const char* 
     return true;
 }
 bool macro_paster_write_macro_def(macro_paster_t* this,const char* str_name,const char* str_value){
-    int str_name_i;
-    for(int i=0;i<this->count;i++){
-        if(!strcmp(this->str_names[i],str_name)){
-            str_name_i=i;
-            goto string_exists;
-        }
+    size_t str_name_i;
+    if(!_macro_paster_valid_name(this,str_name,&str_name_i)){
+        fprintf(stderr,"In macro_paster, string '%s' does not exist. Did not write macro string value '%s'.\n",str_name,str_value);
+        return false;
     }
-    fprintf(stderr,"In macro_paster, string '%s' does not exist. Did not write macro string value '%s'.\n",str_name,str_value);
-    return false;
-    string_exists:
     this->macro_definition[str_name_i]=(char*)realloc(this->macro_definition[str_name_i],sizeof(char)*(strlen(str_value)+1));
     EXIT_IF_NULL(this->macro_definition[str_name_i],char*)
     strcpy(this->macro_definition[str_name_i],str_value);
@@ -187,17 +185,12 @@ void _macro_paster_write_var_value(macro_paster_t* this,int str_name_i,int var_n
     strcpy(this->str_var_values[str_name_i][var_name_i],var_value);
 }
 bool macro_paster_write_var_by_str(macro_paster_t* this,const char* str_name,const char* var_name,const char* var_value){
-    int str_name_i;
+    size_t str_name_i;
     int var_name_i;
-    for(int i=0;i<this->count;i++){
-        if(!strcmp(this->str_names[i],str_name)){
-            str_name_i=i;
-            goto string_exists;
-        }
+    if(!_macro_paster_valid_name(this,str_name,&str_name_i)){
+        fprintf(stderr,"In macro_paster, string '%s' does not exist. Did not change variable string '%s'.\n",str_name,var_name);
+        return false;
     }
-    fprintf(stderr,"In macro_paster, string '%s' does not exist. Did not change variable string '%s'.\n",str_name,var_name);
-    return false;
-    string_exists:
     for(int i=0;i<this->str_var_count[str_name_i];i++){
         if(!strcmp(this->str_vars[str_name_i][i],var_name)){
             var_name_i=i;
@@ -212,16 +205,11 @@ bool macro_paster_write_var_by_str(macro_paster_t* this,const char* str_name,con
 }
 //Same as above, but uses var indices.
 bool macro_paster_write_var_by_ind(macro_paster_t* this,const char* str_name,int var_i,const char* var_value){
-    int str_name_i;
-    for(int i=0;i<this->count;i++){
-        if(!strcmp(this->str_names[i],str_name)){
-            str_name_i=i;
-            goto string_exists;
-        }
+    size_t str_name_i;
+    if(!_macro_paster_valid_name(this,str_name,&str_name_i)){
+        fprintf(stderr,"In macro_paster, string '%s' does not exist. Did not change variable index #%d.\n",str_name,var_i);
+        return false;
     }
-    fprintf(stderr,"In macro_paster, string '%s' does not exist. Did not change variable index #%d.\n",str_name,var_i);
-    return false;
-    string_exists:
     if(var_i>=0&&var_i<this->str_var_count[str_name_i]){
         _macro_paster_write_var_value(this,str_name_i,var_i,var_value);
         return true;
@@ -241,12 +229,12 @@ bool macro_paster_process_macros(macro_paster_t* this,const char* file_str,const
     const char* macros_p=macros_def;//macros_p to loop until end of macros_def
     while(true){
         depth=first_outermost_bracket(macros_p,start_b,end_b,&s_p,&e_p);
-        if(!depth&&!s_p) break;
         if(depth){
             fprintf(stderr,"One of the Macros have misplaced start brackets '%s' and end brackets '%s'.\n",start_b,end_b);
             free(macros_def);
             return false;
         }
+        if(!s_p) break;//Finished processing all macros.
         char* full_macro_str=char_string_slice_no_brackets(s_p,e_p,start_b),* macro_vars_str,* macro_name_str=0,* macro_vars_p,* def_str;
         const char* def_p;
         int macro_name_len, def_len;
@@ -258,6 +246,8 @@ bool macro_paster_process_macros(macro_paster_t* this,const char* file_str,const
         }
         macro_vars_str=(char*)calloc(1,sizeof(char)*(macro_name_len+1));
         def_str=(char*)calloc(1,sizeof(char)*(def_len+1));
+        EXIT_IF_NULL(macro_vars_str,char*)
+        EXIT_IF_NULL(def_str,char*)
         strncpy(macro_vars_str,full_macro_str,macro_name_len);
         strncpy(def_str,def_p,def_len);
         free(full_macro_str);
@@ -266,25 +256,20 @@ bool macro_paster_process_macros(macro_paster_t* this,const char* file_str,const
         for(size_t i=0,str_len=0;i<=strlen(macro_vars_str);i++){//i<=strlen to include '\0'.
             if(macro_vars_str[i]==var_sep||macro_vars_str[i]=='\0'){
                 char* str=(char*)calloc(1,sizeof(char)*(str_len+1));
+                EXIT_IF_NULL(str,char*)
                 bool success;
                 strncpy(str,macro_vars_p,str_len);
                 if(macro_name_set){
                     success=macro_paster_add_var(this,macro_name_str,str);
                     if(!success){
-                        free(macro_vars_str);
-                        free(str);
-                        free(def_str);
-                        free(macros_def);
+                        free(macro_vars_str); free(str); free(def_str); free(macros_def);
                         return false;
                     }
                     free(str);
                 }else{
                     success=macro_paster_add_name(this,str);
                     if(!success){
-                        free(macro_vars_str);
-                        free(str);
-                        free(def_str);
-                        free(macros_def);
+                        free(macro_vars_str); free(str); free(def_str); free(macros_def);
                         return false;
                     }
                     macro_name_str=str;//Free name later.
@@ -297,52 +282,122 @@ bool macro_paster_process_macros(macro_paster_t* this,const char* file_str,const
             str_len++;
             if(!char_is_key(macro_vars_str[i])){
                 fprintf(stderr,"Invalid character '%c' for macro name/variable.\n",macro_vars_str[i]);
-                free(macro_vars_str);
-                free(macro_name_str);
-                free(def_str);
-                free(macros_def);
+                free(macro_vars_str); free(macro_name_str); free(def_str); free(macros_def);
                 return false;
             }
         }
-        free(macro_vars_str);
         macro_paster_write_macro_def(this,macro_name_str,def_str);
-        free(macro_name_str);
-        free(def_str);
+        free(macro_vars_str); free(macro_name_str); free(def_str);
         macros_p=e_p+strlen(end_b);//Get next macro to process.
     }
     free(macros_def);
     return true;
 }
-bool macro_paster_expand_macros(const macro_paster_t* this,const char* file_str,const char* end_m,const char*start_b,const char* end_b,const char* def_sep,char var_sep){
-    return false;
-}
-bool macro_paster_get_string(const macro_paster_t* this,const char* str_name,char prefix,char** output){
-    int str_name_i;
-    char* string_output;
-    for(int i=0;i<this->count;i++){
-        if(!strcmp(this->str_names[i],str_name)){
-            str_name_i=i;
-            goto string_exists;
+bool macro_paster_expand_macros(macro_paster_t* this,const char* file_str,const char* end_m,const char*start_b,const char* end_b,char var_sep,char** output){
+    const char* begin_cmd_p;
+    int m_i,cmd_len;
+    split_at_sep(file_str,end_m,&begin_cmd_p,&m_i,&cmd_len);
+    char* cmd_str=(char*)malloc(sizeof(char)*(cmd_len+1));
+    EXIT_IF_NULL(cmd_str,char*)
+    strcpy(cmd_str,begin_cmd_p);
+    trim_comments(&cmd_str);
+    size_t expansion_count=0;
+    do{
+        if(expansion_count>1000){
+            fprintf(stderr,"Error: Possibly recursive macro in code. Ended recursion. Output:\n%s\n",cmd_str);
+            free(cmd_str);
+            return false;
         }
+        const char* begin_m_p,*end_m_p;
+        int depth=first_innermost_bracket(cmd_str,start_b,end_b,&begin_m_p,&end_m_p);
+        if(depth){
+            fprintf(stderr,"Mismatched macro brackets in code.\n");
+            free(cmd_str);
+            return false;
+        }
+        if(!begin_m_p) break; //All macros expanded/processed.
+        char* macro_w_br=char_string_slice_with_brackets(begin_m_p,end_m_p,end_b);//Used to replace for macro_paster_get_val_string
+        char* macro_n_br=char_string_slice_no_brackets(begin_m_p,end_m_p,start_b);
+        end_m_p+=+strlen(end_b)-1;//From char_string_slice_with_brackets to include the last end bracket.
+        char* macro_name_str=0,* macro_vars_p=macro_n_br;
+        size_t parse_len=strlen(macro_n_br),str_len=0,macro_name_i;
+        int var_i=0;
+        bool macro_name_set=false;
+        for(size_t parse_i=0;parse_i<=parse_len;parse_i++){
+            if(macro_n_br[parse_i]==var_sep||macro_n_br[parse_i]=='\0'){
+                char* str=(char*)calloc(1,sizeof(char)*(str_len+1));
+                EXIT_IF_NULL(str,char*)
+                strncpy(str,macro_vars_p,str_len);
+                if(macro_name_set){
+                    if(!macro_paster_write_var_by_ind(this,macro_name_str,var_i,str)){ //Out of range.
+                        free(str); free(macro_name_str); free(macro_w_br); free(macro_n_br); free(cmd_str);
+                        return false;
+                    }
+                    free(str);
+                    var_i++;
+                }else{
+                    if(!_macro_paster_valid_name(this,str,&macro_name_i)){
+                        fprintf(stderr,"Macro name '%s' is not a built-in macro or defined yet.\n",str);
+                        free(str); free(macro_w_br); free(macro_n_br); free(cmd_str);
+                        return false;
+                    }
+                    macro_name_str=str;//Free name later.
+                    macro_name_set=true;
+                }
+                macro_vars_p+=str_len+1;//+1 To exclude var separator.
+                str_len=0;
+                continue;
+            }
+            str_len++;
+            if(!macro_name_set&&!char_is_key(macro_n_br[parse_i])){
+                fprintf(stderr,"Invalid character '%c' for macro name.\n",macro_n_br[parse_i]);
+                free(macro_w_br); free(macro_n_br); free(cmd_str);
+                return false;
+            }
+        }
+        char* macro_val;
+        macro_paster_get_val_string(this,macro_name_str,var_sep,&macro_val);
+        trim_whitespace(&macro_val);
+        replace_str_at(&cmd_str,macro_w_br,macro_val,begin_m_p,end_m_p);
+        free(macro_val); free(macro_name_str); free(macro_w_br); free(macro_n_br);
+        expansion_count++;
+    }while(true);
+    printf("Number of macro expansions: %lu\n",expansion_count);
+    *output=cmd_str;
+    return true;
+}
+//String output needs to be freed.
+bool macro_paster_get_val_string(const macro_paster_t* this,const char* str_name,char prefix,char** output){
+    size_t str_name_i;
+    char* string_output;
+    if(!_macro_paster_valid_name(this,str_name,&str_name_i)){
+        fprintf(stderr,"In macro_paster, string '%s' does not exist. Did not write output.\n",str_name);
+        return false;
     }
-    fprintf(stderr,"In macro_paster, string '%s' does not exist. Did not write output.\n",str_name);
-    return false;
-    string_exists:
     string_output=(char*)malloc(sizeof(char)*(strlen(this->macro_definition[str_name_i])+1));
+    EXIT_IF_NULL(string_output,char*)
     strcpy(string_output,this->macro_definition[str_name_i]);
-    for(int str_var_i=0;str_var_i<this->str_var_count[str_name_i];str_var_i++){
+    const int var_count=this->str_var_count[str_name_i];
+    replace_node_t* rep_list=(replace_node_t*)malloc(sizeof(replace_node_t)*var_count);
+    EXIT_IF_NULL(rep_list,replace_node_t*)
+    for(int str_var_i=0;str_var_i<var_count;str_var_i++){//Add prefix to all variable names and add vars/values to replace node.
         char* prefix_str=(char*)malloc(sizeof(char)*(strlen(this->str_vars[str_name_i][str_var_i])+2));
         EXIT_IF_NULL(prefix_str,char*)
         prefix_str[0]=prefix;
         strcpy(prefix_str+1,this->str_vars[str_name_i][str_var_i]);
-        replace_str(&string_output,prefix_str,this->str_var_values[str_name_i][str_var_i]);//Replace all instances of the prefixed variable with the value.
-        free(prefix_str);
+        rep_list[str_var_i].r=prefix_str;
+        rep_list[str_var_i].w=this->str_var_values[str_name_i][str_var_i];
     }
+    replace_str_list(&string_output,rep_list,var_count);
+    for(int str_var_i=0;str_var_i<var_count;str_var_i++){
+        free((void*)rep_list[str_var_i].r);
+    }
+    free(rep_list);
     *output=string_output;
     return true;
 }
 void macro_paster_print(const macro_paster_t* this){
-    for(int str_i=0;str_i<this->count;str_i++){
+    for(size_t str_i=0;str_i<this->count;str_i++){
         printf("Macro name: ['%s'], ",this->str_names[str_i]);
         printf("Variables:[");
         for(int var_i=0;var_i<this->str_var_count[str_i];var_i++){
@@ -353,7 +408,7 @@ void macro_paster_print(const macro_paster_t* this){
     }
 }
 void macro_paster_free(macro_paster_t* this){
-    for(int str_i=0;str_i<this->count;str_i++){
+    for(size_t str_i=0;str_i<this->count;str_i++){
         free(this->str_names[str_i]);
         free(this->macro_definition[str_i]);
         for(int var_i=0;var_i<this->str_var_count[str_i];var_i++){
@@ -370,7 +425,7 @@ void macro_paster_free(macro_paster_t* this){
     free(this->str_var_values);
     free(this);
 }
-int trim_whitespace(char** strptr){//For null-terminated strings only, and reedit pointer to resize for trimmed strings. Returns int to get total length of the trimmed string.
+size_t trim_whitespace(char** strptr){//For null-terminated strings only, and reedit pointer to resize for trimmed strings. Returns int to get total length of the trimmed string.
     int str_i=0;
     int whitespace_count=0;
     do{
@@ -379,31 +434,78 @@ int trim_whitespace(char** strptr){//For null-terminated strings only, and reedi
     }while((*strptr)[++str_i]);
     (*strptr)[str_i-whitespace_count]='\0';//Null terminate last character and reallocate as whitespace-trimmed string.
     *strptr=(char*)realloc(*strptr,(str_i-whitespace_count+1)*sizeof(char));
-    EXIT_IF_NULL(*strptr,char*);
+    EXIT_IF_NULL(*strptr,char*)
     return str_i-whitespace_count;
 }
-//Goal: Sort words that may "overlap" the first few characters, with the biggest strings first.
-//Ex: String starting with "a3bd" should be before strings "a3b", "a3", "a"... etc.
-int replace_node_biggest_first(const void* lhs_v,const void* rhs_v){
-    return strcmp(((const replace_node_t*)rhs_v)->r,((const replace_node_t*)lhs_v)->r);
+size_t trim_comments(char** strptr){//Same as above, but with comments until newline instead.
+    int str_i=0;
+    int comment_count=0;
+    bool is_in_comment=false;
+    do{
+        if(!is_in_comment){
+            if((*strptr)[str_i]!='#'){
+                (*strptr)[str_i-comment_count]=(*strptr)[str_i];
+                continue;
+            }
+            is_in_comment=true;
+            comment_count++;
+        }else{
+            if((*strptr)[str_i]!='\n'){
+                comment_count++;
+                continue;
+            }
+            comment_count++;//Trim newline too
+            is_in_comment=false;
+        }
+    }while((*strptr)[++str_i]);
+    (*strptr)[str_i-comment_count]='\0';
+    *strptr=(char*)realloc(*strptr,(str_i-comment_count+1)*sizeof(char));
+    EXIT_IF_NULL(*strptr,char*)
+    return str_i-comment_count;
 }
 _Pragma("GCC diagnostic push")
 _Pragma("GCC diagnostic ignored \"-Wstringop-truncation\"")
 void replace_str(char** strptr_owner, const char* replace, const char* with){//Assume all null-terminated.
     char* new_strptr=(char*)(malloc(sizeof(char)));
     EXIT_IF_NULL(new_strptr,char*)
-    int strptr_i=0;
-    int new_strptr_i=0;
-    const int replace_len=strlen(replace);
-    const int with_len=strlen(with);
+    size_t strptr_i=0;
+    size_t new_strptr_i=0;
+    const size_t replace_len=strlen(replace);
+    const size_t with_len=strlen(with);
     char current_char;
     while((current_char=(*strptr_owner)[strptr_i])){
         if(current_char==replace[0]&&!strncmp((*strptr_owner+strptr_i),replace,replace_len)){//0 in strncmp for same string contents.
             new_strptr=(char*)(realloc(new_strptr,sizeof(char)*(new_strptr_i+1+with_len)));
             EXIT_IF_NULL(new_strptr,char*)
-            /*for(int with_i=0;with_i<with_len;with_i++){
-                new_strptr[new_strptr_i++]=with[with_i];
-            }*/
+            strncpy(new_strptr+new_strptr_i,with,with_len);//-Wstringop-truncation here (It null terminates after while loop)
+            new_strptr_i+=with_len;
+            strptr_i+=replace_len;
+            continue;
+        }
+        new_strptr[new_strptr_i++]=current_char;
+        strptr_i++;
+        new_strptr=(char*)(realloc(new_strptr,sizeof(char)*new_strptr_i+1));
+        EXIT_IF_NULL(new_strptr,char*)
+    }
+    new_strptr[new_strptr_i]='\0';//Null-terminate.
+    free(*strptr_owner);
+    *strptr_owner=new_strptr;//Change freed pointer to new pointer.
+}
+//Only replaces within range of pointers begin/end (inclusive).
+//Will invalidate begin/end pointers after this call.
+void replace_str_at(char** strptr_owner, const char* replace, const char* with,const char* begin,const char* end){
+    char* new_strptr=(char*)(malloc(sizeof(char)));
+    EXIT_IF_NULL(new_strptr,char*)
+    size_t strptr_i=0;
+    size_t new_strptr_i=0;
+    const size_t replace_len=strlen(replace);
+    const size_t with_len=strlen(with);
+    char current_char;
+    while((current_char=(*strptr_owner)[strptr_i])){
+        char* strptr_owner_p=*strptr_owner+strptr_i;
+        if(strptr_owner_p>=begin&&strptr_owner_p<=end&&current_char==replace[0]&&!strncmp(strptr_owner_p,replace,replace_len)){//0 in strncmp for same string contents.
+            new_strptr=(char*)(realloc(new_strptr,sizeof(char)*(new_strptr_i+1+with_len)));
+            EXIT_IF_NULL(new_strptr,char*)
             strncpy(new_strptr+new_strptr_i,with,with_len);//-Wstringop-truncation here (It null terminates after while loop)
             new_strptr_i+=with_len;
             strptr_i+=replace_len;
@@ -419,8 +521,13 @@ void replace_str(char** strptr_owner, const char* replace, const char* with){//A
     *strptr_owner=new_strptr;//Change freed pointer to new pointer.
 }
 _Pragma("GCC diagnostic pop")
+//Reverse lexicographical order so that longer words that overlap other words get replaced first.
+//Ex: For strings ["abcde","abcd","abc"], it will replace "abcde" first.
+int replace_node_biggest_first(const void* lhs,const void* rhs){
+    return strcmp(((const replace_node_t*)rhs)->r,((const replace_node_t*)lhs)->r);
+}
 void replace_str_list(char** strptr_owner,replace_node_t* rep_list,size_t rep_list_size){
-    qsort(rep_list,rep_list_size,sizeof(replace_node_t),replace_node_biggest_first);//Replace with the priority of largest to smallest word in the list.
+    qsort(rep_list,rep_list_size,sizeof(replace_node_t),replace_node_biggest_first);
     /*for(size_t i=0;i<rep_list_size;i++){
         printf("r:'%s' w:'%s'\n",rep_list[i].r,rep_list[i].w);
     }*/
@@ -433,7 +540,7 @@ void replace_str_list(char** strptr_owner,replace_node_t* rep_list,size_t rep_li
         for(size_t i=0;i<rep_list_size;i++){
             const char* const replace=rep_list[i].r,* const with=rep_list[i].w;
             const size_t replace_len=strlen(replace),with_len=strlen(with);
-            if(current_char==replace[0]&&!strncmp((*strptr_owner+strptr_i),replace,replace_len)){//0 in strncmp for same string contents.
+            if(current_char==replace[0]&&!strncmp(*strptr_owner+strptr_i,replace,replace_len)){//0 in strncmp for same string contents.
                 new_strptr=(char*)(realloc(new_strptr,sizeof(char)*(new_strptr_i+1+with_len)));
                 EXIT_IF_NULL(new_strptr,char*)
                 strncpy(new_strptr+new_strptr_i,with,with_len);
@@ -451,18 +558,6 @@ void replace_str_list(char** strptr_owner,replace_node_t* rep_list,size_t rep_li
     new_strptr[new_strptr_i]='\0';//Null-terminate.
     free(*strptr_owner);
     *strptr_owner=new_strptr;//Change freed pointer to new pointer.
-}
-bool char_is_key(char c){
-    return isalnum(c)||(c=='_')||(c=='+');
-}
-bool char_is_keystate(char c){
-    return (c=='u')||(c=='d')||(c=='c')||(c=='U')||(c=='D')||(c=='C');
-}
-bool char_is_whitespace(char c){
-    return (c==' ')||(c=='\t')||(c=='\n')||(c=='\v')||(c=='\f')||(c=='\r');
-}
-bool char_is_delay(char c){
-    return (c=='m')||(c=='u')||(c=='s')||(c=='M')||(c=='U')||(c=='S');
 }
 //Returns string from start_p char to end_p char [[nodiscard]] returns pointer that needs to be freed.
 char* char_string_slice(const char* start_p,const char* end_p){
@@ -535,7 +630,8 @@ int first_outermost_bracket(const char* search_str,const char* begin_bracket,con
     }
     return depth;
 }
-//Gets string length of start (start_len), pointer after the split seperator (split_p), and the length of the second split string (end_len).
+//Gets string length of start (start_len), split pointer after the seperator (split_p), and the length of the second split string (end_len).
+//Seperator string is excluded for lengths and the split pointer.
 void split_at_sep(const char* search_str,const char* sep,const char** split_p,int* start_len,int* end_len){
     *start_len=*end_len=0;
     *split_p=0;

@@ -45,49 +45,76 @@ void get_pixel_color(Display* d, int x, int y, XColor* color);
 ProgramStatus parse_file(const char* path, xdo_t* xdo_obj, Config config, bool and_run);
 void timespec_diff(const struct timespec* ts_begin,struct timespec* ts_end_clone,struct timespec* ts_diff);
 bool run_program(command_array_t* cmd_arr, Config config, xdo_t* xdo_obj);
+bool test_mouse_func(void* xdo_v){
+    int x_mouse,y_mouse;
+    XColor pc;
+    xdo_get_mouse_location((xdo_t*)xdo_v,&x_mouse,&y_mouse,0);
+    printf("You clicked at x:%d y:%d",x_mouse,y_mouse);
+    get_pixel_color(((xdo_t*)xdo_v)->xdpy,x_mouse,y_mouse,&pc);
+    printf(" with r:%u g:%u b:%u\n",pc.red>>8,pc.green>>8,pc.blue>>8);//Truncate to byte instead.
+    return true;
+}
+typedef enum _MenuState{
+    MS_Start,MS_EditConfig,MS_BuildFile,MS_RunFile,MS_MouseCoords,MS_Done
+}MenuState;
+typedef struct ms_cont{
+    MenuState* ms;
+    MenuState v;
+}ms_cont_t;
+bool input_state_func(void* MS_v){//Sets menu_state variable in main(void) to v.
+    *(((ms_cont_t*)MS_v)->ms)=((ms_cont_t*)MS_v)->v;
+    return false;
+}
 int main(void){
     if(access(CONFIG_FILE_F,F_OK)) if(!write_to_config(InitConfig)) return EXIT_FAILURE;
     xdo_t* xdo_obj=xdo_new(NULL);
-    Window focus_window;//Will be ignored.
-    int x_mouse,y_mouse;
-    XColor pc;
     char* file_str=0;
     Config config;
-    typedef enum{
-        IS_Start,IS_EditConfig,IS_BuildFile,IS_RunFile,IS_MouseCoords
-    } InputState;
     char input_str[INPUT_BUFFER_LEN+1];
-    InputState input_state=IS_Start;
+    MenuState menu_state=MS_Start;
     bool also_run=false;
     while(true){
-        printf(CLEAR_TERM);
-        switch(input_state){
-            case IS_Start:
+        //printf(CLEAR_TERM);
+        switch(menu_state){
+            case MS_Start:
                 also_run=false;
                 printf(
-                    "Keystroke Player: Plays mouse/keyboard macro scripts and stops when Esc key is pressed, or the script exits\n"
+                    "Keystroke Player: Plays mouse/keyboard macro scripts and stops when the q key is pressed, or the script exits\n"
                     "Type c for Config\n"
                     "Type b to Build File\n"
                     "Type r to Build and Run File\n"
                     "Type t to Test coordinates of mouse and color\n"
                     "Type q to Quit\n"
-                    "Type to continue: "
                 );
-                fgets(input_str,INPUT_BUFFER_LEN+1,stdin);
-                //fgets_change(input_str,INPUT_BUFFER_LEN);//Remove '\n' if any.
-                if(!strcmp(input_str,"q\n")) goto done;
-                if(!strcmp(input_str,"c\n")) input_state=IS_EditConfig;
-                if(!strcmp(input_str,"b\n")) input_state=IS_BuildFile;
-                if(!strcmp(input_str,"r\n")) input_state=IS_RunFile;
-                if(!strcmp(input_str,"t\n")) input_state=IS_MouseCoords;
+                keypress_loop(xdo_obj->xdpy,(callback_t[5]){{
+                    .func=input_state_func,
+                    .args=&(ms_cont_t){.ms=&menu_state,.v=MS_Done},
+                    .ks=XK_Q
+                },{
+                    .func=input_state_func,
+                    .args=&(ms_cont_t){.ms=&menu_state,.v=MS_EditConfig},
+                    .ks=XK_C
+                },{
+                    .func=input_state_func,
+                    .args=&(ms_cont_t){.ms=&menu_state,.v=MS_BuildFile},
+                    .ks=XK_B
+                },{
+                    .func=input_state_func,
+                    .args=&(ms_cont_t){.ms=&menu_state,.v=MS_RunFile},
+                    .ks=XK_R
+                },{
+                    .func=input_state_func,
+                    .args=&(ms_cont_t){.ms=&menu_state,.v=MS_MouseCoords},
+                    .ks=XK_T
+                }},5);
                 break;
-            case IS_EditConfig:
+            case MS_EditConfig:
                 config=read_config_file();
                 printf("Set value for init_delay (Microseconds before macro plays)\n");
                 printf("Value right now is %lu (Enter nothing to skip): ",config.init_delay);
                 fgets(input_str,INPUT_BUFFER_LEN+1,stdin);
                 if(input_str[0]!='\n') config.init_delay=strtol(input_str,NULL,10);
-                printf("Set value for key_check_delay (Microseconds to check if escape key is pressed)\n");
+                printf("Set value for key_check_delay (Microseconds to check if q key is pressed)\n");
                 printf("Value right now is %lu (Enter nothing to skip): ",config.key_check_delay);
                 fgets(input_str,INPUT_BUFFER_LEN+1,stdin);
                 if(input_str[0]!='\n') config.key_check_delay=strtol(input_str,NULL,10);
@@ -109,17 +136,17 @@ int main(void){
                 else printf("Didn't write. An error has occured when writing.\n");
                 printf("Press enter to continue.");
                 fgets(input_str,INPUT_BUFFER_LEN,stdin);
-                input_state=IS_Start;
+                menu_state=MS_Start;
                 break;
-            case IS_RunFile:
+            case MS_RunFile:
                 also_run=true;
                 //Fallthrough
-            case IS_BuildFile:
+            case MS_BuildFile:
                 file_str=read_default_file();
                 printf("Set file path to open. Current file: %s\n",file_str?file_str:"(None)");
                 printf("(Press enter to skip, type c to cancel.): ");
                 fgets(input_str,INPUT_BUFFER_LEN+1,stdin);
-                if(!strcmp(input_str,"c\n")){input_state=IS_Start; break;}
+                if(!strcmp(input_str,"c\n")){menu_state=MS_Start; break;}
                 if(input_str[0]!='\n'){
                     if(fgets_change(input_str,INPUT_BUFFER_LEN)) printf("Warning: String has been truncated to %d characters.\n",INPUT_BUFFER_LEN);
                 }else{//Enter pressed.
@@ -143,25 +170,33 @@ int main(void){
                     case PS_ParseError: printf("Macro script failed (File parsing errors).\n"); break;
                     case PS_ProgramError: printf("Macro script failed (Runtime program errors).\n"); break;
                 }
-                printf("Type y to build/run again or nothing to return to menu: ");
-                fgets(input_str,INPUT_BUFFER_LEN,stdin);
-                if(!strcmp(input_str,"y\n")) break;
-                input_state=IS_Start;
+                printf("Type y to build/run again or q to return to menu.\n");
+                keypress_loop(xdo_obj->xdpy,(callback_t[2]){{
+                    .func=input_state_func,
+                    .args=&(ms_cont_t){.ms=&menu_state,.v=MS_Start},
+                    .ks=XK_Q
+                },{
+                    .func=CallbackEndLoop,
+                    .args=0,//Previous state used.
+                    .ks=XK_Y
+                }},2);
                 break;
-            case IS_MouseCoords:
-                printf("Click anywhere on the screen to see the color of a pixel and its mouse coordinates.\n");
-                xdo_select_window_with_click(xdo_obj,&focus_window);
-                xdo_get_mouse_location(xdo_obj,&x_mouse,&y_mouse,0);
-                printf("You clicked at x:%d y:%d",x_mouse,y_mouse);
-                get_pixel_color(xdo_obj->xdpy,x_mouse,y_mouse,&pc);
-                printf(" with r:%u g:%u b:%u\n",pc.red>>8,pc.green>>8,pc.blue>>8);//Truncate to byte instead.
-                printf("Press enter to continue, or type t to test again: ");
-                fgets(input_str,INPUT_BUFFER_LEN,stdin);
-                if(!strcmp(input_str,"t\n")) break;
-                input_state=IS_Start;
+            case MS_MouseCoords:
+                printf("Press t to test mouse/color coordinates. Press q to quit.\n");
+                keypress_loop(xdo_obj->xdpy,(callback_t[2]){{
+                    .func=test_mouse_func,
+                    .args=xdo_obj,
+                    .ks=XK_T
+                },{
+                    .func=CallbackEndLoop,
+                    .args=0,
+                    .ks=XK_Q
+                }},2);
+                menu_state=MS_Start;
                 break;
+            case MS_Done:
+                goto done;
         }
-        
     }
     done:
     xdo_free(xdo_obj);
@@ -210,6 +245,7 @@ char* read_default_file(void){
     size_t str_len=ftell(f_obj);
     rewind(f_obj);
     df_str=malloc(sizeof(char)*(str_len+1));//To include '\0'
+    EXIT_IF_NULL(df_str,char*)
     fread(df_str,str_len,1,f_obj);
     df_str[str_len]='\0';
     fclose(f_obj);
@@ -232,6 +268,7 @@ ProgramStatus parse_file(const char* path, xdo_t* xdo_obj, Config config, bool a
     size_t str_len=ftell(f_obj);
     rewind(f_obj);
     file_str=malloc(sizeof(char)*(str_len+1));//To include '\0'
+    EXIT_IF_NULL(file_str,char*)
     fread(file_str,str_len,1,f_obj);
     file_str[str_len]='\0';
     fclose(f_obj);
@@ -270,7 +307,8 @@ void* keyboard_check_listener(void* srs_v){
     delay_ns_t key_check_delay=srs_p->key_check_delay;
     Display* xdpy=((shared_rs*)srs_v)->xdo_obj->xdpy;
     int scr=DefaultScreen(xdpy);
-    XGrabKey(xdpy,XKeysymToKeycode(xdpy,XK_Escape),None,RootWindow(xdpy,scr),True,GrabModeAsync,GrabModeAsync);
+    XGrabKey(xdpy,XKeysymToKeycode(xdpy,XK_Q),None,RootWindow(xdpy,scr),False,GrabModeAsync,GrabModeAsync);
+    XFlush(xdpy);
     XEvent e={0};
     while(!srs_p->program_done){
         pthread_mutex_unlock(&input_mutex);
@@ -278,13 +316,14 @@ void* keyboard_check_listener(void* srs_v){
         pthread_mutex_lock(&input_mutex);
         while(XPending(xdpy)){ //XPending doesn't make XNextEvent block if 0 events.
             XNextEvent(xdpy,&e); 
-            if(e.type==KeyPress){
-                printf("Escape key pressed. Stopping macro script.\n");
+            if(e.type==KeyPress&&e.xkey.keycode==XKeysymToKeycode(xdpy,XK_Q)){
+                printf("q key pressed. Stopping macro script.\n");
                 srs_p->program_done=true;
             }
         }
     }
-    XUngrabKey(xdpy,XKeysymToKeycode(xdpy,XK_Escape),None,RootWindow(xdpy,scr));
+    XUngrabKey(xdpy,XKeysymToKeycode(xdpy,XK_Q),None,RootWindow(xdpy,scr));
+    XFlush(xdpy);
     pthread_mutex_unlock(&input_mutex);
     pthread_exit(NULL);
 }
@@ -336,14 +375,14 @@ int custom_xdo_move_mouse_absolute(const xdo_t *xdo,int x,int y){
     return ret==0;
 }
 bool run_program(command_array_t* cmd_arr, Config config, xdo_t* xdo_obj){
-    Window focus_window;//Will be ignored.
-    xdo_select_window_with_click(xdo_obj,&focus_window);
     int cmd_arr_len=command_array_count(cmd_arr),cmd_arr_i=0,stack_cmd_i;
     key_down_check_t* kdc=key_down_check_new();
     shared_rs srs=(shared_rs){.xdo_obj=xdo_obj,.program_done=false,.key_check_delay=config.key_check_delay};
+    printf("Press s to execute the macro.\n");
+    wait_for_keypress(xdo_obj->xdpy,XK_S);
     printf("Starting script in %ld microseconds (%f seconds)\n",config.init_delay,(float)config.init_delay/1000000);
     usleep(config.init_delay);
-    printf("Running.\n");
+    printf("Running. Press q to stop the macro.\n");
     pthread_t keyboard_input_t;
     int ret=pthread_mutex_init(&input_mutex,PTHREAD_MUTEX_TIMED_NP);
     if(ret){

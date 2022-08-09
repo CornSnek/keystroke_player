@@ -2,7 +2,7 @@
 Linux X11 Keyboard/Mouse Macro program with script support. This is inspired by click4ever from https://github.com/daniel-araujo/click4ever. I just added keyboard support and scripting support for personal scripting uses.
 # Usage
 Run the program. It is a command line program where you can edit configs, and compile/run scripts.
-It runs keyboard/macro macro scripts that can stop executing the program completely if the escape key is pressed, it reaches the end, or it exits via `exit;`
+It runs keyboard/macro macro scripts that can stop executing the program completely if the q key is pressed, it reaches the end, or it exits via `exit;`
 .
 # Script Commands and Queries
 Some examples of the script commands are shown in example_scripts.
