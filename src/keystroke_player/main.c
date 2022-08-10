@@ -58,7 +58,7 @@ bool input_state_func(void* MS_v){//Sets menu_state variable in main(void) to v.
 int main(void){
     if(access(CONFIG_FILE_F,F_OK)) if(!write_to_config(InitConfig)) return EXIT_FAILURE;
     xdo_t* xdo_obj=xdo_new(NULL);
-    char* file_str=0;
+    char* file_name_str=0;
     Config config;
     char input_str[INPUT_BUFFER_LEN+1];
     MenuState menu_state=MS_Start;
@@ -132,23 +132,27 @@ int main(void){
                 also_run=true;
                 //Fallthrough
             case MS_BuildFile:
-                file_str=read_default_file();
-                printf("Set file path to open. Current file: %s\n",file_str?file_str:"(None)");
+                file_name_str=read_default_file();
+                printf("Set file path to open. Current file: %s\n",file_name_str?file_name_str:"(None)");
                 printf("(Press enter to skip, type c to cancel.): ");
                 fgets(input_str,INPUT_BUFFER_LEN+1,stdin);
-                if(!strcmp(input_str,"c\n")){menu_state=MS_Start; break;}
+                if(!strcmp(input_str,"c\n")){
+                    free(file_name_str);
+                    menu_state=MS_Start;
+                    break;
+                }
                 if(input_str[0]!='\n'){
                     if(fgets_change(input_str,INPUT_BUFFER_LEN)) printf("Warning: String has been truncated to %d characters.\n",INPUT_BUFFER_LEN);
                 }else{//Enter pressed.
-                    if(!file_str){
+                    if(!file_name_str){
                         puts("Needs a filepath (None given).");
                         break;
                     }
-                    strncpy(input_str,file_str,INPUT_BUFFER_LEN); //To input_str stack to be read.
+                    strncpy(input_str,file_name_str,INPUT_BUFFER_LEN); //To input_str stack to be read.
                     input_str[INPUT_BUFFER_LEN]='\0'; //Null terminate since strncpy doesn't guarantee.
                 }
                 printf("Opening file %s\n",input_str);
-                free(file_str);//Free from read_default_file.
+                free(file_name_str);
                 ProgramStatus ps=parse_file(input_str,xdo_obj,read_config_file(),also_run);
                 if(ps!=PS_ReadError){//Don't rewrite default path if non-existent.
                     write_to_default_file(input_str);
@@ -247,7 +251,7 @@ void get_pixel_color(Display* d, int x, int y, XColor* color){
   XImage* image;
   image=XGetImage(d,RootWindow(d,DefaultScreen(d)),x,y,1,1,AllPlanes,XYPixmap);
   color->pixel=XGetPixel(image,0,0);
-  XFree(image);
+  XDestroyImage(image);
   XQueryColor(d,DefaultColormap(d,DefaultScreen(d)),color);
 }
 ProgramStatus parse_file(const char* path, xdo_t* xdo_obj, Config config, bool and_run){
@@ -379,6 +383,11 @@ bool pop_cmd_index(int* cmd_i){
         *cmd_i=0;
         return false;
     }
+}
+void empty_cmd_index(){//If macro ends while having stack.
+    free(cmd_i_stack);
+    cmd_i_stack=0;
+    cmd_i_size=0;
 }
 #include <X11/extensions/XTest.h>
 //Based from xdo.c file using xdo_move_mouse_relative's functions, as XWarpPointer makes the mouse not click properly.
@@ -686,6 +695,7 @@ bool run_program(command_array_t* cmd_arr, const char* file_str, Config config, 
             srs.program_done=true;//To end the mouse_input_t thread loop as well.
         }
     }
+    empty_cmd_index();
     timespec_diff(&ts_begin,NULL,&ts_diff);
     printf("%ld.%09ld seconds since macro script ran.\n",ts_diff.tv_sec,ts_diff.tv_nsec);
     pthread_mutex_unlock(&input_mutex);
