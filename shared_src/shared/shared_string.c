@@ -507,9 +507,9 @@ size_t trim_comments(char** strptr){//Same as above, but with comments until new
             is_in_comment=false;
         }
     }while((*strptr)[++str_i]);
-    (*strptr)[str_i-comment_count]='\0';
     *strptr=(char*)realloc(*strptr,(str_i-comment_count+1)*sizeof(char));
     EXIT_IF_NULL(*strptr,char*)
+    (*strptr)[str_i-comment_count]='\0';
     return str_i-comment_count;
 }
 _Pragma("GCC diagnostic push")
@@ -715,12 +715,43 @@ void get_line_column_positions_p1(const char* begin_p,const char* current_p,size
 //Null-terminated string with line and column numbers 0 or greater. Returns NULL if line/column is out of bounds.
 const char* get_pointer_position(const char* str_p,size_t line_num,size_t col_num){
     const char* current_p=(line_num>0)?str_p:str_p-1;//Adjust for 0th line because it doesn't go to the first loop.
-    while(current_p&&line_num--){
-        current_p++;
-        current_p=strchr(current_p,'\n');
-    }
-    if(current_p==0) return 0; //Out of bounds for line_num.
+    while(current_p&&line_num--) current_p=strchr(++current_p,'\n');
+    if(!current_p) return 0; //Out of bounds for line_num.
     do if(!*(++current_p)||*(current_p)=='\n') return 0; //Out of bounds for col_num.
     while(col_num--);
     return current_p;
+}
+//Slices into 3 strings to return a string with terminal control characters (cc_highlight). Use cc_reset to reset terminal.
+char* print_string_highlight(const char* str_begin,const char* highlight_s,const char* highlight_e,const char* cc_highlight,const char* cc_reset){
+    const char* const str_end=str_begin+strlen(str_begin)-1;
+    const size_t begin_len=highlight_s-str_begin,highlight_len=highlight_e-highlight_s+1,end_len=str_end-highlight_e;
+    char* strings[3]={
+        malloc(sizeof(char)*(begin_len+1)),malloc(sizeof(char)*(highlight_len+1)),malloc(sizeof(char)*(end_len+1))
+    };
+    EXIT_IF_NULL(strings[0],char*) EXIT_IF_NULL(strings[1],char*) EXIT_IF_NULL(strings[2],char*)
+    strncpy(strings[0],str_begin,begin_len);
+    strncpy(strings[1],highlight_s,highlight_len);
+    strncpy(strings[2],highlight_e+1,end_len);
+    strings[0][begin_len]=strings[1][highlight_len]=strings[2][end_len]='\0';
+    char* result=malloc(sizeof(char)*(begin_len+highlight_len+end_len+strlen(cc_highlight)+strlen(cc_reset)+1));
+    sprintf(result,"%s%s%s%s%s",strings[0],cc_highlight,strings[1],cc_reset,strings[2]);
+    free(strings[0]); free(strings[1]); free(strings[2]);
+    return result;
+}
+//Reads a portion of a string by maximum amount of lines, depending where str_read is.
+char* string_read_view(const char* str_begin,const char* str_read,size_t maximum_lines){
+    const char* const str_end=str_begin+strlen(str_begin)-1,* str_slice_b=str_read,* str_slice_e=str_read;
+    size_t above=maximum_lines+1,below=maximum_lines+1;
+    while(above){
+        if(str_slice_b==str_begin) break;
+        if(*(--str_slice_b)=='\n') above--;
+    }
+    if(!above) str_slice_b++;//Exclude new lines.
+    below+=above;//Add any remaining lines
+    while(below){
+        if(str_slice_e==str_end) break;
+        if(*(++str_slice_e)=='\n') below--;
+    }
+    if(!below) str_slice_e--;
+    return char_string_slice(str_slice_b,str_slice_e);
 }

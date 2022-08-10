@@ -24,7 +24,7 @@ typedef struct{
     DebugPrintType debug_print_type;
 }Config;
 const Config InitConfig={
-    .init_delay=2000000,.key_check_delay=100000,.debug_print_type=DBP_AllCommands
+    .init_delay=2000000,.key_check_delay=100000,.debug_print_type=DBP_CommandNumber
 };
 bool fgets_change(char* str,int buffer_len);
 bool write_to_config(const Config config);
@@ -34,7 +34,7 @@ bool write_to_default_file(const char* path);
 void get_pixel_color(Display* d, int x, int y, XColor* color);
 ProgramStatus parse_file(const char* path, xdo_t* xdo_obj, Config config, bool and_run);
 void timespec_diff(const struct timespec* ts_begin,struct timespec* ts_end_clone,struct timespec* ts_diff);
-bool run_program(command_array_t* cmd_arr, Config config, xdo_t* xdo_obj);
+bool run_program(command_array_t* cmd_arr, const char* file_str, Config config, xdo_t* xdo_obj);
 bool test_mouse_func(void* xdo_v){
     int x_mouse,y_mouse;
     XColor pc;
@@ -263,8 +263,8 @@ ProgramStatus parse_file(const char* path, xdo_t* xdo_obj, Config config, bool a
     fread(file_str,str_len,1,f_obj);
     file_str[str_len]='\0';
     fclose(f_obj);
-    macro_paster_t* mp=macro_paster_new();
     trim_comments(&file_str);//So that the program doesn't process commented macros.
+    macro_paster_t* mp=macro_paster_new();
     MacroProcessStatus mps=file_contains_macro_definitions(file_str,MACROS_DEF_START_B,MACROS_DEF_END_B);
     char* cmd_output;
     if(mps==MPS_NoMacros){
@@ -280,6 +280,7 @@ ProgramStatus parse_file(const char* path, xdo_t* xdo_obj, Config config, bool a
             free(file_str);
             return PS_MacroError;
         }
+        free(file_str);//Free since cmd_output is used instead.
     }else{
         macro_paster_free(mp);
         free(file_str);
@@ -297,7 +298,7 @@ ProgramStatus parse_file(const char* path, xdo_t* xdo_obj, Config config, bool a
         macro_buffer_str_id_check(mb);
     }
     if(!mb->parse_error&&and_run){
-        bool run_success=run_program(cmd_arr,config,xdo_obj);
+        bool run_success=run_program(cmd_arr,cmd_output,config,xdo_obj);
         if(!run_success){
             macro_buffer_free(mb);
             command_array_free(cmd_arr);
@@ -388,7 +389,7 @@ int custom_xdo_move_mouse_absolute(const xdo_t *xdo,int x,int y){
     XFlush(xdo->xdpy);
     return ret==0;
 }
-bool run_program(command_array_t* cmd_arr, Config config, xdo_t* xdo_obj){
+bool run_program(command_array_t* cmd_arr, const char* file_str, Config config, xdo_t* xdo_obj){
     int cmd_arr_len=command_array_count(cmd_arr),cmd_arr_i=0,stack_cmd_i;
     key_down_check_t* kdc=key_down_check_new();
     shared_rs srs=(shared_rs){.xdo_obj=xdo_obj,.program_done=false,.key_check_delay=config.key_check_delay};
@@ -436,19 +437,22 @@ bool run_program(command_array_t* cmd_arr, Config config, xdo_t* xdo_obj){
         int* rst_counter=0;
         if(config.debug_print_type>DBP_None||this_cmd.print_cmd){
             timespec_diff(&ts_begin,NULL,&ts_diff);
-            printf("%s[%ld.%09ld]%s",config.debug_print_type==DBP_CommandNumber?CLEAR_TERM:"",ts_diff.tv_sec,ts_diff.tv_nsec,config.debug_print_type==DBP_CommandNumber?"\n":" ");
+            printf("%s[%ld.%09ld] Command #%d/%d%s",config.debug_print_type==DBP_CommandNumber?CLEAR_TERM:"",ts_diff.tv_sec,ts_diff.tv_nsec,cmd_arr_i+1,cmd_arr->size,config.debug_print_type==DBP_CommandNumber?"":" ");
         }
         if(config.debug_print_type==DBP_CommandNumber){
-            const int cmd_arr_i_pl=(cmd_arr_i-5>=0?cmd_arr_i-5:0);
-            const int cmd_arr_i_ph=(cmd_arr_i+6<=cmd_arr_len?cmd_arr_i+6:cmd_arr_len);
             LastCommands[LastCommands_i]=cmd_arr_i+1;
             LastCommands_i=(LastCommands_i+1)%LAST_COMMANDS_LEN;
-            for(int cmd_i=cmd_arr_i_pl;cmd_i<cmd_arr_i_ph;cmd_i++){
-                const command_t cmd=cmd_arr->cmds[cmd_i];
-                char* cmd_str=char_string_slice(cmd.start_cmd_p,cmd.end_cmd_p);
-                printf("%sCommand #%4d/%4d %s%s\n",cmd_i==cmd_arr_i?"\x1B[1m":"",cmd_i+1,cmd_arr_len,cmd_str,cmd_i==cmd_arr_i?"\x1B[22m":"");
-                free(cmd_str);
-            }
+            const command_t cmd=cmd_arr->cmds[cmd_arr_i];
+            const size_t cmd_off_b=cmd.start_cmd_p-file_str,cmd_off_e=cmd.end_cmd_p-file_str;
+            size_t line_n,column_n;
+            get_line_column_positions_p1(file_str,cmd.start_cmd_p,&line_n,&column_n);
+            printf(" Line: %lu Column: %lu\n",line_n,column_n);
+#define CMD_HIGHLIGHT "\x1B[47;30;1m"
+            char* str_high=print_string_highlight(file_str,file_str+cmd_off_b,file_str+cmd_off_e,CMD_HIGHLIGHT,"\x1B[0m");
+            char* str_rv=string_read_view(str_high,str_high+cmd_off_b,4);
+            printf("%s\x1B[H\x1B[%dB",str_rv,10);
+            free(str_rv);
+            free(str_high);
             printf("%7d %-30s '%s'\n%7d %-30s '%s'\n%7d %-30s '%s'\n"
                 ,LastJump_n,"commands since last Jump:",LastJump,LastRepeat_n,"commands since last Repeat:",LastRepeat,LastQuery_n,"commands since last Query:",LastQuery);
             printf("%38s '%s'\n","Last Key/Mouse command used:",LastKey);
@@ -592,7 +596,7 @@ bool run_program(command_array_t* cmd_arr, Config config, xdo_t* xdo_obj){
                 cmdprintf("Pass command (does nothing).\n");
                 break;
             case CMD_JumpTo:
-                cmdprintf("Jump to Command #%d String ID#%d. %s",cmd_u.jump_to.cmd_index+2,cmd_u.jump_to.str_index,cmd_u.jump_to.store_index?"Will also store this command's index.":"");
+                cmdprintf("Jump to Command #%d String ID#%d. %s",cmd_u.jump_to.cmd_index+2,cmd_u.jump_to.str_index,cmd_u.jump_to.store_index?"Will also store this command's index.":"\n");
                 if(cmd_u.jump_to.store_index){
                     cmdprintf(" Storing command index to jump to later (#%d)\n",cmd_arr_i+2);
                     store_cmd_index(cmd_arr_i);

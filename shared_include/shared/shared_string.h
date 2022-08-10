@@ -80,4 +80,6 @@ void split_at_sep(const char* search_str,const char* sep,const char** split_p,in
 void get_line_column_positions(const char* begin_p,const char* current_p,size_t* line_num,size_t* char_num);
 void get_line_column_positions_p1(const char* begin_p,const char* current_p,size_t* line_num,size_t* char_num);
 const char* get_pointer_position(const char* str_p,size_t line_num,size_t column_num);
+char* print_string_highlight(const char* str_begin,const char* highlight_s,const char* highlight_e,const char* cc_highlight,const char* cc_reset);
+char* string_read_view(const char* str_begin,const char* str_read,size_t maximum_lines);
 #endif

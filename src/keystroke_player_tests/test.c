@@ -187,6 +187,12 @@ START_TEST(macro_paster_test){
         free(cmd_output);
     }
     macro_paster_free(mp2);
+    printf("%s\n",file_str);
+    char* highlight_str=print_string_highlight(file_str,file_str,file_str,"\x1B[47;30;1m","\x1B[0m");
+    char* srv=string_read_view(highlight_str,highlight_str+11,5);
+    printf("string_read_view:\n%s\n",srv);
+    free(srv);
+    free(highlight_str);
     free(file_str);
 }
 END_TEST
@@ -239,17 +245,5 @@ int main(void){
     srunner_run_all(sr,CK_NORMAL);
     int number_failed=srunner_ntests_failed(sr);
     srunner_free(sr);
-    const char* string="ab9\nAbcd\n8bcde\njsdfklfjsdlk\nsjaveonoi\n\n\n69",* string_p=string;
-    size_t l,c;
-    printf("%s\n",string);
-    while(*string_p){//Until \0 char in string.
-        if(*string_p=='\n'){ string_p++; continue;}
-        get_line_column_positions(string,string_p,&l,&c);
-        printf("%-9p %-9p\n",string_p,get_pointer_position(string,l,c));
-        printf("%-9c %-9c\n",*string_p,*get_pointer_position(string,l,c));
-        get_line_column_positions_p1(string,string_p,&l,&c);
-        printf("Character: '%c' at L:%lu C:%lu\n",*string_p,l,c);
-        string_p++;
-    }
     return (!number_failed)?EXIT_SUCCESS:EXIT_FAILURE;
 }
