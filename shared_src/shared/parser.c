@@ -13,7 +13,7 @@ macro_buffer_t* macro_buffer_new(char* str_owned, command_array_t* cmd_arr){
 }
 void print_where_error_is(const char* contents,int begin_error,int end_error){
     char* str_to_print=(char*)malloc(sizeof(char)*(end_error+2)); //+2 to count a character and for '\0'.
-    EXIT_IF_NULL(str_to_print,char*)
+    EXIT_IF_NULL(str_to_print,char*);
     strncpy(str_to_print,contents+begin_error,end_error+1);
     str_to_print[end_error+1]='\0';
     printf("%s < Command where error occured.\n",str_to_print);
@@ -357,7 +357,7 @@ bool macro_buffer_process_next(macro_buffer_t* this,bool print_debug){//Returns 
                     break;
                 }else if(added_keystate&&current_char==';'){
                     str_name=malloc(sizeof(char)*read_offset_i-1);//-2 to exclude RS_KeyState modifiers, but -1 because null terminator.
-                    EXIT_IF_NULL(str_name,char*)
+                    EXIT_IF_NULL(str_name,char*);
                     strncpy(str_name,this->contents+this->token_i+read_i,read_offset_i-2);
                     str_name[read_offset_i-2]='\0';\
                     command_array_add(this->cmd_arr,
@@ -424,7 +424,7 @@ bool macro_buffer_process_next(macro_buffer_t* this,bool print_debug){//Returns 
             case RS_MouseClickType:
                 if(isdigit(current_char)&&!first_number){
                     num_str=(char*)calloc(sizeof(char),2);
-                    EXIT_IF_NULL(num_str,char*)
+                    EXIT_IF_NULL(num_str,char*);
                     num_str[0]=current_char;
                     parsed_num[0]=strtol(num_str,NULL,10);
                     free(num_str);
@@ -480,7 +480,7 @@ bool macro_buffer_process_next(macro_buffer_t* this,bool print_debug){//Returns 
                 if(isdigit(current_char)||current_char=='-') break;
                 else if(current_char==','&&!first_number){
                     num_str=(char*)malloc(sizeof(char)*read_offset_i+1);
-                    EXIT_IF_NULL(num_str,char*)
+                    EXIT_IF_NULL(num_str,char*);
                     strncpy(num_str,this->contents+this->token_i+read_i,read_offset_i);
                     num_str[read_offset_i]='\0';
                     parsed_num[0]=strtol(num_str,NULL,10);
@@ -492,7 +492,7 @@ bool macro_buffer_process_next(macro_buffer_t* this,bool print_debug){//Returns 
                 }else if(current_char==';'){
                     if(first_number){
                         num_str=(char*)malloc(sizeof(char)*read_offset_i+1);
-                        EXIT_IF_NULL(num_str,char*)
+                        EXIT_IF_NULL(num_str,char*);
                         strncpy(num_str,this->contents+this->token_i+read_i,read_offset_i);
                         num_str[read_offset_i]='\0';
                         parsed_num[1]=strtol(num_str,NULL,10);
@@ -524,7 +524,7 @@ bool macro_buffer_process_next(macro_buffer_t* this,bool print_debug){//Returns 
                 if(char_is_key(current_char)) break;
                 if(current_char==';'){
                     str_name=(char*)malloc(sizeof(char)*read_offset_i+1);
-                    EXIT_IF_NULL(str_name,char*)
+                    EXIT_IF_NULL(str_name,char*);
                     strncpy(str_name,this->contents+this->token_i+read_i,read_offset_i);
                     str_name[read_offset_i]='\0';
                     int jid_cmd_i=jump_id_manager_search_command_index(this->jim,str_name);
@@ -572,7 +572,7 @@ bool macro_buffer_process_next(macro_buffer_t* this,bool print_debug){//Returns 
                 if(char_is_key(current_char)) break;
                 if(current_char==';'){
                     str_name=(char*)malloc(sizeof(char)*read_offset_i+1);
-                    EXIT_IF_NULL(str_name,char*)
+                    EXIT_IF_NULL(str_name,char*);
                     strncpy(str_name,this->contents+this->token_i+read_i,read_offset_i);
                     str_name[read_offset_i]='\0';
                     int jid_cmd_i=jump_id_manager_search_command_index(this->jim,str_name);
@@ -665,7 +665,7 @@ bool macro_buffer_process_next(macro_buffer_t* this,bool print_debug){//Returns 
                 if(current_char==','){
                     if(parsed_num_i<3){
                         num_str=(char*)malloc(sizeof(char)*read_offset_i+1);
-                        EXIT_IF_NULL(num_str,char*)
+                        EXIT_IF_NULL(num_str,char*);
                         strncpy(num_str,this->contents+this->token_i+read_i,read_offset_i);
                         num_str[read_offset_i]='\0';
                         parsed_num[parsed_num_i]=strtol(num_str,NULL,10);
@@ -693,7 +693,7 @@ bool macro_buffer_process_next(macro_buffer_t* this,bool print_debug){//Returns 
                 if(current_char=='?'){
                     if(parsed_num_i==3){
                         num_str=(char*)malloc(sizeof(char)*read_offset_i+1);
-                        EXIT_IF_NULL(num_str,char*)
+                        EXIT_IF_NULL(num_str,char*);
                         strncpy(num_str,this->contents+this->token_i+read_i,read_offset_i);
                         num_str[read_offset_i]='\0';
                         parsed_num[parsed_num_i]=strtol(num_str,NULL,10);
@@ -760,7 +760,7 @@ bool macro_buffer_process_next(macro_buffer_t* this,bool print_debug){//Returns 
                 if(isdigit(current_char)) break;
                 if(current_char=='?'){
                     num_str=(char*)malloc(sizeof(char)*read_offset_i+1);
-                    EXIT_IF_NULL(num_str,char*)
+                    EXIT_IF_NULL(num_str,char*);
                     strncpy(num_str,this->contents+this->token_i+read_i,read_offset_i);
                     num_str[read_offset_i]='\0';
                     parsed_num[0]=strtol(num_str,NULL,10);
@@ -786,7 +786,7 @@ bool macro_buffer_process_next(macro_buffer_t* this,bool print_debug){//Returns 
                 if(current_char==','){
                     if(parsed_num_i<3){
                         num_str=(char*)malloc(sizeof(char)*read_offset_i+1);
-                        EXIT_IF_NULL(num_str,char*)
+                        EXIT_IF_NULL(num_str,char*);
                         strncpy(num_str,this->contents+this->token_i+read_i,read_offset_i);
                         num_str[read_offset_i]='\0';
                         parsed_num[parsed_num_i]=strtol(num_str,NULL,10);
@@ -806,7 +806,7 @@ bool macro_buffer_process_next(macro_buffer_t* this,bool print_debug){//Returns 
                 if(current_char=='?'){
                     if(parsed_num_i==3){
                         num_str=(char*)malloc(sizeof(char)*read_offset_i+1);
-                        EXIT_IF_NULL(num_str,char*)
+                        EXIT_IF_NULL(num_str,char*);
                         strncpy(num_str,this->contents+this->token_i+read_i,read_offset_i);
                         num_str[read_offset_i]='\0';
                         parsed_num[parsed_num_i]=strtol(num_str,NULL,10);
@@ -849,7 +849,7 @@ bool macro_buffer_process_next(macro_buffer_t* this,bool print_debug){//Returns 
 }
 void macro_buffer_str_id_check(macro_buffer_t* this){//Check if RepeatStart doesn't have a respective RepeatEnd, or if there are no JumpFroms.
     bool* id_check=calloc(this->rim->size,sizeof(bool));
-    EXIT_IF_NULL(id_check,bool*)
+    EXIT_IF_NULL(id_check,bool*);
     for(int i=0;i<this->rim->size;i++){
         for(int j=0;j<this->cmd_arr->size;j++){
             const command_t cmd=this->cmd_arr->cmds[j];
@@ -864,7 +864,7 @@ void macro_buffer_str_id_check(macro_buffer_t* this){//Check if RepeatStart does
     }
     free(id_check);
     id_check=calloc(this->jim->size,sizeof(bool));
-    EXIT_IF_NULL(id_check,bool*)
+    EXIT_IF_NULL(id_check,bool*);
     for(int i=0;i<this->jim->size;i++){
         for(int j=0;j<this->cmd_arr->size;j++){
             const command_t cmd=this->cmd_arr->cmds[j];
@@ -925,7 +925,7 @@ void repeat_id_manager_add_name(repeat_id_manager_t* this, char* str_owned, int 
         this->index[this->size-1]=index;
         return;
     }
-    fprintf(stderr,"Repeat name '%s' has been used more than once.\n",str_owned);
+    fprintf(stderr,"Repeat name '%s' has been used more than once. Program shouldn't execute here.\n",str_owned);
     exit(EXIT_FAILURE);
 }
 int repeat_id_manager_search_command_index(const repeat_id_manager_t* this,const char* search_str){
@@ -967,9 +967,9 @@ void jump_id_manager_add_name(jump_id_manager_t* this, char* str_owned, int inde
         this->index=(int*)(malloc(sizeof(int)));
         this->jump_from_added=(bool*)(malloc(sizeof(bool)));
     }
-    EXIT_IF_NULL(this->names,char**)
-    EXIT_IF_NULL(this->index,int*)
-    EXIT_IF_NULL(this->jump_from_added,bool*)
+    EXIT_IF_NULL(this->names,char**);
+    EXIT_IF_NULL(this->index,int*);
+    EXIT_IF_NULL(this->jump_from_added,bool*);
     bool is_unique=(str_owned==SSManager_add_string(this->ssm,&str_owned));
     if(is_unique){
         this->names[this->size-1]=str_owned;
@@ -977,7 +977,7 @@ void jump_id_manager_add_name(jump_id_manager_t* this, char* str_owned, int inde
         this->jump_from_added[this->size-1]=is_jump_from;
         return;
     }
-    fprintf(stderr,"Jump name '%s' has been used more than once.\n",str_owned);
+    fprintf(stderr,"Jump name '%s' has been used more than once. Program shouldn't execute here.\n",str_owned);
     exit(EXIT_FAILURE);
 }
 int jump_id_manager_search_command_index(const jump_id_manager_t* this,const char* search_str){

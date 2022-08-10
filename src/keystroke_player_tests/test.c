@@ -138,7 +138,7 @@ char* read_macro_file(void){
     size_t str_len=ftell(f_obj);
     rewind(f_obj);
     df_str=malloc(sizeof(char)*(str_len+1));//To include '\0'
-    EXIT_IF_NULL(df_str,char*)
+    EXIT_IF_NULL(df_str,char*);
     fread(df_str,str_len,1,f_obj);
     df_str[str_len]='\0';
     fclose(f_obj);
@@ -209,7 +209,7 @@ START_TEST(replace_test){
     const size_t WordList_len=sizeof(WordList)/sizeof(replace_node_t);
     const char* dummy_str="abcdef abcde ab acb abc abf abcd acbde abcdef babcde";
     char* dummy_str_heap=(char*)malloc(sizeof(char)*(strlen(dummy_str)+1));//This will be changed.
-    EXIT_IF_NULL(dummy_str_heap,char*)
+    EXIT_IF_NULL(dummy_str_heap,char*);
     strcpy(dummy_str_heap,dummy_str);
     printf("%s\n",dummy_str_heap);
     replace_str_list(&dummy_str_heap,WordList,WordList_len);

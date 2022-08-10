@@ -240,7 +240,7 @@ char* read_default_file(void){
     size_t str_len=ftell(f_obj);
     rewind(f_obj);
     df_str=malloc(sizeof(char)*(str_len+1));//To include '\0'
-    EXIT_IF_NULL(df_str,char*)
+    EXIT_IF_NULL(df_str,char*);
     fread(df_str,str_len,1,f_obj);
     df_str[str_len]='\0';
     fclose(f_obj);
@@ -263,7 +263,7 @@ ProgramStatus parse_file(const char* path, xdo_t* xdo_obj, Config config, bool a
     size_t str_len=ftell(f_obj);
     rewind(f_obj);
     file_str=malloc(sizeof(char)*(str_len+1));//To include '\0'
-    EXIT_IF_NULL(file_str,char*)
+    EXIT_IF_NULL(file_str,char*);
     fread(file_str,str_len,1,f_obj);
     file_str[str_len]='\0';
     fclose(f_obj);
@@ -364,7 +364,7 @@ void store_cmd_index(int i){
     cmd_i_size++;
     if(cmd_i_stack) cmd_i_stack=(int*)realloc(cmd_i_stack,sizeof(int)*cmd_i_size);
     else cmd_i_stack=(int*)malloc(sizeof(int));
-    EXIT_IF_NULL(cmd_i_stack,int)
+    EXIT_IF_NULL(cmd_i_stack,int);
     cmd_i_stack[cmd_i_size-1]=i;
 }
 bool pop_cmd_index(int* cmd_i){
@@ -372,7 +372,7 @@ bool pop_cmd_index(int* cmd_i){
         int popped_cmd_i=cmd_i_stack[--cmd_i_size];
         if(cmd_i_size){
             cmd_i_stack=(int*)realloc(cmd_i_stack,sizeof(int)*cmd_i_size);
-            EXIT_IF_NULL(cmd_i_stack,int)
+            EXIT_IF_NULL(cmd_i_stack,int);
         }else{
             free(cmd_i_stack);
             cmd_i_stack=0;

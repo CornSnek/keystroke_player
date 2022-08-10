@@ -2,9 +2,9 @@
 
 key_down_check_t* key_down_check_new(void){
     key_down_check_t* this=(key_down_check_t*)(malloc(sizeof(key_down_check_t)));
-    EXIT_IF_NULL(this,key_down_check_t*)
+    EXIT_IF_NULL(this,key_down_check_t*);
     this->keys=malloc(sizeof(const char*)*1);//No need to malloc if 0. Just realloc.
-    EXIT_IF_NULL(this->keys,const char*)
+    EXIT_IF_NULL(this->keys,const char*);
     this->len=0;
     return this;
 }
@@ -14,7 +14,7 @@ bool key_down_check_add(key_down_check_t* this,const char* add_key){
     }
     this->keys[this->len++]=add_key;
     this->keys=(const char**)(realloc(this->keys,sizeof(const char*)*(this->len+1)));
-    EXIT_IF_NULL(this->keys,const char*)
+    EXIT_IF_NULL(this->keys,const char*);
     return true;
 }
 bool key_down_check_remove(key_down_check_t* this,const char* rem_key){
@@ -23,7 +23,7 @@ bool key_down_check_remove(key_down_check_t* this,const char* rem_key){
             this->keys[i]=this->keys[this->len-1];
             this->keys[(this->len--)-1]=NULL;
             this->keys=(const char**)(realloc(this->keys,sizeof(const char*)*(this->len+1)));
-            EXIT_IF_NULL(this->keys,const char*)
+            EXIT_IF_NULL(this->keys,const char*);
             return true;
         }
     }

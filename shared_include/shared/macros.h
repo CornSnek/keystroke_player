@@ -2,11 +2,15 @@
 #define _MACROS_H_
 #include <stdlib.h>
 #include <stdio.h>
+#ifndef NDEBUG
 #define EXIT_IF_NULL(token_name,type)\
 if(!token_name){\
     fprintf(stderr,"Unable to get pointer of type '" #type "' for token '" #token_name "' at line %d for file %s. Exiting program.\n",__LINE__,__FILE__);\
     exit(EXIT_FAILURE);\
 }
+#else
+#define EXIT_IF_NULL(token_name,type) ((void)0)
+#endif
 #define CLEAR_TERM "\x1B[H\x1B[0J"
 #define NSEC_TO_SEC 1000000000
 #define MICSEC_TO_SEC 1000000

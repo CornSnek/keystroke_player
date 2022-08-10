@@ -72,7 +72,8 @@
         "system_error": "c",
         "version": "c",
         "*.inc": "c",
-        "assert.h": "c"
+        "assert.h": "c",
+        "types.h": "c"
     },
     //"editor.autoClosingBrackets": "never",
     //"editor.autoClosingDelete": "never",
