@@ -587,6 +587,7 @@ bool macro_buffer_process_next(macro_buffer_t* this,bool print_debug){//Returns 
                                 }
                             }
                         );
+                        SSManager_add_string(this->jim->ssm,&str_name);//Consume all strings with the same contents to free (No memory leak).
                         key_processed=true;
                         break;
                     }else{
@@ -605,6 +606,7 @@ bool macro_buffer_process_next(macro_buffer_t* this,bool print_debug){//Returns 
                                     this_cmd->cmd_u.jump_to.cmd_index=cmd_arr_count;//Set all JumpTo to this JumpFrom index.
                                 }
                             }
+                            SSManager_add_string(this->jim->ssm,&str_name);
                             key_processed=true;
                             break;
                         }
@@ -1004,6 +1006,7 @@ void jump_id_manager_free(jump_id_manager_t* this){
     SSManager_free(this->ssm);
     free(this->names);
     free(this->index);
+    free(this->jump_from_added);
     free(this);
 }
 command_array_t* command_array_new(void){
