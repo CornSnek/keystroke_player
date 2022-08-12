@@ -73,7 +73,9 @@
         "version": "c",
         "*.inc": "c",
         "assert.h": "c",
-        "types.h": "c"
+        "types.h": "c",
+        "string_hash.h": "c",
+        "iterator": "c"
     },
     //"editor.autoClosingBrackets": "never",
     //"editor.autoClosingDelete": "never",

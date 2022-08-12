@@ -102,17 +102,17 @@ int main(void){
                 config=read_config_file();
                 puts("Set value for init_delay (Microseconds before macro plays)");
                 printf("Value right now is %lu (Enter nothing to skip): ",config.init_delay);
-                fgets(input_str,INPUT_BUFFER_LEN+1,stdin);
+                fgets(input_str,INPUT_BUFFER_LEN,stdin);
                 if(input_str[0]!='\n') config.init_delay=strtol(input_str,NULL,10);
                 puts("Set value for key_check_delay (Microseconds to check if q key is pressed)");
                 printf("Value right now is %lu (Enter nothing to skip): ",config.key_check_delay);
-                fgets(input_str,INPUT_BUFFER_LEN+1,stdin);
+                fgets(input_str,INPUT_BUFFER_LEN,stdin);
                 if(input_str[0]!='\n') config.key_check_delay=strtol(input_str,NULL,10);
                 while(true){
                     puts("Set value for debug_commands (Prints debug commands when playing macro)");
                     printf("0 for no debug printing, 1 to print all commands (parsing and running program), 2 to print some command numbers and strings (clears terminal)\n");
                     printf("Value right now is %d (Enter 0/1/2 or nothing to skip): ",config.debug_print_type);
-                    fgets(input_str,INPUT_BUFFER_LEN+1,stdin);
+                    fgets(input_str,INPUT_BUFFER_LEN,stdin);
                     switch(input_str[0]){
                         case '0': config.debug_print_type=DBP_None; goto debug_print_type_valid;
                         case '1': config.debug_print_type=DBP_AllCommands; goto debug_print_type_valid;
@@ -135,7 +135,7 @@ int main(void){
                 file_name_str=read_default_file();
                 printf("Set file path to open. Current file: %s\n",file_name_str?file_name_str:"(None)");
                 printf("(Press enter to skip, type c to cancel.): ");
-                fgets(input_str,INPUT_BUFFER_LEN+1,stdin);
+                fgets(input_str,INPUT_BUFFER_LEN,stdin);
                 if(!strcmp(input_str,"c\n")){
                     free(file_name_str);
                     menu_state=MS_Start;
@@ -285,7 +285,7 @@ ProgramStatus parse_file(const char* path, xdo_t* xdo_obj, Config config, bool a
             return PS_MacroError;
         }
         free(file_str);//Free since cmd_output is used instead.
-    }else{
+    }else{//TODO: Built-in macros
         macro_paster_free(mp);
         free(file_str);
         return PS_MacroError;

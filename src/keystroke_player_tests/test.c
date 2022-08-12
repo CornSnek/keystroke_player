@@ -222,6 +222,18 @@ START_TEST(replace_test){
     printf("%s %s,%d %d\n",words,words_split,words_s_l,words_e_l);
 }
 END_TEST
+#include <string_hash.h>
+START_TEST(string_hash_test){
+}
+END_TEST
+bool fgets_change(char* str,int buffer_len){//Remove '\n' (if any) and check if string buffer is full (returns bool). 
+    int real_len=strlen(str);
+    bool is_full=(buffer_len-1==real_len);
+    if(!is_full){
+        str[real_len-1]='\0';
+    }
+    return is_full;
+}
 Suite* test_suite(void){
     Suite* s;
     TCase* tc_core;
@@ -234,6 +246,7 @@ Suite* test_suite(void){
     tcase_set_timeout(tc_core,60.);
     tcase_add_test(tc_core,macro_paster_test);
     tcase_add_test(tc_core,replace_test);
+    tcase_add_test(tc_core,string_hash_test);
     suite_add_tcase(s,tc_core);
     return s;
 }
@@ -245,5 +258,54 @@ int main(void){
     srunner_run_all(sr,CK_NORMAL);
     int number_failed=srunner_ntests_failed(sr);
     srunner_free(sr);
+    StringMap_t* sm=SM_new(5);
+    char key_str[INPUT_BUFFER_LEN+1]={0};
+    char value_str[INPUT_BUFFER_LEN+1]={0};
+    typedef enum _StringMapE{
+        SME_Add,SME_Erase,SME_Read
+    }StringMapE;
+    StringMapE sme;
+    while(true){
+        while(true){
+            printf("Type a to add, e to erase, r to read. Add space and type key after a/e/r. q to quit: ");
+            fgets(key_str,INPUT_BUFFER_LEN,stdin);
+            fgets_change(key_str,INPUT_BUFFER_LEN);
+            switch(key_str[0]){
+                case 'a':
+                    if(key_str[1]!=' ') goto format_error;
+                    sme=SME_Add; goto next_step;
+                case 'e':
+                    if(key_str[1]!=' ') goto format_error;
+                    sme=SME_Erase; goto next_step;
+                case 'r':
+                    if(key_str[1]!=' ') goto format_error;
+                    sme=SME_Read; goto next_step;
+                    break;
+                case 'q':
+                    if(key_str[1]=='\0') goto done;
+                    break;
+                default:
+                    format_error:
+                    puts("Format: a (key_name), e (key_name) r (key_name), or q");
+            }
+        }
+        next_step:
+        if(sme==SME_Add){
+            printf("Add Value: ");
+            fgets(value_str,INPUT_BUFFER_LEN,stdin);
+            fgets_change(value_str,INPUT_BUFFER_LEN);
+            SM_assign(sm,key_str+2,strtol(value_str,0,10));
+        }else if(sme==SME_Erase){
+            SM_erase(sm,key_str+2);
+        }else{
+            map_value_t value;
+            bool status=SM_read(sm,key_str+2,&value);
+            if(status) printf("Value read as: %lu\n",value);
+            else puts("Key doesn't exist. Value not given.");
+        }
+        SM_print_debug(sm);
+    }
+    done:
+    SM_free(sm);
     return (!number_failed)?EXIT_SUCCESS:EXIT_FAILURE;
 }

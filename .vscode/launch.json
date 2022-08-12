@@ -9,6 +9,7 @@
             "type": "cppdbg",
             "request": "launch",
             "program": "${workspaceFolder}/bin/keystroke_player_tests/keystroke_player_tests",
+            "customLaunchSetupCommands": [],
             "args": [],
             "stopAtEntry": false,
             "cwd": "${workspaceFolder}/bin/keystroke_player_tests",
@@ -21,7 +22,8 @@
                     "text": "-enable-pretty-printing",
                     "ignoreFailures": false
                 }
-            ]
+            ],
+            "preLaunchTask": "pre-build test"
         }
     ]
 }

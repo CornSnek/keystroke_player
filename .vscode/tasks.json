@@ -12,6 +12,13 @@
                 "kind": "build",
                 "isDefault": true
             }
+        },
+        {
+            "label": "pre-build test",
+            "type": "shell",
+            "command": "source debug_test_build.conf",
+            "problemMatcher": [],
+            "group": "build"
         }
     ]
 }
