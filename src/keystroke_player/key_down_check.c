@@ -46,11 +46,15 @@ void key_down_check_free(key_down_check_t* this){
     free(this);
 }
 bool _KeybindDisable=false;
-void _GlobalKeybindDisable(bool d){
+//Removes keybinds except for escape key.
+void _GlobalKeybindDisable(Display* xdpy,int scr,bool d,const callback_t* cb_list,size_t cb_list_len){
     _KeybindDisable=d;
     puts(_KeybindDisable?"Escape key pressed. Keybinds are currently disabled. To reenable, press Escape key again.":"Escape key pressed. Keybinds are currently enabled.");
+    if(d) for(size_t i=0;i<cb_list_len;i++) XUngrabKey(xdpy,XKeysymToKeycode(xdpy,cb_list[i].ks),None,RootWindow(xdpy,scr));
+    else for(size_t i=0;i<cb_list_len;i++) XGrabKey(xdpy,XKeysymToKeycode(xdpy,cb_list[i].ks),None,RootWindow(xdpy,scr),False,GrabModeAsync,GrabModeAsync);
 }
 void wait_for_keypress(Display* xdpy,KeySym ks){
+    const callback_t to_disable={.ks=ks};
     int scr=DefaultScreen(xdpy);
     XEvent e={0};
     bool finished=false;
@@ -63,8 +67,8 @@ void wait_for_keypress(Display* xdpy,KeySym ks){
             XNextEvent(xdpy,&e);
             if(!_KeybindDisable){
                 if(e.type==KeyPress&&e.xkey.keycode==XKeysymToKeycode(xdpy,ks)) finished=true;
-                else if(e.type==KeyPress&&e.xkey.keycode==XKeysymToKeycode(xdpy,XK_Escape)) _GlobalKeybindDisable(true);
-            }else if(e.type==KeyPress&&e.xkey.keycode==XKeysymToKeycode(xdpy,XK_Escape)) _GlobalKeybindDisable(false);
+                else if(e.type==KeyPress&&e.xkey.keycode==XKeysymToKeycode(xdpy,XK_Escape)) _GlobalKeybindDisable(xdpy,scr,true,&to_disable,1);
+            }else if(e.type==KeyPress&&e.xkey.keycode==XKeysymToKeycode(xdpy,XK_Escape)) _GlobalKeybindDisable(xdpy,scr,false,&to_disable,1);
         }
     }
     XUngrabKey(xdpy,XKeysymToKeycode(xdpy,ks),None,RootWindow(xdpy,scr));
@@ -85,7 +89,7 @@ void keypress_loop(Display* xdpy,const callback_t* cb_list,size_t cb_list_len){
             if(e.type==KeyPress){
                 if(!_KeybindDisable){
                     if(e.type==KeyPress&&e.xkey.keycode==XKeysymToKeycode(xdpy,XK_Escape)){
-                        _GlobalKeybindDisable(true);
+                        _GlobalKeybindDisable(xdpy,scr,true,cb_list,cb_list_len);
                         break;
                     } 
                     for(size_t i=0;i<cb_list_len;i++){
@@ -94,7 +98,7 @@ void keypress_loop(Display* xdpy,const callback_t* cb_list,size_t cb_list_len){
                             break;
                         }
                     }
-                }else if(e.type==KeyPress&&e.xkey.keycode==XKeysymToKeycode(xdpy,XK_Escape)) _GlobalKeybindDisable(false);
+                }else if(e.type==KeyPress&&e.xkey.keycode==XKeysymToKeycode(xdpy,XK_Escape)) _GlobalKeybindDisable(xdpy,scr,false,cb_list,cb_list_len);
             }
         }
     }

@@ -51,7 +51,7 @@ typedef struct ms_cont{
     MenuState* ms;
     MenuState v;
 }ms_cont_t;
-bool input_state_func(void* MS_v){//Sets menu_state variable in main(void) to v.
+bool _input_state_func(void* MS_v){//Sets menu_state variable in main(void) to v.
     *(((ms_cont_t*)MS_v)->ms)=((ms_cont_t*)MS_v)->v;
     return false;
 }
@@ -78,23 +78,23 @@ int main(void){
                     "Escape key toggles enabling/disabling keybinds outside of macro scripts\n"
                 );
                 keypress_loop(xdo_obj->xdpy,(callback_t[5]){{
-                    .func=input_state_func,
+                    .func=_input_state_func,
                     .arg=&(ms_cont_t){.ms=&menu_state,.v=MS_Done},
                     .ks=XK_Q
                 },{
-                    .func=input_state_func,
+                    .func=_input_state_func,
                     .arg=&(ms_cont_t){.ms=&menu_state,.v=MS_EditConfig},
                     .ks=XK_C
                 },{
-                    .func=input_state_func,
+                    .func=_input_state_func,
                     .arg=&(ms_cont_t){.ms=&menu_state,.v=MS_BuildFile},
                     .ks=XK_B
                 },{
-                    .func=input_state_func,
+                    .func=_input_state_func,
                     .arg=&(ms_cont_t){.ms=&menu_state,.v=MS_RunFile},
                     .ks=XK_R
                 },{
-                    .func=input_state_func,
+                    .func=_input_state_func,
                     .arg=&(ms_cont_t){.ms=&menu_state,.v=MS_MouseCoords},
                     .ks=XK_T
                 }},5);
@@ -168,7 +168,7 @@ int main(void){
                 }
                 puts("Type y to build/run again or q to return to menu.");
                 keypress_loop(xdo_obj->xdpy,(callback_t[2]){{
-                    .func=input_state_func,
+                    .func=_input_state_func,
                     .arg=&(ms_cont_t){.ms=&menu_state,.v=MS_Start},
                     .ks=XK_Q
                 },{
