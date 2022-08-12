@@ -75,26 +75,27 @@ int main(void){
                     "Type r to Build and Run File\n"
                     "Type t to Test coordinates of mouse and color\n"
                     "Type q to Quit\n"
+                    "Escape key toggles enabling/disabling keybinds outside of macro scripts\n"
                 );
                 keypress_loop(xdo_obj->xdpy,(callback_t[5]){{
                     .func=input_state_func,
-                    .args=&(ms_cont_t){.ms=&menu_state,.v=MS_Done},
+                    .arg=&(ms_cont_t){.ms=&menu_state,.v=MS_Done},
                     .ks=XK_Q
                 },{
                     .func=input_state_func,
-                    .args=&(ms_cont_t){.ms=&menu_state,.v=MS_EditConfig},
+                    .arg=&(ms_cont_t){.ms=&menu_state,.v=MS_EditConfig},
                     .ks=XK_C
                 },{
                     .func=input_state_func,
-                    .args=&(ms_cont_t){.ms=&menu_state,.v=MS_BuildFile},
+                    .arg=&(ms_cont_t){.ms=&menu_state,.v=MS_BuildFile},
                     .ks=XK_B
                 },{
                     .func=input_state_func,
-                    .args=&(ms_cont_t){.ms=&menu_state,.v=MS_RunFile},
+                    .arg=&(ms_cont_t){.ms=&menu_state,.v=MS_RunFile},
                     .ks=XK_R
                 },{
                     .func=input_state_func,
-                    .args=&(ms_cont_t){.ms=&menu_state,.v=MS_MouseCoords},
+                    .arg=&(ms_cont_t){.ms=&menu_state,.v=MS_MouseCoords},
                     .ks=XK_T
                 }},5);
                 break;
@@ -163,16 +164,16 @@ int main(void){
                     case PS_ReadError: puts("Macro script failed (File non-existent or read error)."); break;
                     case PS_ParseError: puts("Macro script failed (File parsing errors)."); break;
                     case PS_ProgramError: puts("Macro script failed (Runtime program errors)."); break;
-                    case PS_MacroError: puts("Macro script failed (Macro expansion errors).");
+                    case PS_MacroError: puts("Macro script failed (Macro expansion errors or cancelled).");
                 }
                 puts("Type y to build/run again or q to return to menu.");
                 keypress_loop(xdo_obj->xdpy,(callback_t[2]){{
                     .func=input_state_func,
-                    .args=&(ms_cont_t){.ms=&menu_state,.v=MS_Start},
+                    .arg=&(ms_cont_t){.ms=&menu_state,.v=MS_Start},
                     .ks=XK_Q
                 },{
                     .func=CallbackEndLoop,
-                    .args=0,//Previous state used.
+                    .arg=0,//Previous state used.
                     .ks=XK_Y
                 }},2);
                 break;
@@ -180,11 +181,11 @@ int main(void){
                 puts("Press t to test mouse/color coordinates. Press q to quit.");
                 keypress_loop(xdo_obj->xdpy,(callback_t[2]){{
                     .func=test_mouse_func,
-                    .args=xdo_obj,
+                    .arg=xdo_obj,
                     .ks=XK_T
                 },{
                     .func=CallbackEndLoop,
-                    .args=0,
+                    .arg=0,
                     .ks=XK_Q
                 }},2);
                 menu_state=MS_Start;
@@ -398,12 +399,35 @@ int custom_xdo_move_mouse_absolute(const xdo_t *xdo,int x,int y){
     XFlush(xdo->xdpy);
     return ret==0;
 }
+typedef struct _boolean_edit_s{
+    bool* p;
+    bool v;
+}_boolean_edit_t;
+bool _boolean_edit_func(void* b_v){
+    *(((_boolean_edit_t*)b_v)->p)=((_boolean_edit_t*)b_v)->v;
+    return false;
+}
 bool run_program(command_array_t* cmd_arr, const char* file_str, Config config, xdo_t* xdo_obj){
+    puts("Press s to execute the macro. Press c to cancel.");
+    {
+        bool start_program;
+        keypress_loop(xdo_obj->xdpy,(callback_t[2]){{
+            .func=_boolean_edit_func,
+            .arg=&(_boolean_edit_t){.p=&start_program,.v=true},
+            .ks=XK_S
+        },{
+            .func=_boolean_edit_func,
+            .arg=&(_boolean_edit_t){.p=&start_program,.v=false},
+            .ks=XK_C
+        }},2);
+        if(!start_program){
+            puts("Cancelling starting macro.");
+            return false;
+        }
+    }
     int cmd_arr_len=command_array_count(cmd_arr),cmd_arr_i=0,stack_cmd_i;
     key_down_check_t* kdc=key_down_check_new();
     shared_rs srs=(shared_rs){.xdo_obj=xdo_obj,.program_done=false,.key_check_delay=config.key_check_delay};
-    puts("Press s to execute the macro.");
-    wait_for_keypress(xdo_obj->xdpy,XK_S);
     printf("Starting script in %ld microseconds (%f seconds)\n",config.init_delay,(float)config.init_delay/1000000);
     usleep(config.init_delay);
     puts("Running. Press q to stop the macro.");

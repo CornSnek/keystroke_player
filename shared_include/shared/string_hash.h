@@ -17,17 +17,19 @@ static inline hash_t SM_Hash(const char* str){//djb2 from http://www.cse.yorku.c
     while((c=*str++)) hash=((hash<<5)+hash)+c;
     return hash;
 }
-static inline hash_t SM_Mod(StringMap_t* this,hash_t num){
+static inline hash_t SM_Mod(const StringMap_t* this,hash_t num){
     return num%(this->MaxSize);
 }
-static inline hash_t SM_SubMod(StringMap_t* this,hash_t negative_num){//Modulus when doing any subtraction to get a positive number (Subtracting by max MaxSize only).
+static inline hash_t SM_SubMod(const StringMap_t* this,hash_t negative_num){//Modulus when doing any subtraction to get a positive number (Subtracting by max MaxSize only).
     return (this->MaxSize+negative_num)%(this->MaxSize);
 }
 StringMap_t* SM_new(size_t size);
 bool SM_assign(StringMap_t* this,const char* key,map_value_t map_values);
 bool SM_assign_own(StringMap_t* this,char* key,map_value_t map_value);
 bool SM_erase(StringMap_t* this,const char* key);
-bool SM_read(StringMap_t* this,const char* key,map_value_t* value);
-void SM_print_debug(StringMap_t* this);
+bool SM_erase_own(StringMap_t* this,char* key);
+bool SM_read(const StringMap_t* this,const char* key,map_value_t* value);
+bool SM_read_own(const StringMap_t* this,char* key,map_value_t* value);
+void SM_print_debug(const StringMap_t* this);
 void SM_free(StringMap_t* this);
 #endif

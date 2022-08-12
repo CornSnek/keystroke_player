@@ -1,5 +1,5 @@
 #include <key_down_check.h>
-
+#include <X11/Xutil.h>
 key_down_check_t* key_down_check_new(void){
     key_down_check_t* this=(key_down_check_t*)(malloc(sizeof(key_down_check_t)));
     EXIT_IF_NULL(this,key_down_check_t*);
@@ -45,22 +45,30 @@ void key_down_check_free(key_down_check_t* this){
     free(this->keys);
     free(this);
 }
+bool _KeybindDisable=false;
+void _GlobalKeybindDisable(bool d){
+    _KeybindDisable=d;
+    puts(_KeybindDisable?"Escape key pressed. Keybinds are currently disabled. To reenable, press Escape key again.":"Escape key pressed. Keybinds are currently enabled.");
+}
 void wait_for_keypress(Display* xdpy,KeySym ks){
     int scr=DefaultScreen(xdpy);
     XEvent e={0};
     bool finished=false;
     XGrabKey(xdpy,XKeysymToKeycode(xdpy,ks),None,RootWindow(xdpy,scr),False,GrabModeAsync,GrabModeAsync);
+    XGrabKey(xdpy,XKeysymToKeycode(xdpy,XK_Escape),None,RootWindow(xdpy,scr),False,GrabModeAsync,GrabModeAsync);
     XFlush(xdpy);
     while(!finished){
         usleep(100000);
         while(XPending(xdpy)){
-            XNextEvent(xdpy,&e); 
-            if(e.type==KeyPress&&e.xkey.keycode==XKeysymToKeycode(xdpy,ks)){
-                finished=true;
-            }
+            XNextEvent(xdpy,&e);
+            if(!_KeybindDisable){
+                if(e.type==KeyPress&&e.xkey.keycode==XKeysymToKeycode(xdpy,ks)) finished=true;
+                else if(e.type==KeyPress&&e.xkey.keycode==XKeysymToKeycode(xdpy,XK_Escape)) _GlobalKeybindDisable(true);
+            }else if(e.type==KeyPress&&e.xkey.keycode==XKeysymToKeycode(xdpy,XK_Escape)) _GlobalKeybindDisable(false);
         }
     }
     XUngrabKey(xdpy,XKeysymToKeycode(xdpy,ks),None,RootWindow(xdpy,scr));
+    XUngrabKey(xdpy,XKeysymToKeycode(xdpy,XK_Escape),None,RootWindow(xdpy,scr));
     XFlush(xdpy);
 }
 void keypress_loop(Display* xdpy,const callback_t* cb_list,size_t cb_list_len){
@@ -68,22 +76,30 @@ void keypress_loop(Display* xdpy,const callback_t* cb_list,size_t cb_list_len){
     XEvent e={0};
     bool keep_looping=true;
     for(size_t i=0;i<cb_list_len;i++) XGrabKey(xdpy,XKeysymToKeycode(xdpy,cb_list[i].ks),None,RootWindow(xdpy,scr),False,GrabModeAsync,GrabModeAsync);
+    XGrabKey(xdpy,XKeysymToKeycode(xdpy,XK_Escape),None,RootWindow(xdpy,scr),False,GrabModeAsync,GrabModeAsync);
     XFlush(xdpy);
     while(keep_looping){
         usleep(100000);
         while(XPending(xdpy)){
             XNextEvent(xdpy,&e);
             if(e.type==KeyPress){
-                for(size_t i=0;i<cb_list_len;i++){
-                    if(e.xkey.keycode==XKeysymToKeycode(xdpy,cb_list[i].ks)){
-                        keep_looping&=cb_list[i].func(cb_list[i].args);//Keep looping until one is false.
+                if(!_KeybindDisable){
+                    if(e.type==KeyPress&&e.xkey.keycode==XKeysymToKeycode(xdpy,XK_Escape)){
+                        _GlobalKeybindDisable(true);
                         break;
+                    } 
+                    for(size_t i=0;i<cb_list_len;i++){
+                        if(e.xkey.keycode==XKeysymToKeycode(xdpy,cb_list[i].ks)){
+                            keep_looping&=cb_list[i].func(cb_list[i].arg);//Keep looping until one is false.
+                            break;
+                        }
                     }
-                }
+                }else if(e.type==KeyPress&&e.xkey.keycode==XKeysymToKeycode(xdpy,XK_Escape)) _GlobalKeybindDisable(false);
             }
         }
     }
     for(size_t i=0;i<cb_list_len;i++) XUngrabKey(xdpy,XKeysymToKeycode(xdpy,cb_list[i].ks),None,RootWindow(xdpy,scr));
+    XUngrabKey(xdpy,XKeysymToKeycode(xdpy,XK_Escape),None,RootWindow(xdpy,scr));
     XFlush(xdpy);
 }
 bool CallbackEndLoop(void* v){

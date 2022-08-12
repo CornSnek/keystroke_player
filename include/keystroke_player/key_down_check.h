@@ -22,7 +22,7 @@ typedef bool(*callback_f)(void*);
 typedef struct callback_s{
     KeySym ks;
     callback_f func;
-    void* args;
+    void* arg;
 }callback_t;
 key_down_check_t* key_down_check_new(void);
 bool key_down_check_add(key_down_check_t* this,const char* add_key);

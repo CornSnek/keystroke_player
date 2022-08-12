@@ -105,6 +105,11 @@ bool SM_assign_own(StringMap_t* this,char* key,map_value_t map_value){
     free(key_to_add);//Is full.
     return false;
 }
+bool SM_erase_own(StringMap_t* this,char* key){
+    bool b=SM_erase(this,key);
+    free(key);
+    return b;
+}
 bool SM_erase(StringMap_t* this,const char* key){
     const hash_t swap_hash_i=SM_Mod(this,SM_Hash(key));
     for(size_t offset_i=0;offset_i<this->MaxSize;offset_i++){
@@ -119,7 +124,12 @@ bool SM_erase(StringMap_t* this,const char* key){
     }
     return false;
 }
-bool SM_read(StringMap_t* this,const char* key,map_value_t* value){//Bool if no key.
+bool SM_read_own(const StringMap_t* this,char* key,map_value_t* value){
+    bool b=SM_read(this,key,value);
+    free(key);
+    return b;
+}
+bool SM_read(const StringMap_t* this,const char* key,map_value_t* value){//Bool if no key.
     const hash_t search_key_hash=SM_Mod(this,SM_Hash(key));
     for(size_t hash_i=0;hash_i<this->MaxSize;hash_i++){
         const hash_t current_hash_read=SM_Mod(this,search_key_hash+hash_i);
@@ -128,13 +138,13 @@ bool SM_read(StringMap_t* this,const char* key,map_value_t* value){//Bool if no 
         if(!next_key) return false; //Empty key. Not there in robin hood hashing.
         const hash_t current_distance=SM_SubMod(this,current_hash_read-search_key_hash);
         const hash_t next_key_distance=SM_SubMod(this,current_hash_read-SM_Mod(this,SM_Hash(next_key)));
-        printf("Reading at hash %ld. Read key distance: %ld Next key distance: %ld\n",current_hash_read,current_distance,next_key_distance);
+        //printf("Reading at hash %ld. Read key distance: %ld Next key distance: %ld\n",current_hash_read,current_distance,next_key_distance);
         if(current_distance>next_key_distance) return false;//The key's distance greater than next. Not there in robin hood hashing.
         if(!strcmp(next_key,key)){*value=next_value; return true;}
     }
     return false; //Not in entire array.
 }
-void SM_print_debug(StringMap_t* this){
+void SM_print_debug(const StringMap_t* this){
     printf("Size:%lu [",this->size);
     for(size_t hash_i=0;hash_i<this->MaxSize;hash_i++){
         const char* key=this->string_keys[hash_i];
