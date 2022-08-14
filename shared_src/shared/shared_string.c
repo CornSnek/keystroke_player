@@ -274,6 +274,7 @@ bool macro_paster_process_macros(macro_paster_t* this,const char* file_str,const
         split_at_sep(full_macro_str,def_sep,&def_p,&macro_name_len,&def_len);
         if(!def_p){
             fprintf(stderr,"Separator %s not found.\n",def_sep);
+            free(full_macro_str);
             free(macros_def);
             return false;
         }
@@ -295,7 +296,7 @@ bool macro_paster_process_macros(macro_paster_t* this,const char* file_str,const
                 if(macro_name_set){
                     success=macro_paster_add_var(this,macro_name_str,str);
                     if(!success){
-                        free(macro_vars_str); free(str); free(def_str); free(macros_def);
+                        free(macro_vars_str); free(macro_name_str); free(str); free(def_str); free(macros_def);
                         return false;
                     }
                     free(str);
@@ -346,7 +347,7 @@ bool macro_paster_expand_macros(macro_paster_t* this,const char* file_str,const 
     strcpy(cmd_str,begin_cmd_p);
     size_t expansion_count=0;
     do{
-        if(expansion_count>1000){
+        if(expansion_count>5000){
             fprintf(stderr,"Error: Possibly recursive macro in code. Ended recursion. Output:\n%s\n",cmd_str);
             _write_to_macro_output(cmd_str);
             free(cmd_str);
@@ -514,7 +515,7 @@ size_t trim_comments(char** strptr){//Same as above, but with comments until new
 }
 _Pragma("GCC diagnostic push")
 _Pragma("GCC diagnostic ignored \"-Wstringop-truncation\"")
-void replace_str(char** strptr_owner, const char* replace, const char* with){//Assume all null-terminated.
+void replace_str(char** strptr, const char* replace, const char* with){
     char* new_strptr=(char*)(malloc(sizeof(char)));
     EXIT_IF_NULL(new_strptr,char*);
     size_t strptr_i=0;
@@ -522,23 +523,33 @@ void replace_str(char** strptr_owner, const char* replace, const char* with){//A
     const size_t replace_len=strlen(replace);
     const size_t with_len=strlen(with);
     char current_char;
-    while((current_char=(*strptr_owner)[strptr_i])){
-        if(current_char==replace[0]&&!strncmp((*strptr_owner+strptr_i),replace,replace_len)){//0 in strncmp for same string contents.
-            new_strptr=(char*)(realloc(new_strptr,sizeof(char)*(new_strptr_i+1+with_len)));
-            EXIT_IF_NULL(new_strptr,char*);
-            strncpy(new_strptr+new_strptr_i,with,with_len);//-Wstringop-truncation here (It null terminates after while loop)
-            new_strptr_i+=with_len;
-            strptr_i+=replace_len;
-            continue;
-        }
-        new_strptr[new_strptr_i++]=current_char;
-        strptr_i++;
-        new_strptr=(char*)(realloc(new_strptr,sizeof(char)*new_strptr_i+1));
+    char* replace_p;
+    while((current_char=*(*strptr+strptr_i))){
+        if(!(replace_p=strchr(*strptr+strptr_i,*replace))) break;
+        const size_t non_match_len=replace_p-*strptr-strptr_i;
+        new_strptr=realloc(new_strptr,sizeof(char)*(new_strptr_i+non_match_len));//Strings that don't match replace.
         EXIT_IF_NULL(new_strptr,char*);
+        strncpy(new_strptr+new_strptr_i,*strptr+strptr_i,non_match_len);
+        new_strptr_i+=non_match_len;
+        strptr_i+=non_match_len;
+        if(strncmp(*strptr+strptr_i,replace,replace_len)){//First letter may not match the same word (!=0)
+            new_strptr=realloc(new_strptr,(sizeof(char)*new_strptr_i+1));//To stop strchr from looping, add first character.
+            EXIT_IF_NULL(new_strptr,char*);
+            new_strptr[new_strptr_i++]=(*strptr)[strptr_i++];
+            continue; 
+        }
+        new_strptr=realloc(new_strptr,sizeof(char)*(new_strptr_i+with_len));
+        EXIT_IF_NULL(new_strptr,char*);
+        strncpy(new_strptr+new_strptr_i,with,with_len);
+        new_strptr_i+=with_len;//Increment string index by appropriate lengths.
+        strptr_i+=replace_len;
     }
-    new_strptr[new_strptr_i]='\0';//Null-terminate.
-    free(*strptr_owner);
-    *strptr_owner=new_strptr;//Change freed pointer to new pointer.
+    const size_t last_chars_len=strchr(*strptr+strptr_i,'\0')-*strptr-strptr_i;
+    new_strptr=realloc(new_strptr,sizeof(char)*(new_strptr_i+last_chars_len+1));
+    EXIT_IF_NULL(new_strptr,char*);
+    strcpy(new_strptr+new_strptr_i,*strptr+strptr_i);//Null-terminate with strcpy.
+    free(*strptr);
+    *strptr=new_strptr;//Change freed pointer to new pointer.
 }
 //Only replaces within range of pointers begin/end (inclusive).
 //Will invalidate begin/end pointers after this call.

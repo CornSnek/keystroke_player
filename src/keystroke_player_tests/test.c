@@ -258,7 +258,7 @@ int main(void){
     srunner_run_all(sr,CK_NORMAL);
     int number_failed=srunner_ntests_failed(sr);
     srunner_free(sr);
-    StringMap_t* sm=SM_new(5);
+    StringMap_SizeT_t* sm=StringMap_SizeT_new(5);
     char key_str[INPUT_BUFFER_LEN+1]={0};
     char value_str[INPUT_BUFFER_LEN+1]={0};
     typedef enum _StringMapE{
@@ -294,18 +294,18 @@ int main(void){
             printf("Add Value: ");
             fgets(value_str,INPUT_BUFFER_LEN,stdin);
             fgets_change(value_str,INPUT_BUFFER_LEN);
-            SM_assign(sm,key_str+2,strtol(value_str,0,10));
+            StringMap_SizeT_assign(sm,key_str+2,strtol(value_str,0,10));
         }else if(sme==SME_Erase){
-            SM_erase(sm,key_str+2);
+            StringMap_SizeT_erase(sm,key_str+2);
         }else{
-            map_value_t value;
-            bool status=SM_read(sm,key_str+2,&value);
+            size_t value;
+            bool status=StringMap_SizeT_read(sm,key_str+2,&value);
             if(status) printf("Value read as: %lu\n",value);
             else puts("Key doesn't exist. Value not given.");
         }
-        SM_print_debug(sm);
+        StringMap_SizeT_print(sm);
     }
     done:
-    SM_free(sm);
+    StringMap_SizeT_free(sm);
     return (!number_failed)?EXIT_SUCCESS:EXIT_FAILURE;
 }

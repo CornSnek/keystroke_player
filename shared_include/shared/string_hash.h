@@ -4,32 +4,35 @@
 #include <string.h>
 #include <stdbool.h>
 typedef signed int long hash_t;
-typedef size_t map_value_t;
-typedef struct StringMap_s{
-    const size_t MaxSize;
-    size_t size;
-    char** string_keys;
-    map_value_t* map_values;
-}StringMap_t;
-static inline hash_t SM_Hash(const char* str){//djb2 from http://www.cse.yorku.ca/~oz/hash.html
-    hash_t hash=5381;
-    int c;
-    while((c=*str++)) hash=((hash<<5)+hash)+c;
-    return hash;
-}
-static inline hash_t SM_Mod(const StringMap_t* this,hash_t num){
-    return num%(this->MaxSize);
-}
-static inline hash_t SM_SubMod(const StringMap_t* this,hash_t negative_num){//Modulus when doing any subtraction to get a positive number (Subtracting by max MaxSize only).
-    return (this->MaxSize+negative_num)%(this->MaxSize);
-}
-StringMap_t* SM_new(size_t size);
-bool SM_assign(StringMap_t* this,const char* key,map_value_t map_values);
-bool SM_assign_own(StringMap_t* this,char* key,map_value_t map_value);
-bool SM_erase(StringMap_t* this,const char* key);
-bool SM_erase_own(StringMap_t* this,char* key);
-bool SM_read(const StringMap_t* this,const char* key,map_value_t* value);
-bool SM_read_own(const StringMap_t* this,char* key,map_value_t* value);
-void SM_print_debug(const StringMap_t* this);
-void SM_free(StringMap_t* this);
+#define StringMap_ImplDecl(ValueType,TypeName)\
+typedef struct StringMap_##TypeName##_s{\
+    const size_t MaxSize;\
+    size_t size;\
+    char** string_keys;\
+    ValueType* map_values;\
+}StringMap_##TypeName##_t;\
+static inline hash_t StringMap_##TypeName##_Hash(const char* str){\
+    hash_t hash=5381;\
+    int c;\
+    while((c=*str++)) hash=((hash<<5)+hash)+c;\
+    return hash;\
+}\
+static inline hash_t StringMap_##TypeName##_Mod(const StringMap_##TypeName##_t* this,hash_t num){\
+    return num%(this->MaxSize);\
+}\
+static inline hash_t StringMap_##TypeName##_SubMod(const StringMap_##TypeName##_t* this,hash_t negative_num_maybe){\
+    return (this->MaxSize+negative_num_maybe)%(this->MaxSize);\
+}\
+StringMap_##TypeName##_t* StringMap_##TypeName##_new(size_t size);\
+bool StringMap_##TypeName##_assign(StringMap_##TypeName##_t* this,const char* key,ValueType map_value);\
+bool StringMap_##TypeName##_assign_own(StringMap_##TypeName##_t* this,char* key,ValueType map_value);\
+bool StringMap_##TypeName##_erase(StringMap_##TypeName##_t* this,const char* key);\
+bool StringMap_##TypeName##_erase_own(StringMap_##TypeName##_t* this,char* key);\
+bool StringMap_##TypeName##_read(const StringMap_##TypeName##_t* this,const char* key,ValueType* map_value);\
+bool StringMap_##TypeName##_read_own(const StringMap_##TypeName##_t* this,char* key,ValueType* map_value);\
+void StringMap_##TypeName##_print_debug(const StringMap_##TypeName##_t* this);\
+void StringMap_##TypeName##_print(const StringMap_##TypeName##_t* this);\
+void StringMap_##TypeName##_free(StringMap_##TypeName##_t* this);
+
+StringMap_ImplDecl(size_t,SizeT)
 #endif

@@ -75,7 +75,8 @@
         "assert.h": "c",
         "types.h": "c",
         "string_hash.h": "c",
-        "iterator": "c"
+        "iterator": "c",
+        "memory": "c"
     },
     //"editor.autoClosingBrackets": "never",
     //"editor.autoClosingDelete": "never",
