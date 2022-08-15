@@ -261,14 +261,15 @@ size_t* random_unique_indices(size_t len){
 }
 START_TEST(string_hash_test){
     const unsigned char StrMaxLen=10;
-    const size_t RandStrsArrayLen=100;//Less if using valgrind. More without it.
+    const size_t RandStrsArrayLen=300;//Less if using valgrind. More without it.
     char** RandStrsArray=malloc(sizeof(char*)*(RandStrsArrayLen));
     for(size_t i=0;i<RandStrsArrayLen;i++){
         unsigned char rand_b=0;
         do{}while(getrandom(&rand_b,1,0)==-1);
         while(true){
+            char* temp;
             new_string:
-            char* temp=random_str(rand_b%StrMaxLen+1);
+            temp=random_str(rand_b%StrMaxLen+1);
             for(size_t j=0;j<i;j++){
                 if(!strcmp(temp,RandStrsArray[j])){//No duplicates or it would fail the code below.
                     free(temp);
@@ -288,30 +289,27 @@ START_TEST(string_hash_test){
         for(size_t j=0;j<RandStrsArrayLen;j++){
             char* const this_key=RandStrsArray[rand_indices[0][j]];
             str[j]=this_key; str_exists[j]=true;
-            ck_assert_int_eq(StringMap_SizeT_assign(sm_st,this_key,j),1);//j's will be used to not read the respective key if deleted.
+            ck_assert_int_eq(StringMap_SizeT_assign(sm_st,this_key,j),VA_Written);//j's will be used to not read the respective key if deleted.
             ck_assert_int_eq(sm_st->size,j+1);
             for(size_t k=0;k<=j;k++){//To check each value that after inserting a string.
-                size_t value;
-                ck_assert_int_eq(StringMap_SizeT_read(sm_st,str[k],&value),1);
-                ck_assert_int_eq(value,k);
+                SomeMapValue_SizeT_t smv_st=StringMap_SizeT_read(sm_st,str[k]);
+                ck_assert_int_eq(smv_st.exists,1);
+                ck_assert_int_eq(smv_st.value,k);
             }
-            ck_assert_int_eq(StringMap_SizeT_check_rhh_valid(sm_st),1);
         }
+        StringMap_SizeT_resize(&sm_st,RandStrsArrayLen*2);
         for(size_t j=0;j<RandStrsArrayLen;j++){
             char* const this_key=RandStrsArray[rand_indices[1][j]];
-            size_t value=-1;
-            StringMap_SizeT_read(sm_st,this_key,&value);
-            str_exists[value]=false;//Don't read (value deleted)
+            str_exists[StringMap_SizeT_read(sm_st,this_key).value]=false;//Don't read (value deleted)
             ck_assert_int_eq(StringMap_SizeT_erase(sm_st,this_key),1);
             ck_assert_int_eq(sm_st->size,RandStrsArrayLen-j-1);
             for(size_t k=0;k<RandStrsArrayLen;k++){
-                size_t value=-1;
                 if(str_exists[k]){
-                    ck_assert_int_eq(StringMap_SizeT_read(sm_st,str[k],&value),1);
-                    ck_assert_int_eq(value,k);
-                }else ck_assert_int_eq(StringMap_SizeT_read(sm_st,str[k],&value),0);
+                    SomeMapValue_SizeT_t smv_st=StringMap_SizeT_read(sm_st,str[k]);
+                    ck_assert_int_eq(smv_st.exists,1);
+                    ck_assert_int_eq(smv_st.value,k);
+                }else ck_assert_int_eq(StringMap_SizeT_read(sm_st,str[k]).exists,0);
             }
-            ck_assert_int_eq(StringMap_SizeT_check_rhh_valid(sm_st),1);
         }
         StringMap_SizeT_free(sm_st);
         free(rand_indices[0]);
