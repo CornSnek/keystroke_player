@@ -76,7 +76,9 @@
         "types.h": "c",
         "string_hash.h": "c",
         "iterator": "c",
-        "memory": "c"
+        "memory": "c",
+        "test_utils.h": "c",
+        "check.h": "c"
     },
     //"editor.autoClosingBrackets": "never",
     //"editor.autoClosingDelete": "never",

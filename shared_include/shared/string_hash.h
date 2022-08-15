@@ -3,7 +3,7 @@
 #include "macros.h"
 #include <string.h>
 #include <stdbool.h>
-typedef signed int long hash_t;
+typedef __ssize_t hash_t;
 #define StringMap_ImplDecl(ValueType,TypeName)\
 typedef struct StringMap_##TypeName##_s{\
     const size_t MaxSize;\
@@ -32,7 +32,8 @@ bool StringMap_##TypeName##_read(const StringMap_##TypeName##_t* this,const char
 bool StringMap_##TypeName##_read_own(const StringMap_##TypeName##_t* this,char* key,ValueType* map_value);\
 void StringMap_##TypeName##_print_debug(const StringMap_##TypeName##_t* this);\
 void StringMap_##TypeName##_print(const StringMap_##TypeName##_t* this);\
-void StringMap_##TypeName##_free(StringMap_##TypeName##_t* this);
+void StringMap_##TypeName##_free(StringMap_##TypeName##_t* this);\
+bool StringMap_##TypeName##_check_rhh_valid(const StringMap_##TypeName##_t* this);
 
 StringMap_ImplDecl(size_t,SizeT)
 #endif

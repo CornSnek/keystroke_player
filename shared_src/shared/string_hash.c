@@ -148,6 +148,39 @@ void StringMap_##TypeName##_free(StringMap_##TypeName##_t* this){\
     free(this->string_keys);\
     free(this->map_values);\
     free(this);\
+}\
+bool StringMap_##TypeName##_check_rhh_valid(const StringMap_##TypeName##_t* this){\
+    if(this->size!=this->MaxSize){\
+        hash_t hash_i;\
+        bool check_next_key_zero=false;\
+        for(hash_i=0;hash_i<=(hash_t)this->MaxSize;hash_i++){\
+            const char* const key=this->string_keys[StringMap_##TypeName##_Mod(this,hash_i)];\
+            if(!key){\
+                check_next_key_zero=true;\
+                continue;\
+            }\
+            const hash_t distance_of_key=StringMap_##TypeName##_SubMod(this,hash_i-StringMap_##TypeName##_Mod(this,StringMap_##TypeName##_Hash(key)));\
+            if(!check_next_key_zero) continue;\
+            if(!distance_of_key){check_next_key_zero=false; continue;}\
+            puts("\x1B[31mOne key after an empty string key has PSL>0 (Non-full Table).\x1B[0m");\
+            StringMap_##TypeName##_print_debug(this);\
+            return false;\
+        }\
+    }else{\
+        bool check_any_key_zero=false;\
+        for(hash_t hash_i=0;hash_i<(hash_t)this->MaxSize;hash_i++){\
+            const char* const key=this->string_keys[StringMap_##TypeName##_Mod(this,hash_i)];\
+            if(!key) continue;\
+            const hash_t distance_of_key=StringMap_##TypeName##_SubMod(this,hash_i-StringMap_##TypeName##_Mod(this,StringMap_##TypeName##_Hash(key)));\
+            if(!distance_of_key){check_any_key_zero=true; break;}\
+        }\
+        if(!check_any_key_zero){\
+            puts("\x1B[31mAll keys do not contain any PSL:=0 (Full Table).\x1B[0m");\
+            StringMap_##TypeName##_print_debug(this);\
+            return false;\
+        }\
+    }\
+    return true;\
 }
 
 StringMap_ImplDef(size_t,SizeT)
