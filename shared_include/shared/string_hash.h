@@ -5,7 +5,7 @@
 #include <stdbool.h>
 typedef __ssize_t hash_t;
 typedef enum _ValueAssignE{
-    VA_Full,VA_Written,VA_Rewritten,VA_NullPassed
+    VA_Full,VA_Written,VA_Rewritten
 }ValueAssignE;
 static inline hash_t StringMap_Hash(const char* str){
     hash_t hash=5381;
@@ -13,7 +13,6 @@ static inline hash_t StringMap_Hash(const char* str){
     while((c=*str++)) hash=((hash<<5)+hash)+c;
     return hash;
 }
-static const long IntLong_Null=-1;
 static inline hash_t IntLongMap_Hash(long intl){
     return intl;//TODO
 }

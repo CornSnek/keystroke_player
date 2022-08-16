@@ -203,7 +203,6 @@ IntLongMap_##VName##_t* IntLongMap_##VName##_new(size_t size){\
     EXIT_IF_NULL(this->keys,long*);\
     EXIT_IF_NULL(this->key_exists,bool*);\
     EXIT_IF_NULL(this->map_values,ValueType*);\
-    for(size_t i=0;i<this->MaxSize;i++) this->keys[i]=IntLong_Null;\
     return this;\
 }\
 /*To do robin hood hashing backwards shift*/\
@@ -233,7 +232,7 @@ ValueAssignE IntLongMap_##VName##_assign(IntLongMap_##VName##_t* this,long key,V
         const hash_t assign_i=IntLongMap_##VName##_Mod(this,swap_hash_i+offset_i+swap_difference);\
         long* const assign_long=this->keys+assign_i;\
         ValueType* const assign_val=this->map_values+assign_i;\
-        if(*assign_long==IntLong_Null){/*If empty.*/\
+        if(!this->key_exists[assign_i]){/*If empty.*/\
             *assign_long=key_to_add;\
             *assign_val=map_value;\
             this->key_exists[assign_i]=true;\
@@ -262,7 +261,7 @@ bool IntLongMap_##VName##_erase(IntLongMap_##VName##_t* this,long key){\
     for(size_t offset_i=0;offset_i<this->MaxSize;offset_i++){\
         const hash_t assign_i=IntLongMap_##VName##_Mod(this,swap_hash_i+offset_i);\
         long const delete_long=this->keys[assign_i];\
-        if(delete_long!=IntLong_Null&&delete_long==key){\
+        if(this->key_exists[assign_i]&&delete_long==key){\
             _IntLongMap_##VName##_erase(this,assign_i);\
             this->size--;\
             return true;\
@@ -292,7 +291,7 @@ IntLongMapValue_##VName##_t IntLongMap_##VName##_pop(IntLongMap_##VName##_t* thi
         const hash_t assign_i=IntLongMap_##VName##_Mod(this,swap_hash_i+offset_i);\
         const long delete_long=this->keys[assign_i];\
         const ValueType get_value=this->map_values[assign_i];\
-        if(delete_long!=IntLong_Null&&delete_long==key){\
+        if(this->key_exists[assign_i]&&delete_long==key){\
             _IntLongMap_##VName##_erase(this,assign_i);\
             this->size--;\
             return (IntLongMapValue_##VName##_t){.exists=true,.value=get_value};\
