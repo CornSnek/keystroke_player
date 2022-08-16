@@ -234,13 +234,18 @@ char* random_str(unsigned char len){
     char* rand_str=malloc(sizeof(char)*(len+1));
     EXIT_IF_NULL(rand_str,char*);
     unsigned char rand_buf[len];//Unsigned to make % for positive numbers only.
-    memset(rand_buf,0,len);//0 if getrandom makes errors.
+    memset(rand_buf,0,sizeof(unsigned char)*len);//0 if getrandom makes errors.
     for(size_t i=0;i<len;i++){
         do{}while(getrandom(rand_buf+i,1,0)==-1||rand_buf[i]>UnifLimit);
     }
     for(size_t i=0;i<len;i++) rand_str[i]=ValidStrSet[rand_buf[i]%ValidStrSetLen];
     rand_str[len]='\0';//Null-terminate.
     return rand_str;
+}
+inline static size_t random_size_t(){
+    size_t rand_st=0;
+    do{}while(getrandom(&rand_st,sizeof(rand_st),0)==-1);
+    return rand_st;
 }
 size_t* random_unique_indices(size_t len){
     if(!len) return 0; //Shouldn't be 0 due to malloc and %.
@@ -250,10 +255,10 @@ size_t* random_unique_indices(size_t len){
     size_t ind_take_size=len;
     for(size_t i=0;i<len;i++) ind[i]=i;//0 to len-1
     for(size_t i=0;i<len;i++){
-        const size_t unif_limit=UCHAR_MAX-(UCHAR_MAX%ind_take_size);//Uniform limit for each index take size.
-        unsigned char rand_b=0;
-        do{}while(getrandom(&rand_b,1,0)==-1||rand_b>unif_limit);
-        const size_t take_i=rand_b%ind_take_size;
+        const size_t unif_limit=SIZE_MAX-(SIZE_MAX%ind_take_size);//Uniform limit for each index take size.
+        size_t rand_st=0;
+        do{}while(getrandom(&rand_st,sizeof(rand_st),0)==-1||rand_st>unif_limit);
+        const size_t take_i=rand_st%ind_take_size;
         return_this[i]=ind[take_i];//Assign any index left in ind.
         ind[take_i]=ind[--ind_take_size];//Move the last index to the one that is taken. Decrease max size by 1 to discard the last value (not unique).
     }
@@ -261,17 +266,18 @@ size_t* random_unique_indices(size_t len){
 }
 START_TEST(string_hash_test){
     const unsigned char StrMaxLen=10;
-    const size_t RandStrsArrayLen=300;//Less if using valgrind. More without it.
-    char** RandStrsArray=malloc(sizeof(char*)*(RandStrsArrayLen));
-    for(size_t i=0;i<RandStrsArrayLen;i++){
-        unsigned char rand_b=0;
-        do{}while(getrandom(&rand_b,1,0)==-1);
+    const size_t RandArrayAmount=500;//Less if using valgrind. More without it.
+    char** RandStrsArray=malloc(sizeof(char*)*(RandArrayAmount));
+    EXIT_IF_NULL(RandStrsArray,char**);
+    for(size_t i=0;i<RandArrayAmount;i++){
         while(true){
+            unsigned char rand_b=0;
             char* temp;
             new_string:
+            do{}while(getrandom(&rand_b,1,0)==-1);//Random here so that it doesn't repeat the same 1-char strings.
             temp=random_str(rand_b%StrMaxLen+1);
             for(size_t j=0;j<i;j++){
-                if(!strcmp(temp,RandStrsArray[j])){//No duplicates or it would fail the code below.
+                if(!strcmp(temp,RandStrsArray[j])){//No duplicates or it would fail the tests below.
                     free(temp);
                     goto new_string;
                 }
@@ -280,56 +286,101 @@ START_TEST(string_hash_test){
             break;
         }
     }
+    long* RandLongIntsArray=malloc(sizeof(long)*(RandArrayAmount));
+    EXIT_IF_NULL(RandLongIntsArray,long*);
+    for(size_t i=0;i<RandArrayAmount;i++){
+        while(true){
+            long temp;
+            new_size_t:
+            temp=random_size_t();
+            for(size_t j=0;j<i;j++){
+                if(temp==RandLongIntsArray[j]){
+                    goto new_size_t;
+                }
+            }
+            RandLongIntsArray[i]=temp;
+            break;
+        }
+    }
     const size_t RepeatTests=10;
     for(size_t i=0;i<RepeatTests;i++){
-        size_t* rand_indices[2]={random_unique_indices(RandStrsArrayLen),random_unique_indices(RandStrsArrayLen)};//2 for adding/removing all keys
-        StringMap_SizeT_t* sm_st=StringMap_SizeT_new(RandStrsArrayLen);
-        char** str=malloc(sizeof(char*)*(RandStrsArrayLen));
-        bool* str_exists=malloc(sizeof(bool)*(RandStrsArrayLen));
-        for(size_t j=0;j<RandStrsArrayLen;j++){
+        size_t* rand_indices[2]={random_unique_indices(RandArrayAmount),random_unique_indices(RandArrayAmount)};//2 for adding/removing all keys
+        StringMap_SizeT_t* sm_st=StringMap_SizeT_new(RandArrayAmount);
+        char** str=malloc(sizeof(char*)*(RandArrayAmount));
+        EXIT_IF_NULL(str,char**);
+        bool* key_exists=malloc(sizeof(bool)*(RandArrayAmount));
+        EXIT_IF_NULL(key_exists,bool*);
+        for(size_t j=0;j<RandArrayAmount;j++){
             char* const this_key=RandStrsArray[rand_indices[0][j]];
-            str[j]=this_key; str_exists[j]=true;
+            str[j]=this_key; key_exists[j]=true;
             ck_assert_int_eq(StringMap_SizeT_assign(sm_st,this_key,j),VA_Written);//j's will be used to not read the respective key if deleted.
+            if(sm_st->size<sm_st->MaxSize) ck_assert_int_eq(StringMap_SizeT_assign(sm_st,this_key,j),VA_Rewritten);
+            else ck_assert_int_eq(StringMap_SizeT_assign(sm_st,this_key,j),VA_Full);
             ck_assert_int_eq(sm_st->size,j+1);
             for(size_t k=0;k<=j;k++){//To check each value that after inserting a string.
-                SomeMapValue_SizeT_t smv_st=StringMap_SizeT_read(sm_st,str[k]);
+                StringMapValue_SizeT_t smv_st=StringMap_SizeT_read(sm_st,str[k]);
                 ck_assert_int_eq(smv_st.exists,1);
                 ck_assert_int_eq(smv_st.value,k);
             }
         }
-        StringMap_SizeT_resize(&sm_st,RandStrsArrayLen*2);
-        for(size_t j=0;j<RandStrsArrayLen;j++){
+        ck_assert_int_eq(StringMap_SizeT_resize(&sm_st,RandArrayAmount*2),1);
+        for(size_t j=0;j<RandArrayAmount;j++){
             char* const this_key=RandStrsArray[rand_indices[1][j]];
-            str_exists[StringMap_SizeT_read(sm_st,this_key).value]=false;//Don't read (value deleted)
+            key_exists[StringMap_SizeT_read(sm_st,this_key).value]=false;//Don't read (value deleted)
             ck_assert_int_eq(StringMap_SizeT_erase(sm_st,this_key),1);
-            ck_assert_int_eq(sm_st->size,RandStrsArrayLen-j-1);
-            for(size_t k=0;k<RandStrsArrayLen;k++){
-                if(str_exists[k]){
-                    SomeMapValue_SizeT_t smv_st=StringMap_SizeT_read(sm_st,str[k]);
+            ck_assert_int_eq(sm_st->size,RandArrayAmount-j-1);
+            for(size_t k=0;k<RandArrayAmount;k++){
+                if(key_exists[k]){
+                    StringMapValue_SizeT_t smv_st=StringMap_SizeT_read(sm_st,str[k]);
                     ck_assert_int_eq(smv_st.exists,1);
                     ck_assert_int_eq(smv_st.value,k);
                 }else ck_assert_int_eq(StringMap_SizeT_read(sm_st,str[k]).exists,0);
             }
         }
         StringMap_SizeT_free(sm_st);
+        free(str);
+        IntLongMap_SizeT_t* ilm_st=IntLongMap_SizeT_new(RandArrayAmount);
+        long* long_arr=malloc(sizeof(long)*(RandArrayAmount));
+        EXIT_IF_NULL(long_arr,long*);
+        for(size_t j=0;j<RandArrayAmount;j++){
+            const long this_key=RandLongIntsArray[rand_indices[0][j]];
+            long_arr[j]=this_key; key_exists[j]=true;
+            ck_assert_int_eq(IntLongMap_SizeT_assign(ilm_st,this_key,j),VA_Written);
+            if(ilm_st->size<ilm_st->MaxSize) ck_assert_int_eq(IntLongMap_SizeT_assign(ilm_st,this_key,j),VA_Rewritten);
+            else ck_assert_int_eq(IntLongMap_SizeT_assign(ilm_st,this_key,j),VA_Full);
+            ck_assert_int_eq(ilm_st->size,j+1);
+            for(size_t k=0;k<=j;k++){//To check each value that after inserting a long int key.
+                IntLongMapValue_SizeT_t ilmv_st=IntLongMap_SizeT_read(ilm_st,RandLongIntsArray[rand_indices[0][k]]);
+                ck_assert_int_eq(ilmv_st.exists,1);
+                ck_assert_int_eq(ilmv_st.value,k);
+            }
+        }
+        ck_assert_int_eq(IntLongMap_SizeT_resize(&ilm_st,RandArrayAmount*2),1);
+        for(size_t j=0;j<RandArrayAmount;j++){
+            const long this_key=RandLongIntsArray[rand_indices[1][j]];
+            key_exists[IntLongMap_SizeT_read(ilm_st,this_key).value]=false;
+            ck_assert_int_eq(IntLongMap_SizeT_erase(ilm_st,this_key),1);
+            ck_assert_int_eq(ilm_st->size,RandArrayAmount-j-1);
+            for(size_t k=0;k<RandArrayAmount;k++){
+                if(key_exists[k]){
+                    IntLongMapValue_SizeT_t ilmv_st=IntLongMap_SizeT_read(ilm_st,long_arr[k]);
+                    ck_assert_int_eq(ilmv_st.exists,1);
+                    ck_assert_int_eq(ilmv_st.value,k);
+                }else ck_assert_int_eq(IntLongMap_SizeT_read(ilm_st,long_arr[k]).exists,0);
+            }
+        }
+        IntLongMap_SizeT_free(ilm_st);
+        free(long_arr);
+        free(key_exists);
         free(rand_indices[0]);
         free(rand_indices[1]);
-        free(str_exists);
-        free(str);
-        printf("StringMap - Finished test #%lu/%lu\n",i+1,RepeatTests);
+        printf("StringMap/IntLongMap - Finished tests #%lu/%lu\n",i+1,RepeatTests);
     }
-    for(size_t i=0;i<RandStrsArrayLen;i++) free(RandStrsArray[i]);
+    for(size_t i=0;i<RandArrayAmount;i++) free(RandStrsArray[i]);
     free(RandStrsArray);
+    free(RandLongIntsArray);
 }
 END_TEST
-bool fgets_change(char* str,int buffer_len){//Remove '\n' (if any) and check if string buffer is full (returns bool). 
-    int real_len=strlen(str);
-    bool is_full=(buffer_len-1==real_len);
-    if(!is_full){
-        str[real_len-1]='\0';
-    }
-    return is_full;
-}
 Suite* test_suite(void){
     Suite* s;
     TCase* tc_core;

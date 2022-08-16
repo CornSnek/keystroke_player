@@ -1035,7 +1035,7 @@ void command_array_print(const command_array_t* this){
         free(cmd_str);
         switch(this->cmds[i].type){
             case CMD_KeyStroke:
-                printf("Key %s KeyState: %d\n",cmd.ks.key,cmd.ks.key_state);
+                printf("Key %s KeyState: %u\n",cmd.ks.key,cmd.ks.key_state);
                 break;
             case CMD_Delay:
                 printf("Delay %lu\n",cmd.delay);
@@ -1050,7 +1050,7 @@ void command_array_print(const command_array_t* this){
                 puts("RepeatResetCounters");
                 break;
             case CMD_MouseClick:
-                printf("MouseClick MouseType: %d MouseState: %d\n",cmd.mouse_click.mouse_type,cmd.mouse_click.mouse_state);
+                printf("MouseClick MouseType: %d MouseState: %u\n",cmd.mouse_click.mouse_type,cmd.mouse_click.mouse_state);
                 break;
             case CMD_MoveMouse:
                 printf("MoveMouse x: %d y: %d is_absolute: %d\n",cmd.mouse_move.x,cmd.mouse_move.y,cmd.mouse_move.is_absolute);
