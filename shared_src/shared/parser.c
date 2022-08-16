@@ -28,9 +28,9 @@ bool macro_buffer_process_next(macro_buffer_t* this,bool print_debug){//Returns 
     bool key_processed=false;
     InputState input_state=IS_Down;
     char* str_name=0;
-    __uint64_t delay_mult=0; 
+    long delay_mult=0;
     char* num_str=0;
-    __uint64_t parsed_num[4]={0};
+    long parsed_num[4]={0};
     int parsed_num_i=0;
     bool added_keystate=false;
     int read_i=0; //Index to read.
@@ -1078,7 +1078,7 @@ void command_array_print(const command_array_t* this){
                 printf("QueryComparePixel r: %d g: %d b: %d threshold: %d\n",cmd.pixel_compare.r,cmd.pixel_compare.g,cmd.pixel_compare.b,cmd.pixel_compare.thr);
                 break;
             case CMD_QueryCompareCoords:
-                ;const CompareCoords cc=cmd.compare_coords.cmp_flags;
+                const CompareCoords cc=cmd.compare_coords.cmp_flags;
                 printf("QueryCompareCoords cmp_flags: '%c,%c%s' var:%d\n",(cc&CMP_Y)==CMP_Y?'y':'x',(cc&CMP_GT)==CMP_GT?'>':'<',(cc&CMP_W_EQ)==CMP_W_EQ?",=":"",cmd.compare_coords.var);
                 break;
             case CMD_QueryCoordsWithin:

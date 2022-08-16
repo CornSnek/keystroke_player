@@ -183,7 +183,7 @@ StringMapValue_##VName##_t StringMap_##VName##_read(const StringMap_##VName##_t*
     for(size_t hash_i=0;hash_i<this->MaxSize;hash_i++){\
         const hash_t current_hash_read=StringMap_##VName##_Mod(this,search_key_hash+hash_i);\
         const char* next_key=this->keys[current_hash_read];\
-        size_t next_value=this->map_values[current_hash_read];\
+        ValueType next_value=this->map_values[current_hash_read];\
         if(!next_key) return (StringMapValue_##VName##_t){0}; /*Empty key. Not there.*/\
         const hash_t current_distance=StringMap_##VName##_SubMod(this,current_hash_read-search_key_hash);\
         const hash_t next_key_distance=StringMap_##VName##_SubMod(this,current_hash_read-StringMap_##VName##_Mod(this,StringMap_Hash(next_key)));\
@@ -348,7 +348,7 @@ IntLongMapValue_##VName##_t IntLongMap_##VName##_read(const IntLongMap_##VName##
     for(size_t hash_i=0;hash_i<this->MaxSize;hash_i++){\
         const hash_t current_hash_read=IntLongMap_##VName##_Mod(this,search_key_hash+hash_i);\
         const long next_key=this->keys[current_hash_read];\
-        size_t next_value=this->map_values[current_hash_read];\
+        ValueType next_value=this->map_values[current_hash_read];\
         if(!this->key_exists[current_hash_read]) return (IntLongMapValue_##VName##_t){0}; /*Empty key. Not there.*/\
         const hash_t current_distance=IntLongMap_##VName##_SubMod(this,current_hash_read-search_key_hash);\
         const hash_t next_key_distance=IntLongMap_##VName##_SubMod(this,current_hash_read-IntLongMap_##VName##_Mod(this,IntLongMap_Hash(next_key)));\

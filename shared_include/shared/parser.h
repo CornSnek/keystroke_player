@@ -68,7 +68,7 @@ typedef struct jump_id_manager_s{
     bool* jump_from_added;
     shared_string_manager_t* ssm;
 }jump_id_manager_t;
-typedef __uint64_t delay_ns_t;
+typedef size_t delay_ns_t;
 typedef struct repeat_start_s{
     int counter;
     int str_index;
