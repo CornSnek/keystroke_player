@@ -36,7 +36,6 @@ bool macro_buffer_process_next(macro_buffer_t* this,bool print_debug){//Returns 
     int read_i=0; //Index to read.
     int read_offset_i=0; //Last character to read by offset of read_i.
     bool first_number=false;
-    bool is_query=false;
     bool print_cmd=false;
     bool store_index=false;
     CompareCoords cmp_flags=CMP_NULL;
@@ -58,7 +57,7 @@ bool macro_buffer_process_next(macro_buffer_t* this,bool print_debug){//Returns 
                 }
                 if(!strncmp(current_char_p,"exit;",5)){
                     command_array_add(this->cmd_arr,
-                        (command_t){.type=CMD_Exit,.is_query=is_query,.print_cmd=print_cmd,
+                        (command_t){.type=CMD_Exit,.subtype=CMDST_Command,.print_cmd=print_cmd,
                             .cmd_u={{0}}
                         }
                     );
@@ -68,7 +67,7 @@ bool macro_buffer_process_next(macro_buffer_t* this,bool print_debug){//Returns 
                 }
                 if(!strncmp(current_char_p,"pass;",5)){//Just like exit, but does nothing.
                     command_array_add(this->cmd_arr,
-                        (command_t){.type=CMD_Pass,.is_query=is_query,.print_cmd=print_cmd,
+                        (command_t){.type=CMD_Pass,.subtype=CMDST_Command,.print_cmd=print_cmd,
                             .cmd_u={{0}}
                         }
                     );
@@ -78,7 +77,7 @@ bool macro_buffer_process_next(macro_buffer_t* this,bool print_debug){//Returns 
                 }
                 if(!strncmp(current_char_p,"save_mma;",9)){
                     command_array_add(this->cmd_arr,
-                        (command_t){.type=CMD_SaveMouseCoords,.is_query=is_query,.print_cmd=print_cmd,
+                        (command_t){.type=CMD_SaveMouseCoords,.subtype=CMDST_Command,.print_cmd=print_cmd,
                             .cmd_u={{0}}
                         }
                     );
@@ -88,7 +87,7 @@ bool macro_buffer_process_next(macro_buffer_t* this,bool print_debug){//Returns 
                 }
                 if(!strncmp(current_char_p,"load_mma;",9)){
                     command_array_add(this->cmd_arr,
-                        (command_t){.type=CMD_LoadMouseCoords,.is_query=is_query,.print_cmd=print_cmd,
+                        (command_t){.type=CMD_LoadMouseCoords,.subtype=CMDST_Command,.print_cmd=print_cmd,
                             .cmd_u={{0}}
                         }
                     );
@@ -98,7 +97,7 @@ bool macro_buffer_process_next(macro_buffer_t* this,bool print_debug){//Returns 
                 }
                 if(!strncmp(current_char_p,"rep_reset;",10)){
                     command_array_add(this->cmd_arr,
-                        (command_t){.type=CMD_RepeatResetCounters,.is_query=is_query,.print_cmd=print_cmd,
+                        (command_t){.type=CMD_RepeatResetCounters,.subtype=CMDST_Command,.print_cmd=print_cmd,
                             .cmd_u={{0}}
                         }
                     );
@@ -127,7 +126,7 @@ bool macro_buffer_process_next(macro_buffer_t* this,bool print_debug){//Returns 
                 }
                 if(!strncmp(current_char_p,"JB>;",4)){
                     command_array_add(this->cmd_arr,
-                        (command_t){.type=CMD_JumpBack,.is_query=is_query,.print_cmd=print_cmd,
+                        (command_t){.type=CMD_JumpBack,.subtype=CMDST_Jump,.print_cmd=print_cmd,
                             .cmd_u={{0}}
                         }
                     );
@@ -232,7 +231,7 @@ bool macro_buffer_process_next(macro_buffer_t* this,bool print_debug){//Returns 
                     strncpy(str_name,this->contents+this->token_i+read_i,read_offset_i);
                     repeat_id_manager_add_name(this->rim,str_name,command_array_count(this->cmd_arr));
                     command_array_add(this->cmd_arr,
-                        (command_t){.type=CMD_RepeatStart,.is_query=is_query,.print_cmd=print_cmd,
+                        (command_t){.type=CMD_RepeatStart,.subtype=CMDST_Jump,.print_cmd=print_cmd,
                             .cmd_u.repeat_start=(repeat_start_t){
                                 .counter=0,
                                 .str_index=repeat_id_manager_search_string_index(this->rim,str_name)
@@ -275,7 +274,7 @@ bool macro_buffer_process_next(macro_buffer_t* this,bool print_debug){//Returns 
                     const bool str_exists=(str_name!=SSManager_add_string(this->rim->ssm,&str_name));
                     if(str_exists){
                         command_array_add(this->cmd_arr,
-                            (command_t){.type=CMD_RepeatEnd,.is_query=is_query,.print_cmd=print_cmd,
+                            (command_t){.type=CMD_RepeatEnd,.subtype=CMDST_Jump,.print_cmd=print_cmd,
                                 .cmd_u.repeat_end=(repeat_end_t){
                                     .cmd_index=repeat_id_manager_search_command_index(this->rim,str_name),
                                     .str_index=repeat_id_manager_search_string_index(this->rim,str_name),
@@ -307,7 +306,7 @@ bool macro_buffer_process_next(macro_buffer_t* this,bool print_debug){//Returns 
                     strncpy(num_str,this->contents+this->token_i+read_i,read_offset_i);
                     num_str[read_offset_i]='\0';
                     command_array_add(this->cmd_arr,
-                        (command_t){.type=CMD_RepeatEnd,.is_query=is_query,.print_cmd=print_cmd,
+                        (command_t){.type=CMD_RepeatEnd,.subtype=CMDST_Jump,.print_cmd=print_cmd,
                             .cmd_u.repeat_end=(repeat_end_t){
                                 .cmd_index=repeat_id_manager_search_command_index(this->rim,str_name),
                                 .str_index=repeat_id_manager_search_string_index(this->rim,str_name),
@@ -361,7 +360,7 @@ bool macro_buffer_process_next(macro_buffer_t* this,bool print_debug){//Returns 
                     strncpy(str_name,this->contents+this->token_i+read_i,read_offset_i-2);
                     str_name[read_offset_i-2]='\0';\
                     command_array_add(this->cmd_arr,
-                        (command_t){.type=CMD_KeyStroke,.is_query=is_query,.print_cmd=print_cmd,
+                        (command_t){.type=CMD_KeyStroke,.subtype=CMDST_Command,.print_cmd=print_cmd,
                             .cmd_u.ks=(keystroke_t){
                                 .key=str_name,//SSManager/keystroke_t owns char* key via command_array_add.
                                 .key_state=input_state
@@ -407,7 +406,7 @@ bool macro_buffer_process_next(macro_buffer_t* this,bool print_debug){//Returns 
                     strncpy(num_str,this->contents+this->token_i+read_i,read_offset_i);
                     num_str[read_offset_i]='\0';
                     command_array_add(this->cmd_arr,
-                        (command_t){.type=CMD_Delay,.is_query=is_query,.print_cmd=print_cmd,
+                        (command_t){.type=CMD_Delay,.subtype=CMDST_Command,.print_cmd=print_cmd,
                             .cmd_u.delay=strtol(num_str,NULL,10)*delay_mult
                         }
                     );
@@ -458,7 +457,7 @@ bool macro_buffer_process_next(macro_buffer_t* this,bool print_debug){//Returns 
                         default: input_state=IS_Click;
                     }
                     command_array_add(this->cmd_arr,
-                        (command_t){.type=CMD_MouseClick,.is_query=is_query,.print_cmd=print_cmd,
+                        (command_t){.type=CMD_MouseClick,.subtype=CMDST_Command,.print_cmd=print_cmd,
                             .cmd_u.mouse_click=(mouse_click_t){.mouse_state=input_state,
                                 .mouse_type=parsed_num[0]
                             }
@@ -498,7 +497,7 @@ bool macro_buffer_process_next(macro_buffer_t* this,bool print_debug){//Returns 
                         parsed_num[1]=strtol(num_str,NULL,10);
                         free(num_str);
                         command_array_add(this->cmd_arr,
-                        (command_t){.type=CMD_MoveMouse,.is_query=is_query,.print_cmd=print_cmd,
+                        (command_t){.type=CMD_MoveMouse,.subtype=CMDST_Command,.print_cmd=print_cmd,
                                 .cmd_u.mouse_move=(mouse_move_t){
                                     .x=parsed_num[0],.y=parsed_num[1],.is_absolute=mouse_absolute
                                 }
@@ -531,7 +530,7 @@ bool macro_buffer_process_next(macro_buffer_t* this,bool print_debug){//Returns 
                     if(jid_cmd_i==-1){
                         jump_id_manager_add_name(this->jim,str_name,JumpFromNotConnected,false);//-2 Because it's not a JumpFrom
                         command_array_add(this->cmd_arr,
-                        (command_t){.type=CMD_JumpTo,.is_query=is_query,.print_cmd=print_cmd,
+                        (command_t){.type=CMD_JumpTo,.subtype=CMDST_Jump,.print_cmd=print_cmd,
                                 .cmd_u.jump_to=(jump_to_t){
                                     .cmd_index=JumpFromNotConnected,//Will be edited from a CMD_JumpFrom later.
                                     .str_index=jump_id_manager_search_string_index(this->jim,str_name),
@@ -543,7 +542,7 @@ bool macro_buffer_process_next(macro_buffer_t* this,bool print_debug){//Returns 
                         break;
                     }else{
                         command_array_add(this->cmd_arr,
-                        (command_t){.type=CMD_JumpTo,.is_query=is_query,.print_cmd=print_cmd,
+                        (command_t){.type=CMD_JumpTo,.subtype=CMDST_Jump,.print_cmd=print_cmd,
                                 .cmd_u.jump_to=(jump_to_t){
                                     .cmd_index=jid_cmd_i,
                                     .str_index=jump_id_manager_search_string_index(this->jim,str_name),
@@ -581,7 +580,7 @@ bool macro_buffer_process_next(macro_buffer_t* this,bool print_debug){//Returns 
                     if(jid_cmd_i==-1){
                         jump_id_manager_add_name(this->jim,str_name,cmd_arr_count,true);
                         command_array_add(this->cmd_arr,
-                            (command_t){.type=CMD_JumpFrom,.is_query=is_query,.print_cmd=print_cmd,
+                            (command_t){.type=CMD_JumpFrom,.subtype=CMDST_Jump,.print_cmd=print_cmd,
                                 .cmd_u.jump_from=(jump_from_t){
                                     .str_index=jump_id_manager_search_string_index(this->jim,str_name)
                                 }
@@ -594,7 +593,7 @@ bool macro_buffer_process_next(macro_buffer_t* this,bool print_debug){//Returns 
                         bool unique=jump_id_manager_set_command_index_once(this->jim,jid_str_i,cmd_arr_count);
                         if(unique){//No Second RS_JumpFrom
                             command_array_add(this->cmd_arr,
-                                (command_t){.type=CMD_JumpFrom,.is_query=is_query,.print_cmd=print_cmd,
+                                (command_t){.type=CMD_JumpFrom,.subtype=CMDST_Jump,.print_cmd=print_cmd,
                                     .cmd_u.jump_from=(jump_from_t){
                                         .str_index=jid_str_i
                                     }
@@ -626,7 +625,6 @@ bool macro_buffer_process_next(macro_buffer_t* this,bool print_debug){//Returns 
                 key_processed=true;
                 break;
             case RS_Query:
-                is_query=true;
                 if(!strncmp(current_char_p,"pxc=",4)){
                     read_i+=4;
                     read_offset_i=-1;
@@ -707,7 +705,7 @@ bool macro_buffer_process_next(macro_buffer_t* this,bool print_debug){//Returns 
                             break;
                         }
                         command_array_add(this->cmd_arr,
-                            (command_t){.type=CMD_QueryComparePixel,.is_query=is_query,.print_cmd=print_cmd,
+                            (command_t){.type=CMD_QueryComparePixel,.subtype=CMDST_Query,.print_cmd=print_cmd,
                                 .cmd_u.pixel_compare=(pixel_compare_t){
                                     .r=parsed_num[0],.g=parsed_num[1],.b=parsed_num[2],.thr=parsed_num[3]
                                 }
@@ -766,7 +764,7 @@ bool macro_buffer_process_next(macro_buffer_t* this,bool print_debug){//Returns 
                     parsed_num[0]=strtol(num_str,NULL,10);
                     free(num_str);
                     command_array_add(this->cmd_arr,
-                        (command_t){.type=CMD_QueryCompareCoords,.is_query=is_query,.print_cmd=print_cmd,
+                        (command_t){.type=CMD_QueryCompareCoords,.subtype=CMDST_Query,.print_cmd=print_cmd,
                             .cmd_u.compare_coords=(compare_coords_t){
                                 .cmp_flags=cmp_flags,.var=parsed_num[0]
                             }
@@ -812,7 +810,7 @@ bool macro_buffer_process_next(macro_buffer_t* this,bool print_debug){//Returns 
                         parsed_num[parsed_num_i]=strtol(num_str,NULL,10);
                         free(num_str);
                         command_array_add(this->cmd_arr,
-                            (command_t){.type=CMD_QueryCoordsWithin,.is_query=is_query,.print_cmd=print_cmd,
+                            (command_t){.type=CMD_QueryCoordsWithin,.subtype=CMDST_Query,.print_cmd=print_cmd,
                                 .cmd_u.coords_within=(coords_within_t){
                                     .xl=parsed_num[0],.yl=parsed_num[1],.xh=parsed_num[2],.yh=parsed_num[3]
                                 }
@@ -888,10 +886,10 @@ void macro_buffer_str_id_check(macro_buffer_t* this){//Check if RepeatStart does
         fprintf(stderr,"JumpTo with store_index enabled found without a command next to it. Error command found at end of file.\n");
         this->parse_error=true;
     }
-    if(this->cmd_arr->cmds[check_i--].is_query){//Check twice.
+    if(this->cmd_arr->cmds[check_i--].subtype==CMDST_Query){//Check twice.
         fprintf(stderr,"Queries should have at least 2 commands next to it. Error command found at end of file.\n");
         this->parse_error=true;
-    }else if(this->cmd_arr->cmds[check_i].is_query){
+    }else if(this->cmd_arr->cmds[check_i].subtype==CMDST_Query){
         fprintf(stderr,"Queries should have at least 2 commands next to it. Error command found at end of file.\n");
         this->parse_error=true;
     }

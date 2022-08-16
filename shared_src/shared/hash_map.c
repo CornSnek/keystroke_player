@@ -1,4 +1,4 @@
-#include "string_hash.h"
+#include "hash_map.h"
 char* _string_copy(const char* key){/*To copy string value.*/
     char* this=malloc(sizeof(char)*strlen(key)+1);
     strcpy(this,key);

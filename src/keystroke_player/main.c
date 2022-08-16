@@ -708,7 +708,7 @@ bool run_program(command_array_t* cmd_arr, const char* file_str, Config config, 
                 break;
         }
         pthread_mutex_lock(&input_mutex);
-        if(!this_cmd.is_query) ++cmd_arr_i;
+        if(this_cmd.subtype!=CMDST_Query) ++cmd_arr_i;
         else{
             if(query_is_true){
                 query_is_true=false;

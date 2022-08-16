@@ -224,7 +224,7 @@ START_TEST(replace_test){
     printf("%s %s,%d %d\n",words,words_split,words_s_l,words_e_l);
 }
 END_TEST
-#include <string_hash.h>
+#include <hash_map.h>
 #include <limits.h>
 //Just get random characters of length len with only the characters in ValidStrSet (Excluding '\0').
 char* random_str(unsigned char len){
@@ -264,7 +264,7 @@ size_t* random_unique_indices(size_t len){
     }
     return return_this;
 }
-START_TEST(string_hash_test){
+START_TEST(hash_map_test){
     const unsigned char StrMaxLen=10;
     const size_t RandArrayAmount=500;//Less if using valgrind. More without it.
     char** RandStrsArray=malloc(sizeof(char*)*(RandArrayAmount));
@@ -393,7 +393,7 @@ Suite* test_suite(void){
     tcase_add_test(tc_core,macro_paster_test);
     tcase_add_test(tc_core,replace_test);
     tcase_set_timeout(tc_core,1000.);
-    tcase_add_test(tc_core,string_hash_test);
+    tcase_add_test(tc_core,hash_map_test);
     suite_add_tcase(s,tc_core);
     return s;
 }

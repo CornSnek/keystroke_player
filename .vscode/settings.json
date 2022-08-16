@@ -78,7 +78,8 @@
         "iterator": "c",
         "memory": "c",
         "test_utils.h": "c",
-        "check.h": "c"
+        "check.h": "c",
+        "source_location": "c"
     },
     //"editor.autoClosingBrackets": "never",
     //"editor.autoClosingDelete": "never",

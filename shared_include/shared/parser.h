@@ -148,10 +148,15 @@ typedef enum _CommandType{
     CMD_QueryCompareCoords,
     CMD_QueryCoordsWithin
 }CommandType;
+typedef enum _CommandSubType{
+    CMDST_Command,
+    CMDST_Jump,
+    CMDST_Query
+}CommandSubType;
 typedef struct command_s{//Aggregating like for SDL events (enums and unions).
     CommandType type;
     command_union_t cmd_u;
-    bool is_query;//For query commands.
+    CommandSubType subtype;//For query commands.
     bool print_cmd;
     char* start_cmd_p;
     char* end_cmd_p;
