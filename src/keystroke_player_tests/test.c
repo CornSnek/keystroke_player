@@ -264,6 +264,10 @@ size_t* random_unique_indices(size_t len){
     }
     return return_this;
 }
+StringMap_ImplDecl(size_t,SizeT)
+IntLongMap_ImplDecl(size_t,SizeT)
+StringMap_ImplDef(size_t,SizeT)
+IntLongMap_ImplDef(size_t,SizeT)
 START_TEST(hash_map_test){
     const unsigned char StrMaxLen=10;
     const size_t RandArrayAmount=500;//Less if using valgrind. More without it.

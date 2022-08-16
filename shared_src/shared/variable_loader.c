@@ -1,2 +1,2 @@
 #include "variable_loader.h"
-void empty(){}
+StringMap_ImplDef(size_t,ST)
