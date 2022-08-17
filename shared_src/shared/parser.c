@@ -1,5 +1,6 @@
 #include "parser.h"
 #include "macros.h"
+#include "variable_loader.h"
 #include <string.h>
 #include <ctype.h>
 __ReadStateWithStringDef(__ReadStateEnums)
@@ -1078,8 +1079,10 @@ void command_array_print(const command_array_t* this){
                 printf("QueryComparePixel r: %d g: %d b: %d threshold: %d\n",cmd.pixel_compare.r,cmd.pixel_compare.g,cmd.pixel_compare.b,cmd.pixel_compare.thr);
                 break;
             case CMD_QueryCompareCoords:
-                const CompareCoords cc=cmd.compare_coords.cmp_flags;
-                printf("QueryCompareCoords cmp_flags: '%c,%c%s' var:%d\n",(cc&CMP_Y)==CMP_Y?'y':'x',(cc&CMP_GT)==CMP_GT?'>':'<',(cc&CMP_W_EQ)==CMP_W_EQ?",=":"",cmd.compare_coords.var);
+                {
+                    const CompareCoords cc=cmd.compare_coords.cmp_flags;
+                    printf("QueryCompareCoords cmp_flags: '%c,%c%s' var:%d\n",(cc&CMP_Y)==CMP_Y?'y':'x',(cc&CMP_GT)==CMP_GT?'>':'<',(cc&CMP_W_EQ)==CMP_W_EQ?",=":"",cmd.compare_coords.var);
+                }
                 break;
             case CMD_QueryCoordsWithin:
                 printf("QueryCoordsWithin xl: %d yl: %d xh: %d yh: %d\n",cmd.coords_within.xl,cmd.coords_within.yl,cmd.coords_within.xh,cmd.coords_within.yh);

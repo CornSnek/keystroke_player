@@ -14,7 +14,7 @@
         "-Wpedantic",
         "-std=c17"
       ],
-      "defines": [],
+      "defines": ["__KEYSTROKE_PLAYER__"],
       "compilerPath": "/usr/bin/gcc",
       "cStandard": "c17",
       "intelliSenseMode": "linux-gcc-x64"

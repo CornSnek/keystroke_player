@@ -1,6 +1,7 @@
 #include "macros.h"
 #include "parser.h"
 #include "key_down_check.h"
+#include "variable_loader.h"
 #include <math.h>
 #include <time.h>
 #include <string.h>

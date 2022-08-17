@@ -224,7 +224,8 @@ START_TEST(replace_test){
     printf("%s %s,%d %d\n",words,words_split,words_s_l,words_e_l);
 }
 END_TEST
-#include "hash_map_impl.h"
+#include "variable_loader.h"
+#include "hash_map_impl2.h"
 #include <limits.h>
 //Just get random characters of length len with only the characters in ValidStrSet (Excluding '\0').
 char* random_str(unsigned char len){
@@ -266,7 +267,7 @@ size_t* random_unique_indices(size_t len){
 }
 START_TEST(hash_map_test){
     const unsigned char StrMaxLen=10;
-    const size_t RandArrayAmount=500;//Less if using valgrind. More without it.
+    const size_t RandArrayAmount=10;//Less if using valgrind. More without it.
     char** RandStrsArray=malloc(sizeof(char*)*(RandArrayAmount));
     EXIT_IF_NULL(RandStrsArray,char**);
     for(size_t i=0;i<RandArrayAmount;i++){
@@ -381,6 +382,31 @@ START_TEST(hash_map_test){
     free(RandLongIntsArray);
 }
 END_TEST
+START_TEST(variable_loader_test){
+    VariableLoader_t* vl=VariableLoader_new(20);
+    char* a_string="abcd",* string_no_exist="defg";
+    char* a_string_heap=malloc(sizeof(char)*(strlen(a_string)+1));
+    strcpy(a_string_heap,a_string);
+    ck_assert_int_eq(VariableLoader_add_as_l(vl,a_string_heap,100),1);
+    a_string_heap=malloc(sizeof(char)*(strlen(a_string)+1));
+    strcpy(a_string_heap,a_string);
+    ck_assert_int_eq(VariableLoader_add_as_l(vl,a_string_heap,200),0);
+    ck_assert_int_eq(VariableLoader_rewrite_as_d(vl,a_string,69),1);
+    ck_assert_int_eq(VariableLoader_rewrite_as_l(vl,string_no_exist,70),0);
+    vlclosure_i vlc_i=VariableLoader_new_closure_vdouble(vl,a_string);
+    vlclosure_i vlc_i2=VariableLoader_new_closure_long(vl,100);
+    vlclosure_i vlc_i3=VariableLoader_new_closure_vlong(vl,string_no_exist);
+    printf("%d %d %d\n",vlc_i,vlc_i2,vlc_i3);
+    long lnum;
+    double fnum;
+    ck_assert_int_eq(ProcessVLClosure(VariableLoader_get_closure(vl,vlc_i),&fnum),1);
+    printf("%f %ld\n",fnum,(LD_u){.d=fnum}.l);
+    ck_assert_int_eq(ProcessVLClosure(VariableLoader_get_closure(vl,vlc_i2),&lnum),1);
+    printf("%ld\n",lnum);
+    ck_assert_int_eq(ProcessVLClosure(VariableLoader_get_closure(vl,vlc_i3),&lnum),0);
+    VariableLoader_free(vl);
+}
+END_TEST
 Suite* test_suite(void){
     Suite* s;
     TCase* tc_core;
@@ -394,6 +420,7 @@ Suite* test_suite(void){
     tcase_add_test(tc_core,replace_test);
     tcase_set_timeout(tc_core,1000.);
     tcase_add_test(tc_core,hash_map_test);
+    tcase_add_test(tc_core,variable_loader_test);
     suite_add_tcase(s,tc_core);
     return s;
 }
