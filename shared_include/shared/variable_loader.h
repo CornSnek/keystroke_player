@@ -6,32 +6,48 @@
 #elif __KEYSTROKE_PLAYER_TESTS__
     #include "hash_map_impl2.h"
 #endif
+#include "shared_string.h"
 typedef struct VariableLoader_s VariableLoader_t;
 //To store double as a long for VariableLoader_t. First, store number as (LD_u){.l=num}.d and double converts it to (LD_u){.d=double_num}.l
 typedef union _LD_u{
     long l;
     double d;
 }LD_u;
-typedef enum _VLClosureType{
-    VLClosure_Double,VLClosure_Long,VLClosure_Int,VLClosure_Char,VLClosure_VDouble,VLClosure_VLong,VLClosure_VInt,VLClosure_VChar
-}VLClosureType;
-typedef bool(*closure_double_f_t)(double*,long);
-typedef bool(*closure_long_f_t)(long*,long);
-typedef bool(*closure_int_f_t)(int*,long);
-typedef bool(*closure_char_f_t)(char*,long);
-typedef bool(*closure_vdouble_f_t)(const VariableLoader_t*,double*,const char*);
-typedef bool(*closure_vlong_f_t)(const VariableLoader_t*,long*,const char*);
-typedef bool(*closure_vint_f_t)(const VariableLoader_t*,int*,const char*);
-typedef bool(*closure_vchar_f_t)(const VariableLoader_t*,char*,const char*);
+typedef enum _VLCallbackType{
+    VLCallback_Double,
+    VLCallback_Long,
+    VLCallback_Int,
+    VLCallback_Char,
+    VLCallback_VDouble,
+    VLCallback_VLong,
+    VLCallback_VInt,
+    VLCallback_VChar,
+    VLCallback_AddAsLong,
+    VLCallback_AddAsDouble,
+    VLCallback_RewriteAsLong,
+    VLCallback_RewriteAsDouble
+}VLCallbackType;
+typedef bool(*vlcallback_double_f_t)(double*,long);
+typedef bool(*vlcallback_long_f_t)(long*,long);
+typedef bool(*vlcallback_int_f_t)(int*,long);
+typedef bool(*vlcallback_char_f_t)(char*,long);
+typedef bool(*vlcallback_vdouble_f_t)(const VariableLoader_t*,double*,const char*);
+typedef bool(*vlcallback_vlong_f_t)(const VariableLoader_t*,long*,const char*);
+typedef bool(*vlcallback_vint_f_t)(const VariableLoader_t*,int*,const char*);
+typedef bool(*vlcallback_vchar_f_t)(const VariableLoader_t*,char*,const char*);
+typedef bool(*vlcallback_add_as_l)(VariableLoader_t*,const char*,long);
+typedef bool(*vlcallback_add_as_d)(VariableLoader_t*,const char*,double);
 typedef union vlfunction_union{
-    closure_double_f_t as_double;
-    closure_long_f_t as_long;
-    closure_int_f_t as_int;
-    closure_char_f_t as_char;
-    closure_vdouble_f_t as_vdouble;
-    closure_vlong_f_t as_vlong;
-    closure_vint_f_t as_vint;
-    closure_vchar_f_t as_vchar;
+    vlcallback_double_f_t as_double;
+    vlcallback_long_f_t as_long;
+    vlcallback_int_f_t as_int;
+    vlcallback_char_f_t as_char;
+    vlcallback_vdouble_f_t as_vdouble;
+    vlcallback_vlong_f_t as_vlong;
+    vlcallback_vint_f_t as_vint;
+    vlcallback_vchar_f_t as_vchar;
+    vlcallback_add_as_l as_add_as_l;
+    vlcallback_add_as_d as_add_as_d;
 }vlfunction_union_t;
 typedef struct vlargs_variable_s{
     const char* str;
@@ -41,32 +57,41 @@ typedef union vlargs_union{
     long number;
     vlargs_variable_t variable;
 }vlargs_union_t;
-typedef struct vloader_closure_s{
-    VLClosureType closure_type;
+typedef struct vlcallback_s{
+    VLCallbackType closure_type;
     vlfunction_union_t func;
     vlargs_union_t args;
-}vloader_closure_t;
-bool ProcessVLClosure(const vloader_closure_t* closure,void* at_address);
-typedef struct VariableLoader_s{
+}vlcallback_t;
+//To hold closure pointer offset information and its type.
+typedef struct{
+    int i;
+    VLCallbackType t;
+}vlcallback_info;
+//Macro to use both functions below.
+#define ProcessVLCallback(variable_loader,at_address,vlc_info) _ProcessVLCallback(VL_get_callback(variable_loader,vlc_info),at_address)
+bool _ProcessVLCallback(vlcallback_t* closure,void* at_address);
+vlcallback_t* VL_get_callback(const VariableLoader_t* this,vlcallback_info vlc_info);
+typedef struct VariableLoader_s{//Class that contains callbacks to load/save variables to a string using ProcessVLCallback.
     StringMap_long_t* sml;
-    vloader_closure_t* closures;
-    int closure_size;
+    vlcallback_t* callbacks;
+    int size;
+    shared_string_manager_t* ssm;
 }VariableLoader_t;
-VariableLoader_t* VariableLoader_new(size_t size);
-bool VariableLoader_add_as_d(VariableLoader_t* this,char* variable,double value);
-bool VariableLoader_add_as_l(VariableLoader_t* this,char* variable,long value);
-bool VariableLoader_rewrite_as_d(VariableLoader_t* this,const char* variable,double new_value);
-bool VariableLoader_rewrite_as_l(VariableLoader_t* this,const char* variable,long new_value);
-//To hold closure pointer offset information.
-typedef int vlclosure_i;
-vlclosure_i VariableLoader_new_closure_double(VariableLoader_t* this,long value);
-vlclosure_i VariableLoader_new_closure_long(VariableLoader_t* this,long value);
-vlclosure_i VariableLoader_new_closure_int(VariableLoader_t* this,long value);
-vlclosure_i VariableLoader_new_closure_char(VariableLoader_t* this,long value);
-vlclosure_i VariableLoader_new_closure_vdouble(VariableLoader_t* this,const char* variable);
-vlclosure_i VariableLoader_new_closure_vlong(VariableLoader_t* this,const char* variable);
-vlclosure_i VariableLoader_new_closure_vint(VariableLoader_t* this,const char* variable);
-vlclosure_i VariableLoader_new_closure_vchar(VariableLoader_t* this,const char* variable);
-const vloader_closure_t* VariableLoader_get_closure(const VariableLoader_t* this,vlclosure_i index);
+VariableLoader_t* VL_new(size_t size);
+//Add variables to hash table to (re)modify values.
+vlcallback_info VL_new_callback_add_as_l(VariableLoader_t* this,char* variable);
+vlcallback_info VL_new_callback_add_as_d(VariableLoader_t* this,char* variable);
+vlcallback_info VL_new_callback_rewrite_as_l(VariableLoader_t* this,char* variable);
+vlcallback_info VL_new_callback_rewrite_as_d(VariableLoader_t* this,char* variable);
+//Constant values (Doesn't use VariableLoader)
+vlcallback_info VL_new_callback_double(VariableLoader_t* this,long value);
+vlcallback_info VL_new_callback_long(VariableLoader_t* this,long value);
+vlcallback_info VL_new_callback_int(VariableLoader_t* this,long value);
+vlcallback_info VL_new_callback_char(VariableLoader_t* this,long value);
+//Variables (Uses VaribleLoader)
+vlcallback_info VL_new_callback_vdouble(VariableLoader_t* this,char* variable);
+vlcallback_info VL_new_callback_vlong(VariableLoader_t* this,char* variable);
+vlcallback_info VL_new_callback_vint(VariableLoader_t* this,char* variable);
+vlcallback_info VL_new_callback_vchar(VariableLoader_t* this,char* variable);
 void VariableLoader_free(VariableLoader_t* this);
 #endif

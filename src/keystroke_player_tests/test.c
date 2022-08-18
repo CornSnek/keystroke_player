@@ -184,7 +184,7 @@ START_TEST(macro_paster_test){
     MacroProcessStatus mps=file_contains_macro_definitions(file_str,MACROS_DEF_START_B,MACROS_DEF_END_B);
     if(mps==MPS_HasDefinitions){
         macro_paster_process_macros(mp2,file_str,MACROS_DEF_START_B,MACROS_DEF_END_B,MACRO_START_B,MACRO_END_B,MACRO_DEF_SEP,MACRO_VAR_SEP);
-        char* cmd_output;
+        char* cmd_output=0;
         macro_paster_expand_macros(mp2,file_str,MACROS_DEF_END_B,MACRO_START_B,MACRO_END_B,MACRO_VAR_SEP,&cmd_output);
         free(cmd_output);
     }
@@ -196,6 +196,40 @@ START_TEST(macro_paster_test){
     free(srv);
     free(highlight_str);
     free(file_str);
+}
+END_TEST
+START_TEST(macro_fail_test){
+    macro_paster_t* mp=macro_paster_new();
+    const char* bad_macro_def_strings[]={
+        "[!!"//Mismatched macro brackets
+        ,"[!![!A:=1!]\n[!B:=0!!]"//Mismatched macro definition brackets
+        ,"[!![!A!]!!]"//No separator :=
+        ,"[!![!A-:=3!]!!]"//Illegal character '-'
+        ,"[!![!AB:b:c-:=3!]!!]"//Illegal character '-' in variable
+        ,"[!![!AB:=3!]!!]"//Duplicate AB because AB was already defined from above.
+    };
+    for(size_t i=0;i<sizeof(bad_macro_def_strings)/sizeof(bad_macro_def_strings[0]);i++){
+        ck_assert_int_eq(
+            macro_paster_process_macros(mp,bad_macro_def_strings[i],MACROS_DEF_START_B,MACROS_DEF_END_B,MACRO_START_B,MACRO_END_B,MACRO_DEF_SEP,MACRO_VAR_SEP)
+        ,0);
+    }
+    macro_paster_process_macros(mp,"[!![!RECURSION:=[!RECURSION!]!][!ABC:=what!]!!]",MACROS_DEF_START_B,MACROS_DEF_END_B,MACRO_START_B,MACRO_END_B,MACRO_DEF_SEP,MACRO_VAR_SEP);
+    macro_paster_print(mp);
+    const char* bad_macro_exp_strings[]={
+        "[!ABC!]"//No macro definition end bracket
+        ,"[!!!!][!ABC!]!]"//Mismatched brackets
+        ,"[!!!!][!ABC!][!ABC-!][!B!]"//Illegal character
+        ,"[!!!!][!ABC!][!ABC:3!][!B!]"//Out of range (ABC has no variables)
+        ,"[!!!!][!ABC!][!ABC!][!RECURSION!]"//Recursive macro
+    };
+    for(size_t i=0;i<sizeof(bad_macro_exp_strings)/sizeof(bad_macro_exp_strings[0]);i++){
+        char* cmd_output=0;
+        ck_assert_int_eq(
+            macro_paster_expand_macros(mp,bad_macro_exp_strings[i],MACROS_DEF_END_B,MACRO_START_B,MACRO_END_B,MACRO_VAR_SEP,&cmd_output)
+        ,0);
+        free(cmd_output);
+    }
+    macro_paster_free(mp);
 }
 END_TEST
 START_TEST(replace_test){
@@ -226,45 +260,6 @@ START_TEST(replace_test){
 END_TEST
 #include "variable_loader.h"
 #include "hash_map_impl2.h"
-#include <limits.h>
-//Just get random characters of length len with only the characters in ValidStrSet (Excluding '\0').
-char* random_str(unsigned char len){
-    static const char ValidStrSet[]="0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz_";
-    static const size_t ValidStrSetLen=sizeof(ValidStrSet)/sizeof(ValidStrSet[0])-1;//-1 to exclude '\0' in ValidStrSet.
-    static const unsigned char UnifLimit=UCHAR_MAX-(UCHAR_MAX%ValidStrSetLen);//Rejection sampling to get the same probability for each char (not '\0').
-    char* rand_str=malloc(sizeof(char)*(len+1));
-    EXIT_IF_NULL(rand_str,char*);
-    unsigned char rand_buf[len];//Unsigned to make % for positive numbers only.
-    memset(rand_buf,0,sizeof(unsigned char)*len);//0 if getrandom makes errors.
-    for(size_t i=0;i<len;i++){
-        do{}while(getrandom(rand_buf+i,1,0)==-1||rand_buf[i]>UnifLimit);
-    }
-    for(size_t i=0;i<len;i++) rand_str[i]=ValidStrSet[rand_buf[i]%ValidStrSetLen];
-    rand_str[len]='\0';//Null-terminate.
-    return rand_str;
-}
-inline static size_t random_size_t(){
-    size_t rand_st=0;
-    do{}while(getrandom(&rand_st,sizeof(rand_st),0)==-1);
-    return rand_st;
-}
-size_t* random_unique_indices(size_t len){
-    if(!len) return 0; //Shouldn't be 0 due to malloc and %.
-    size_t* return_this=malloc(sizeof(size_t)*len);
-    EXIT_IF_NULL(return_this,size_t*);
-    size_t ind[len];
-    size_t ind_take_size=len;
-    for(size_t i=0;i<len;i++) ind[i]=i;//0 to len-1
-    for(size_t i=0;i<len;i++){
-        const size_t unif_limit=SIZE_MAX-(SIZE_MAX%ind_take_size);//Uniform limit for each index take size.
-        size_t rand_st=0;
-        do{}while(getrandom(&rand_st,sizeof(rand_st),0)==-1||rand_st>unif_limit);
-        const size_t take_i=rand_st%ind_take_size;
-        return_this[i]=ind[take_i];//Assign any index left in ind.
-        ind[take_i]=ind[--ind_take_size];//Move the last index to the one that is taken. Decrease max size by 1 to discard the last value (not unique).
-    }
-    return return_this;
-}
 START_TEST(hash_map_test){
     const unsigned char StrMaxLen=10;
     const size_t RandArrayAmount=10;//Less if using valgrind. More without it.
@@ -383,27 +378,31 @@ START_TEST(hash_map_test){
 }
 END_TEST
 START_TEST(variable_loader_test){
-    VariableLoader_t* vl=VariableLoader_new(20);
-    char* a_string="abcd",* string_no_exist="defg";
-    char* a_string_heap=malloc(sizeof(char)*(strlen(a_string)+1));
-    strcpy(a_string_heap,a_string);
-    ck_assert_int_eq(VariableLoader_add_as_l(vl,a_string_heap,100),1);
-    a_string_heap=malloc(sizeof(char)*(strlen(a_string)+1));
-    strcpy(a_string_heap,a_string);
-    ck_assert_int_eq(VariableLoader_add_as_l(vl,a_string_heap,200),0);
-    ck_assert_int_eq(VariableLoader_rewrite_as_d(vl,a_string,69),1);
-    ck_assert_int_eq(VariableLoader_rewrite_as_l(vl,string_no_exist,70),0);
-    vlclosure_i vlc_i=VariableLoader_new_closure_vdouble(vl,a_string);
-    vlclosure_i vlc_i2=VariableLoader_new_closure_long(vl,100);
-    vlclosure_i vlc_i3=VariableLoader_new_closure_vlong(vl,string_no_exist);
-    printf("%d %d %d\n",vlc_i,vlc_i2,vlc_i3);
+    VariableLoader_t* vl=VL_new(20);
+    char* a_string="abcde",* string_no_exist="defg";
+    vlcallback_info vlc_add[4]={
+        VL_new_callback_add_as_l(vl,str_dup(a_string)),
+        VL_new_callback_add_as_d(vl,str_dup(a_string)),
+        VL_new_callback_rewrite_as_d(vl,str_dup(a_string)),
+        VL_new_callback_rewrite_as_l(vl,str_dup(string_no_exist))
+    };
+    ck_assert_int_eq(ProcessVLCallback(vl,&(long){100},vlc_add[0]),1);
+    ck_assert_int_eq(ProcessVLCallback(vl,&(double){200},vlc_add[1]),0);
+    ck_assert_int_eq(ProcessVLCallback(vl,&(double){69},vlc_add[2]),1);
+    ck_assert_int_eq(ProcessVLCallback(vl,&(long){70},vlc_add[3]),0);
+    vlcallback_info vlc[3];
+    vlc[0]=VL_new_callback_vdouble(vl,str_dup(a_string));
+    vlc[1]=VL_new_callback_long(vl,100);
+    vlc[2]=VL_new_callback_vlong(vl,str_dup(string_no_exist));
+    printf("%d %d %d\n",vlc[0].i,vlc[1].i,vlc[2].i);
     long lnum;
     double fnum;
-    ck_assert_int_eq(ProcessVLClosure(VariableLoader_get_closure(vl,vlc_i),&fnum),1);
-    printf("%f %ld\n",fnum,(LD_u){.d=fnum}.l);
-    ck_assert_int_eq(ProcessVLClosure(VariableLoader_get_closure(vl,vlc_i2),&lnum),1);
+    ck_assert_int_eq(ProcessVLCallback(vl,&fnum,vlc[0]),1);
+    printf("%lf 0x%016lx\n",fnum,(LD_u){.d=fnum}.l);
+    ck_assert_int_eq(ProcessVLCallback(vl,&lnum,vlc[1]),1);
     printf("%ld\n",lnum);
-    ck_assert_int_eq(ProcessVLClosure(VariableLoader_get_closure(vl,vlc_i3),&lnum),0);
+    ck_assert_int_eq(ProcessVLCallback(vl,&lnum,vlc[2]),0);
+    SSManager_print_strings(vl->ssm);
     VariableLoader_free(vl);
 }
 END_TEST
@@ -417,6 +416,7 @@ Suite* test_suite(void){
     tcase_add_test(tc_core,shared_string_test);
     tcase_add_test(tc_core,innermost_test);
     tcase_add_test(tc_core,macro_paster_test);
+    tcase_add_test(tc_core,macro_fail_test);
     tcase_add_test(tc_core,replace_test);
     tcase_set_timeout(tc_core,1000.);
     tcase_add_test(tc_core,hash_map_test);

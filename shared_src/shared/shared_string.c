@@ -9,7 +9,7 @@ shared_string_manager_t* SSManager_new(void){
     EXIT_IF_NULL(this,shared_string_manager_t*);
     return this;
 }
-char* SSManager_add_string(shared_string_manager_t* this, char** str_p_owned){//Returns freed pointer while it modifies into the new shared pointer.
+char* SSManager_add_string(shared_string_manager_t* this, char** str_p_owned){//Returns freed pointer while it modifies into shared string pointer.
     for(int i=0;i<this->count;i++){
         if(!strcmp(*str_p_owned,this->c_strs[i])){
             char* freed_pointer=*str_p_owned;
@@ -214,7 +214,7 @@ bool macro_paster_write_var_by_ind(macro_paster_t* this,const char* str_name,int
         _macro_paster_write_var_value(this,str_name_i,var_i,var_value);
         return true;
     }else{
-        fprintf(stderr,"In macro_paster, variable index #%d is out of range for string '%s'.\n",var_i,str_name);
+        fprintf(stderr,"In macro_paster, variable index #%d is out of range for string '%s'. Variables may not exist.\n",var_i,str_name);
         return false;
     }
 }
@@ -337,18 +337,22 @@ void _write_to_macro_output(const char* mo){
         printf("Macro expansion written to %s\n",MACRO_PROCESS_F);
     }
 }
-bool macro_paster_expand_macros(macro_paster_t* this,const char* file_str,const char* end_m,const char*start_b,const char* end_b,char var_sep,char** output){
+bool macro_paster_expand_macros(macro_paster_t* this,const char* file_str,const char* end_m,const char* start_b,const char* end_b,char var_sep,char** output){
     *output=0;
     const char* begin_cmd_p;
     int m_i,cmd_len;
     split_at_sep(file_str,end_m,&begin_cmd_p,&m_i,&cmd_len);
+    if(!begin_cmd_p){
+        fprintf(stderr,"Error: Couldn't find macro end bracket '%s'.\n",end_m);
+        return false;
+    }
     char* cmd_str=(char*)malloc(sizeof(char)*(cmd_len+1));
     EXIT_IF_NULL(cmd_str,char*);
     strcpy(cmd_str,begin_cmd_p);
     size_t expansion_count=0;
     do{
         if(expansion_count>5000){
-            fprintf(stderr,"Error: Possibly recursive macro in code. Ended recursion. Output:\n%s\n",cmd_str);
+            fprintf(stderr,"Error: Possibly recursive macro in code. Ended recursion.\n");
             _write_to_macro_output(cmd_str);
             free(cmd_str);
             return false;
