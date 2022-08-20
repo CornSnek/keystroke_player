@@ -28,7 +28,7 @@ START_TEST(repeat_id_search_str_test){
     const int num_of_strings=3;
     const int string_size=6;
     const char* str0="AAA",* str1="BB",* str2="DDDD";
-    char** string_heaps=(char**)malloc(sizeof(char*)*num_of_strings);
+    char** string_heaps=malloc(sizeof(char*)*num_of_strings);
     for(int i=0;i<num_of_strings;i++) string_heaps[i]=calloc(string_size,sizeof(char));
     strcpy(string_heaps[0],str0);
     strcpy(string_heaps[1],str1);
@@ -46,7 +46,7 @@ START_TEST(shared_string_test){
     puts("Starting Test shared_string_test");
     shared_string_manager_t* ssm=SSManager_new();
     const char* str0="AAA",* str1="BBB",* str2="AAA";
-    char** string_heaps=(char**)malloc(sizeof(char*)*3);
+    char** string_heaps=malloc(sizeof(char*)*3);
     for(int i=0;i<3;i++) string_heaps[i]=calloc(4,sizeof(char));
     strcpy(string_heaps[0],str0); strcpy(string_heaps[1],str1); strcpy(string_heaps[2],str2);
     SSManager_add_string(ssm,&string_heaps[0]); SSManager_add_string(ssm,&string_heaps[1]); SSManager_add_string(ssm,&string_heaps[2]);

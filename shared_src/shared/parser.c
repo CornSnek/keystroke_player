@@ -1000,10 +1000,10 @@ repeat_id_manager_t* repeat_id_manager_new(void){
 void repeat_id_manager_add_name(repeat_id_manager_t* this, char* str_owned, int index){
     this->size++;
     if(this->names){
-        this->names=(char**)realloc(this->names,sizeof(char*)*(this->size));
+        this->names=realloc(this->names,sizeof(char*)*(this->size));
         this->index=realloc(this->index,sizeof(int)*(this->size));
     }else{
-        this->names=(char**)(malloc(sizeof(char*)));
+        this->names=(malloc(sizeof(char*)));
         this->index=(malloc(sizeof(int)));
     }
     EXIT_IF_NULL(this->names,char**);
@@ -1048,11 +1048,11 @@ jump_id_manager_t* jump_id_manager_new(void){
 void jump_id_manager_add_name(jump_id_manager_t* this, char* str_owned, int index, bool is_jump_from){
     this->size++;
     if(this->names){
-        this->names=(char**)realloc(this->names,sizeof(char*)*(this->size));
+        this->names=realloc(this->names,sizeof(char*)*(this->size));
         this->index=realloc(this->index,sizeof(int)*(this->size));
         this->jump_from_added=realloc(this->jump_from_added,sizeof(bool)*(this->size));
     }else{
-        this->names=(char**)(malloc(sizeof(char*)));
+        this->names=(malloc(sizeof(char*)));
         this->index=(malloc(sizeof(int)));
         this->jump_from_added=(malloc(sizeof(bool)));
     }

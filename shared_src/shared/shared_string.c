@@ -21,10 +21,10 @@ char* SSManager_add_string(shared_string_manager_t* this, char** str_p_owned){//
     }
     this->count++;
     if(this->c_strs){
-        this->c_strs=(char**)realloc(this->c_strs,sizeof(char*)*this->count);
+        this->c_strs=realloc(this->c_strs,sizeof(char*)*this->count);
         this->c_str_rc=realloc(this->c_str_rc,sizeof(int)*this->count);
     }else{
-        this->c_strs=(char**)malloc(sizeof(char*));
+        this->c_strs=malloc(sizeof(char*));
         this->c_str_rc=malloc(sizeof(int));
     }
     EXIT_IF_NULL(this->c_strs,char**);
@@ -55,7 +55,7 @@ void SSManager_free_string(shared_string_manager_t* this, const char* str_del){
             if(--this->count){
                 this->c_strs[del_i]=this->c_strs[this->count];
                 this->c_str_rc[del_i]=this->c_str_rc[this->count];
-                this->c_strs=(char**)realloc(this->c_strs,sizeof(char*)*this->count);
+                this->c_strs=realloc(this->c_strs,sizeof(char*)*this->count);
                 EXIT_IF_NULL(this->c_strs,char**);
                 this->c_str_rc=realloc(this->c_str_rc,sizeof(int)*this->count);
                 EXIT_IF_NULL(this->c_str_rc,int*);
@@ -95,17 +95,17 @@ bool macro_paster_add_name(macro_paster_t* this,const char* str_name){
     }
     this->count++;
     if(this->str_names){
-        this->str_names=(char**)realloc(this->str_names,sizeof(char*)*(this->count));
-        this->macro_definition=(char**)realloc(this->macro_definition,sizeof(char*)*(this->count));
+        this->str_names=realloc(this->str_names,sizeof(char*)*(this->count));
+        this->macro_definition=realloc(this->macro_definition,sizeof(char*)*(this->count));
         this->str_var_count=realloc(this->str_var_count,sizeof(int)*(this->count));
-        this->str_vars=(char***)realloc(this->str_vars,sizeof(char**)*(this->count));
-        this->str_var_values=(char***)realloc(this->str_var_values,sizeof(char**)*(this->count));
+        this->str_vars=realloc(this->str_vars,sizeof(char**)*(this->count));
+        this->str_var_values=realloc(this->str_var_values,sizeof(char**)*(this->count));
     }else{
-        this->str_names=(char**)malloc(sizeof(char*));
-        this->macro_definition=(char**)malloc(sizeof(char*));
+        this->str_names=malloc(sizeof(char*));
+        this->macro_definition=malloc(sizeof(char*));
         this->str_var_count=malloc(sizeof(int));
-        this->str_vars=(char***)malloc(sizeof(char**));
-        this->str_var_values=(char***)malloc(sizeof(char**));
+        this->str_vars=malloc(sizeof(char**));
+        this->str_var_values=malloc(sizeof(char**));
     }
     EXIT_IF_NULL(this->str_names,char**);
     EXIT_IF_NULL(this->macro_definition,char**);
@@ -153,11 +153,11 @@ bool macro_paster_add_var(macro_paster_t* this,const char* str_name,const char* 
     char*** const var_value_array=this->str_var_values+str_name_i;
     (*var_count)++;
     if(*var_array){
-        *var_array=(char**)realloc(*var_array,sizeof(char*)*(*var_count));
-        *var_value_array=(char**)realloc(*var_value_array,sizeof(char*)*(*var_count));
+        *var_array=realloc(*var_array,sizeof(char*)*(*var_count));
+        *var_value_array=realloc(*var_value_array,sizeof(char*)*(*var_count));
     }else{
-        *var_array=(char**)malloc(sizeof(char*));
-        *var_value_array=(char**)malloc(sizeof(char*));
+        *var_array=malloc(sizeof(char*));
+        *var_value_array=malloc(sizeof(char*));
     }
     EXIT_IF_NULL(*var_array,char**);
     EXIT_IF_NULL(*var_value_array,char**);
