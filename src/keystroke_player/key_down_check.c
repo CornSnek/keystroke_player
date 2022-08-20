@@ -1,7 +1,7 @@
 #include <key_down_check.h>
 #include <X11/Xutil.h>
 key_down_check_t* key_down_check_new(void){
-    key_down_check_t* this=(key_down_check_t*)(malloc(sizeof(key_down_check_t)));
+    key_down_check_t* this=(malloc(sizeof(key_down_check_t)));
     EXIT_IF_NULL(this,key_down_check_t*);
     this->keys=malloc(sizeof(const char*)*1);//No need to malloc if 0. Just realloc.
     EXIT_IF_NULL(this->keys,const char*);

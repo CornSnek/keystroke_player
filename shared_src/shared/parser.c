@@ -7,13 +7,13 @@ __ReadStateWithStringDef(__ReadStateEnums)
 const int IndexNotFound=-1;
 const int JumpFromNotConnected=-2;
 macro_buffer_t* macro_buffer_new(char* str_owned, command_array_t* cmd_arr){
-    macro_buffer_t* this=(macro_buffer_t*)(malloc(sizeof(macro_buffer_t)));
+    macro_buffer_t* this=(malloc(sizeof(macro_buffer_t)));
     EXIT_IF_NULL(this,macro_buffer_t);
-    *this=(macro_buffer_t){.token_i=0,.str_size=strlen(str_owned),.contents=str_owned,.cmd_arr=cmd_arr,.rim=repeat_id_manager_new(),.jim=jump_id_manager_new(),.parse_error=false};
+    *this=(macro_buffer_t){.token_i=0,.str_size=strlen(str_owned),.contents=str_owned,.cmd_arr=cmd_arr,.rim=repeat_id_manager_new(),.jim=jump_id_manager_new(),.vl=VL_new(400),.parse_error=false};
     return this;
 }
 void print_where_error_is(const char* contents,int begin_error,int end_error){
-    char* str_to_print=(char*)malloc(sizeof(char)*(end_error+2)); //+2 to count a character and for '\0'.
+    char* str_to_print=malloc(sizeof(char)*(end_error+2)); //+2 to count a character and for '\0'.
     EXIT_IF_NULL(str_to_print,char*);
     strncpy(str_to_print,contents+begin_error,end_error+1);
     str_to_print[end_error+1]='\0';
@@ -21,8 +21,11 @@ void print_where_error_is(const char* contents,int begin_error,int end_error){
     free(str_to_print);
 }
 int error_move_offset(const char* begin_error_p){//Moves the pointer to the end to help process multiple errors.
-    const char* end_p1=strchr(begin_error_p,';'),* end_p2=strchr(begin_error_p,'\0');
-    return ((end_p1<end_p2)?end_p1:end_p2)-begin_error_p;
+    const char* next_p=begin_error_p;
+    do{
+        if(*next_p==';'||*next_p=='\0') return next_p-begin_error_p;//strchr for ; makes segmentation faults at end of commands.
+        next_p++;
+    }while(true);
 }
 bool macro_buffer_process_next(macro_buffer_t* this,bool print_debug){//Returns bool if processed successfully or not.
     ReadState read_state=RS_Start;
@@ -40,6 +43,7 @@ bool macro_buffer_process_next(macro_buffer_t* this,bool print_debug){//Returns 
     bool print_cmd=false;
     bool store_index=false;
     CompareCoords cmp_flags=CMP_NULL;
+    VLCallbackType vct;
     bool mouse_absolute;
     char* start_p=this->contents+this->token_i;
     do{
@@ -54,6 +58,12 @@ bool macro_buffer_process_next(macro_buffer_t* this,bool print_debug){//Returns 
                     print_cmd=true;
                     read_i+=7;
                     read_offset_i=-1;
+                    break;
+                }
+                if(!strncmp(current_char_p,"init,",5)){
+                    read_i+=5;
+                    read_offset_i=-1;
+                    read_state=RS_InitVarType;
                     break;
                 }
                 if(!strncmp(current_char_p,"exit;",5)){
@@ -227,7 +237,7 @@ bool macro_buffer_process_next(macro_buffer_t* this,bool print_debug){//Returns 
             case RS_RepeatStart:
                 if(char_is_key(current_char)) break;
                 if(current_char==';'){
-                    str_name=(char*)calloc(read_offset_i+1,sizeof(char));
+                    str_name=calloc(read_offset_i+1,sizeof(char));
                     EXIT_IF_NULL(str_name,char);
                     strncpy(str_name,this->contents+this->token_i+read_i,read_offset_i);
                     repeat_id_manager_add_name(this->rim,str_name,command_array_count(this->cmd_arr));
@@ -251,7 +261,7 @@ bool macro_buffer_process_next(macro_buffer_t* this,bool print_debug){//Returns 
             case RS_RepeatEnd:
                 if(char_is_key(current_char)) break;
                 if(current_char=='='){
-                    str_name=(char*)calloc(read_offset_i+1,sizeof(char));
+                    str_name=calloc(read_offset_i+1,sizeof(char));
                     EXIT_IF_NULL(str_name,char);
                     strncpy(str_name,this->contents+this->token_i+read_i,read_offset_i);
                     const bool str_exists=(str_name!=SSManager_add_string(this->rim->ssm,&str_name));
@@ -269,7 +279,7 @@ bool macro_buffer_process_next(macro_buffer_t* this,bool print_debug){//Returns 
                     break;
                 }
                 if(current_char==';'){
-                    str_name=(char*)calloc(read_offset_i+1,sizeof(char));
+                    str_name=calloc(read_offset_i+1,sizeof(char));
                     EXIT_IF_NULL(str_name,char);
                     strncpy(str_name,this->contents+this->token_i+read_i,read_offset_i);
                     const bool str_exists=(str_name!=SSManager_add_string(this->rim->ssm,&str_name));
@@ -302,7 +312,7 @@ bool macro_buffer_process_next(macro_buffer_t* this,bool print_debug){//Returns 
             case RS_RepeatEndNumber:
                 if(isdigit(current_char)) break;
                 else if(current_char==';'){
-                    num_str=(char*)malloc(sizeof(char)*(read_offset_i+1));
+                    num_str=malloc(sizeof(char)*(read_offset_i+1));
                     EXIT_IF_NULL(num_str,char*);
                     strncpy(num_str,this->contents+this->token_i+read_i,read_offset_i);
                     num_str[read_offset_i]='\0';
@@ -402,13 +412,13 @@ bool macro_buffer_process_next(macro_buffer_t* this,bool print_debug){//Returns 
             case RS_DelayNum:
                 if(isdigit(current_char)) break;
                 else if(current_char==';'){
-                    num_str=(char*)malloc(sizeof(char)*(read_offset_i+1));
+                    num_str=malloc(sizeof(char)*(read_offset_i+1));
                     EXIT_IF_NULL(num_str,char*);
                     strncpy(num_str,this->contents+this->token_i+read_i,read_offset_i);
                     num_str[read_offset_i]='\0';
                     command_array_add(this->cmd_arr,
                         (command_t){.type=CMD_Delay,.subtype=CMDST_Command,.print_cmd=print_cmd,
-                            .cmd_u.delay=strtol(num_str,NULL,10)*delay_mult
+                            .cmd_u.delay=VL_new_callback_long(this->vl,strtol(num_str,NULL,10)*delay_mult)
                         }
                     );
                     free(num_str);
@@ -423,7 +433,7 @@ bool macro_buffer_process_next(macro_buffer_t* this,bool print_debug){//Returns 
                 break;
             case RS_MouseClickType:
                 if(isdigit(current_char)&&!first_number){
-                    num_str=(char*)calloc(sizeof(char),2);
+                    num_str=calloc(sizeof(char),2);
                     EXIT_IF_NULL(num_str,char*);
                     num_str[0]=current_char;
                     parsed_num[0]=strtol(num_str,NULL,10);
@@ -479,7 +489,7 @@ bool macro_buffer_process_next(macro_buffer_t* this,bool print_debug){//Returns 
             case RS_MoveMouse:
                 if(isdigit(current_char)||current_char=='-') break;
                 else if(current_char==','&&!first_number){
-                    num_str=(char*)malloc(sizeof(char)*read_offset_i+1);
+                    num_str=malloc(sizeof(char)*read_offset_i+1);
                     EXIT_IF_NULL(num_str,char*);
                     strncpy(num_str,this->contents+this->token_i+read_i,read_offset_i);
                     num_str[read_offset_i]='\0';
@@ -491,7 +501,7 @@ bool macro_buffer_process_next(macro_buffer_t* this,bool print_debug){//Returns 
                     break;
                 }else if(current_char==';'){
                     if(first_number){
-                        num_str=(char*)malloc(sizeof(char)*read_offset_i+1);
+                        num_str=malloc(sizeof(char)*read_offset_i+1);
                         EXIT_IF_NULL(num_str,char*);
                         strncpy(num_str,this->contents+this->token_i+read_i,read_offset_i);
                         num_str[read_offset_i]='\0';
@@ -523,7 +533,7 @@ bool macro_buffer_process_next(macro_buffer_t* this,bool print_debug){//Returns 
             case RS_JumpTo:
                 if(char_is_key(current_char)) break;
                 if(current_char==';'){
-                    str_name=(char*)malloc(sizeof(char)*read_offset_i+1);
+                    str_name=malloc(sizeof(char)*read_offset_i+1);
                     EXIT_IF_NULL(str_name,char*);
                     strncpy(str_name,this->contents+this->token_i+read_i,read_offset_i);
                     str_name[read_offset_i]='\0';
@@ -571,7 +581,7 @@ bool macro_buffer_process_next(macro_buffer_t* this,bool print_debug){//Returns 
             case RS_JumpFrom:
                 if(char_is_key(current_char)) break;
                 if(current_char==';'){
-                    str_name=(char*)malloc(sizeof(char)*read_offset_i+1);
+                    str_name=malloc(sizeof(char)*read_offset_i+1);
                     EXIT_IF_NULL(str_name,char*);
                     strncpy(str_name,this->contents+this->token_i+read_i,read_offset_i);
                     str_name[read_offset_i]='\0';
@@ -663,7 +673,7 @@ bool macro_buffer_process_next(macro_buffer_t* this,bool print_debug){//Returns 
                 if(isdigit(current_char)) break;
                 if(current_char==','){
                     if(parsed_num_i<3){
-                        num_str=(char*)malloc(sizeof(char)*read_offset_i+1);
+                        num_str=malloc(sizeof(char)*read_offset_i+1);
                         EXIT_IF_NULL(num_str,char*);
                         strncpy(num_str,this->contents+this->token_i+read_i,read_offset_i);
                         num_str[read_offset_i]='\0';
@@ -691,7 +701,7 @@ bool macro_buffer_process_next(macro_buffer_t* this,bool print_debug){//Returns 
                 }
                 if(current_char=='?'){
                     if(parsed_num_i==3){
-                        num_str=(char*)malloc(sizeof(char)*read_offset_i+1);
+                        num_str=malloc(sizeof(char)*read_offset_i+1);
                         EXIT_IF_NULL(num_str,char*);
                         strncpy(num_str,this->contents+this->token_i+read_i,read_offset_i);
                         num_str[read_offset_i]='\0';
@@ -758,7 +768,7 @@ bool macro_buffer_process_next(macro_buffer_t* this,bool print_debug){//Returns 
             case RS_QueryCoordsVar:
                 if(isdigit(current_char)) break;
                 if(current_char=='?'){
-                    num_str=(char*)malloc(sizeof(char)*read_offset_i+1);
+                    num_str=malloc(sizeof(char)*read_offset_i+1);
                     EXIT_IF_NULL(num_str,char*);
                     strncpy(num_str,this->contents+this->token_i+read_i,read_offset_i);
                     num_str[read_offset_i]='\0';
@@ -784,7 +794,7 @@ bool macro_buffer_process_next(macro_buffer_t* this,bool print_debug){//Returns 
                 if(isdigit(current_char)) break;
                 if(current_char==','){
                     if(parsed_num_i<3){
-                        num_str=(char*)malloc(sizeof(char)*read_offset_i+1);
+                        num_str=malloc(sizeof(char)*read_offset_i+1);
                         EXIT_IF_NULL(num_str,char*);
                         strncpy(num_str,this->contents+this->token_i+read_i,read_offset_i);
                         num_str[read_offset_i]='\0';
@@ -804,7 +814,7 @@ bool macro_buffer_process_next(macro_buffer_t* this,bool print_debug){//Returns 
                 }
                 if(current_char=='?'){
                     if(parsed_num_i==3){
-                        num_str=(char*)malloc(sizeof(char)*read_offset_i+1);
+                        num_str=malloc(sizeof(char)*read_offset_i+1);
                         EXIT_IF_NULL(num_str,char*);
                         strncpy(num_str,this->contents+this->token_i+read_i,read_offset_i);
                         num_str[read_offset_i]='\0';
@@ -828,6 +838,85 @@ bool macro_buffer_process_next(macro_buffer_t* this,bool print_debug){//Returns 
                     break;
                 }
                 fprintf(stderr,"Unexpected character '%c' at line %lu char %lu state %s.\n",current_char,line_num,char_num,ReadStateStrings[read_state]);
+                print_where_error_is(this->contents,this->token_i,read_i+read_offset_i);
+                this->token_i+=error_move_offset(this->contents+this->token_i+read_i+read_offset_i);
+                this->parse_error=true;
+                key_processed=true;
+                break;
+            case RS_InitVarType:
+                switch(current_char){
+                    case 'l': vct=VLCallback_VLong; goto valid_var_char;
+                    case 'd': vct=VLCallback_VDouble; goto valid_var_char;
+                    default: goto invalid_var_char;
+                }
+                valid_var_char:
+                if(*(current_char_p+1)==','){
+                    read_i+=2;
+                    read_offset_i=-1;
+                    read_state=RS_InitVarName;
+                    break;
+                }
+                invalid_var_char:
+                fprintf(stderr,"Invalid characters (Should be 'l' or 'd' with ',' at end) at line %lu char %lu state %s.\n",line_num,char_num,ReadStateStrings[read_state]);
+                print_where_error_is(this->contents,this->token_i,read_i+read_offset_i);
+                this->token_i+=error_move_offset(this->contents+this->token_i+read_i+read_offset_i);
+                this->parse_error=true;
+                key_processed=true;
+                break;
+            case RS_InitVarName:
+                if(char_is_key(current_char)) break;
+                if(current_char=='='){
+                    str_name=malloc(sizeof(char)*read_offset_i+1);
+                    EXIT_IF_NULL(str_name,char*);
+                    strncpy(str_name,this->contents+this->token_i+read_i,read_offset_i);
+                    str_name[read_offset_i]='\0';
+                    read_i+=read_offset_i+1;
+                    read_offset_i=-1;
+                    read_state=RS_InitVarValue;
+                    break;
+                }
+                fprintf(stderr,"Invalid variable character '%c' at line %lu char %lu state %s.\n",current_char,line_num,char_num,ReadStateStrings[read_state]);
+                print_where_error_is(this->contents,this->token_i,read_i+read_offset_i);
+                this->token_i+=error_move_offset(this->contents+this->token_i+read_i+read_offset_i);
+                this->parse_error=true;
+                key_processed=true;
+                break;
+            case RS_InitVarValue:
+                if(isdigit(current_char)||current_char=='.'||current_char=='-') break;
+                if(current_char==';'){
+                    num_str=malloc(sizeof(char)*read_offset_i+1);
+                    EXIT_IF_NULL(num_str,char*);
+                    strncpy(num_str,this->contents+this->token_i+read_i,read_offset_i);
+                    num_str[read_offset_i]='\0';
+                    switch(vct){
+                        case VLCallback_VLong:
+                            command_array_add(this->cmd_arr,
+                                (command_t){.type=CMD_InitVar,.subtype=CMDST_Var,.print_cmd=print_cmd,
+                                    .cmd_u.init_var=(init_var_t){
+                                        .vlci=VL_new_callback_add_as_l(this->vl,str_name),
+                                        .LorD.l=strtol(num_str,0,10)
+                                    }
+                                }
+                            );
+                            break;
+                        case VLCallback_VDouble:
+                            command_array_add(this->cmd_arr,
+                                (command_t){.type=CMD_InitVar,.subtype=CMDST_Var,.print_cmd=print_cmd,
+                                    .cmd_u.init_var=(init_var_t){
+                                        .vlci=VL_new_callback_add_as_d(this->vl,str_name),
+                                        .LorD.d=strtod(num_str,0)
+                                    }
+                                }
+                            );
+                            break;
+                        default: break; //Code shouldn't be here.
+                    }
+                    free(num_str);
+                    key_processed=true;
+                    break;
+                }
+                free(str_name);
+                fprintf(stderr,"Invalid variable character '%c' at line %lu char %lu state %s.\n",current_char,line_num,char_num,ReadStateStrings[read_state]);
                 print_where_error_is(this->contents,this->token_i,read_i+read_offset_i);
                 this->token_i+=error_move_offset(this->contents+this->token_i+read_i+read_offset_i);
                 this->parse_error=true;
@@ -890,7 +979,7 @@ void macro_buffer_str_id_check(macro_buffer_t* this){//Check if RepeatStart does
     if(this->cmd_arr->cmds[check_i--].subtype==CMDST_Query){//Check twice.
         fprintf(stderr,"Queries should have at least 2 commands next to it. Error command found at end of file.\n");
         this->parse_error=true;
-    }else if(this->cmd_arr->cmds[check_i].subtype==CMDST_Query){
+    }else if(check_i>0&&this->cmd_arr->cmds[check_i].subtype==CMDST_Query){
         fprintf(stderr,"Queries should have at least 2 commands next to it. Error command found at end of file.\n");
         this->parse_error=true;
     }
@@ -898,11 +987,12 @@ void macro_buffer_str_id_check(macro_buffer_t* this){//Check if RepeatStart does
 void macro_buffer_free(macro_buffer_t* this){
     repeat_id_manager_free(this->rim);
     jump_id_manager_free(this->jim);
+    VL_free(this->vl);
     free(this->contents);
     free(this);
 }
 repeat_id_manager_t* repeat_id_manager_new(void){
-    repeat_id_manager_t* this=(repeat_id_manager_t*)(malloc(sizeof(repeat_id_manager_t)));
+    repeat_id_manager_t* this=(malloc(sizeof(repeat_id_manager_t)));
     EXIT_IF_NULL(this,repeat_id_manager_t);
     *this=(repeat_id_manager_t){.size=0,.names=NULL,.index=NULL,.ssm=SSManager_new()};
     return this;
@@ -911,10 +1001,10 @@ void repeat_id_manager_add_name(repeat_id_manager_t* this, char* str_owned, int 
     this->size++;
     if(this->names){
         this->names=(char**)realloc(this->names,sizeof(char*)*(this->size));
-        this->index=(int*)realloc(this->index,sizeof(int)*(this->size));
+        this->index=realloc(this->index,sizeof(int)*(this->size));
     }else{
         this->names=(char**)(malloc(sizeof(char*)));
-        this->index=(int*)(malloc(sizeof(int)));
+        this->index=(malloc(sizeof(int)));
     }
     EXIT_IF_NULL(this->names,char**);
     EXIT_IF_NULL(this->index,int*);
@@ -950,7 +1040,7 @@ void repeat_id_manager_free(repeat_id_manager_t* this){
     free(this);
 }
 jump_id_manager_t* jump_id_manager_new(void){
-    jump_id_manager_t* this=(jump_id_manager_t*)(malloc(sizeof(jump_id_manager_t)));
+    jump_id_manager_t* this=(malloc(sizeof(jump_id_manager_t)));
     EXIT_IF_NULL(this,jump_id_manager_t);
     *this=(jump_id_manager_t){.size=0,.names=NULL,.index=NULL,.jump_from_added=NULL,.ssm=SSManager_new()};
     return this;
@@ -959,12 +1049,12 @@ void jump_id_manager_add_name(jump_id_manager_t* this, char* str_owned, int inde
     this->size++;
     if(this->names){
         this->names=(char**)realloc(this->names,sizeof(char*)*(this->size));
-        this->index=(int*)realloc(this->index,sizeof(int)*(this->size));
-        this->jump_from_added=(bool*)realloc(this->jump_from_added,sizeof(bool)*(this->size));
+        this->index=realloc(this->index,sizeof(int)*(this->size));
+        this->jump_from_added=realloc(this->jump_from_added,sizeof(bool)*(this->size));
     }else{
         this->names=(char**)(malloc(sizeof(char*)));
-        this->index=(int*)(malloc(sizeof(int)));
-        this->jump_from_added=(bool*)(malloc(sizeof(bool)));
+        this->index=(malloc(sizeof(int)));
+        this->jump_from_added=(malloc(sizeof(bool)));
     }
     EXIT_IF_NULL(this->names,char**);
     EXIT_IF_NULL(this->index,int*);
@@ -1009,15 +1099,15 @@ void jump_id_manager_free(jump_id_manager_t* this){
     free(this);
 }
 command_array_t* command_array_new(void){
-    command_array_t* this=(command_array_t*)(malloc(sizeof(command_array_t)));
+    command_array_t* this=(malloc(sizeof(command_array_t)));
     EXIT_IF_NULL(this,command_array_t);
     *this=(command_array_t){.size=0,.cmds=NULL,.SSM=SSManager_new()};
     return this;
 }
 void command_array_add(command_array_t* this, command_t cmd){
     this->size++;
-    if(this->cmds) this->cmds=(command_t*)realloc(this->cmds,sizeof(command_t)*(this->size));
-    else this->cmds=(command_t*)malloc(sizeof(command_t));
+    if(this->cmds) this->cmds=realloc(this->cmds,sizeof(command_t)*(this->size));
+    else this->cmds=malloc(sizeof(command_t));
     EXIT_IF_NULL(this->cmds,command_t*);
     if(cmd.type==CMD_KeyStroke) SSManager_add_string(this->SSM,&cmd.cmd_u.ks.key);//Edit pointer for any shared strings first before placing in array.
     this->cmds[this->size-1]=cmd;
@@ -1025,7 +1115,7 @@ void command_array_add(command_array_t* this, command_t cmd){
 int command_array_count(const command_array_t* this){
     return this->size;
 }
-void command_array_print(const command_array_t* this){
+void command_array_print(const command_array_t* this,const VariableLoader_t* vl){
     for(int i=0;i<this->size;i++){
         const command_union_t cmd=this->cmds[i].cmd_u;
         printf("Command Index: %d ",i);
@@ -1037,7 +1127,7 @@ void command_array_print(const command_array_t* this){
                 printf("Key %s KeyState: %u\n",cmd.ks.key,cmd.ks.key_state);
                 break;
             case CMD_Delay:
-                printf("Delay %lu\n",cmd.delay);
+                printf("Delay %lu\n",VL_get_callback(vl,cmd.delay)->args.number);
                 break;
             case CMD_RepeatStart:
                 printf("RepeatStart Counter: %d str_i: %d\n",cmd.repeat_start.counter,cmd.repeat_start.str_index);
@@ -1086,6 +1176,12 @@ void command_array_print(const command_array_t* this){
                 break;
             case CMD_QueryCoordsWithin:
                 printf("QueryCoordsWithin xl: %d yl: %d xh: %d yh: %d\n",cmd.coords_within.xl,cmd.coords_within.yl,cmd.coords_within.xh,cmd.coords_within.yh);
+                break;
+            case CMD_InitVar:
+                {
+                    const vlcallback_t* vlc=VL_get_callback(vl,cmd.init_var.vlci);
+                    printf("InitVar Name: '%s' Type: '%s'\n",vlc->args.variable,VLCallbackSubtypeStr(vlc->subtype));
+                }
                 break;
         }
     }

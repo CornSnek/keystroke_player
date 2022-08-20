@@ -5,7 +5,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 shared_string_manager_t* SSManager_new(void){
-    shared_string_manager_t* this=(shared_string_manager_t*)calloc(1,sizeof(shared_string_manager_t));
+    shared_string_manager_t* this=calloc(1,sizeof(shared_string_manager_t));
     EXIT_IF_NULL(this,shared_string_manager_t*);
     return this;
 }
@@ -22,10 +22,10 @@ char* SSManager_add_string(shared_string_manager_t* this, char** str_p_owned){//
     this->count++;
     if(this->c_strs){
         this->c_strs=(char**)realloc(this->c_strs,sizeof(char*)*this->count);
-        this->c_str_rc=(int*)realloc(this->c_str_rc,sizeof(int)*this->count);
+        this->c_str_rc=realloc(this->c_str_rc,sizeof(int)*this->count);
     }else{
         this->c_strs=(char**)malloc(sizeof(char*));
-        this->c_str_rc=(int*)malloc(sizeof(int));
+        this->c_str_rc=malloc(sizeof(int));
     }
     EXIT_IF_NULL(this->c_strs,char**);
     EXIT_IF_NULL(this->c_str_rc,int*);
@@ -57,7 +57,7 @@ void SSManager_free_string(shared_string_manager_t* this, const char* str_del){
                 this->c_str_rc[del_i]=this->c_str_rc[this->count];
                 this->c_strs=(char**)realloc(this->c_strs,sizeof(char*)*this->count);
                 EXIT_IF_NULL(this->c_strs,char**);
-                this->c_str_rc=(int*)realloc(this->c_str_rc,sizeof(int)*this->count);
+                this->c_str_rc=realloc(this->c_str_rc,sizeof(int)*this->count);
                 EXIT_IF_NULL(this->c_str_rc,int*);
                 return;
             }
@@ -78,7 +78,7 @@ void SSManager_free(shared_string_manager_t* this){
     free(this);
 }
 macro_paster_t* macro_paster_new(void){
-    macro_paster_t* this=(macro_paster_t*)calloc(1,sizeof(macro_paster_t));
+    macro_paster_t* this=calloc(1,sizeof(macro_paster_t));
     EXIT_IF_NULL(this,macro_paster_t);
     return this;
 }
@@ -97,13 +97,13 @@ bool macro_paster_add_name(macro_paster_t* this,const char* str_name){
     if(this->str_names){
         this->str_names=(char**)realloc(this->str_names,sizeof(char*)*(this->count));
         this->macro_definition=(char**)realloc(this->macro_definition,sizeof(char*)*(this->count));
-        this->str_var_count=(int*)realloc(this->str_var_count,sizeof(int)*(this->count));
+        this->str_var_count=realloc(this->str_var_count,sizeof(int)*(this->count));
         this->str_vars=(char***)realloc(this->str_vars,sizeof(char**)*(this->count));
         this->str_var_values=(char***)realloc(this->str_var_values,sizeof(char**)*(this->count));
     }else{
         this->str_names=(char**)malloc(sizeof(char*));
         this->macro_definition=(char**)malloc(sizeof(char*));
-        this->str_var_count=(int*)malloc(sizeof(int));
+        this->str_var_count=malloc(sizeof(int));
         this->str_vars=(char***)malloc(sizeof(char**));
         this->str_var_values=(char***)malloc(sizeof(char**));
     }
@@ -113,10 +113,10 @@ bool macro_paster_add_name(macro_paster_t* this,const char* str_name){
     EXIT_IF_NULL(this->str_vars,char***);
     EXIT_IF_NULL(this->str_var_values,char***);
     const int add_i=this->count-1;
-    this->str_names[add_i]=(char*)malloc(sizeof(char)*(strlen(str_name)+1));
+    this->str_names[add_i]=malloc(sizeof(char)*(strlen(str_name)+1));
     EXIT_IF_NULL(this->str_names[add_i],char*);
     strcpy(this->str_names[add_i],str_name);
-    this->macro_definition[add_i]=(char*)calloc(1,sizeof(char));//Null character.
+    this->macro_definition[add_i]=calloc(1,sizeof(char));//Null character.
     EXIT_IF_NULL(this->macro_definition[add_i],char*);
     this->str_var_count[add_i]=0;
     this->str_vars[add_i]=0;
@@ -161,8 +161,8 @@ bool macro_paster_add_var(macro_paster_t* this,const char* str_name,const char* 
     }
     EXIT_IF_NULL(*var_array,char**);
     EXIT_IF_NULL(*var_value_array,char**);
-    (*var_array)[*var_count-1]=(char*)malloc(sizeof(char)*(strlen(var_name)+1));
-    (*var_value_array)[*var_count-1]=(char*)calloc(1,sizeof(char));//As null string.
+    (*var_array)[*var_count-1]=malloc(sizeof(char)*(strlen(var_name)+1));
+    (*var_value_array)[*var_count-1]=calloc(1,sizeof(char));//As null string.
     EXIT_IF_NULL((*var_array)[*var_count-1],char*);
     EXIT_IF_NULL((*var_value_array)[*var_count-1],char*);
     strcpy((*var_array)[*var_count-1],var_name);
@@ -174,13 +174,13 @@ bool macro_paster_write_macro_def(macro_paster_t* this,const char* str_name,cons
         fprintf(stderr,"In macro_paster, string '%s' does not exist. Did not write macro string value '%s'.\n",str_name,str_value);
         return false;
     }
-    this->macro_definition[str_name_i]=(char*)realloc(this->macro_definition[str_name_i],sizeof(char)*(strlen(str_value)+1));
+    this->macro_definition[str_name_i]=realloc(this->macro_definition[str_name_i],sizeof(char)*(strlen(str_value)+1));
     EXIT_IF_NULL(this->macro_definition[str_name_i],char*);
     strcpy(this->macro_definition[str_name_i],str_value);
     return true;
 }
 void _macro_paster_write_var_value(macro_paster_t* this,int str_name_i,int var_name_i,const char* var_value){
-    this->str_var_values[str_name_i][var_name_i]=(char*)realloc(this->str_var_values[str_name_i][var_name_i],sizeof(char)*(strlen(var_value)+1));
+    this->str_var_values[str_name_i][var_name_i]=realloc(this->str_var_values[str_name_i][var_name_i],sizeof(char)*(strlen(var_value)+1));
     EXIT_IF_NULL(this->str_var_values[str_name_i][var_name_i],char*);
     strcpy(this->str_var_values[str_name_i][var_name_i],var_value);
 }
@@ -278,8 +278,8 @@ bool macro_paster_process_macros(macro_paster_t* this,const char* file_str,const
             free(macros_def);
             return false;
         }
-        macro_vars_str=(char*)calloc(1,sizeof(char)*(macro_name_len+1));
-        def_str=(char*)calloc(1,sizeof(char)*(def_len+1));
+        macro_vars_str=calloc(1,sizeof(char)*(macro_name_len+1));
+        def_str=calloc(1,sizeof(char)*(def_len+1));
         EXIT_IF_NULL(macro_vars_str,char*);
         EXIT_IF_NULL(def_str,char*);
         strncpy(macro_vars_str,full_macro_str,macro_name_len);
@@ -289,7 +289,7 @@ bool macro_paster_process_macros(macro_paster_t* this,const char* file_str,const
         bool macro_name_set=false;
         for(size_t i=0,str_len=0;i<=strlen(macro_vars_str);i++){//i<=strlen to include '\0'.
             if(macro_vars_str[i]==var_sep||macro_vars_str[i]=='\0'){
-                char* str=(char*)calloc(1,sizeof(char)*(str_len+1));
+                char* str=calloc(1,sizeof(char)*(str_len+1));
                 EXIT_IF_NULL(str,char*);
                 bool success;
                 strncpy(str,macro_vars_p,str_len);
@@ -346,7 +346,7 @@ bool macro_paster_expand_macros(macro_paster_t* this,const char* file_str,const 
         fprintf(stderr,"Error: Couldn't find macro end bracket '%s'.\n",end_m);
         return false;
     }
-    char* cmd_str=(char*)malloc(sizeof(char)*(cmd_len+1));
+    char* cmd_str=malloc(sizeof(char)*(cmd_len+1));
     EXIT_IF_NULL(cmd_str,char*);
     strcpy(cmd_str,begin_cmd_p);
     size_t expansion_count=0;
@@ -375,7 +375,7 @@ bool macro_paster_expand_macros(macro_paster_t* this,const char* file_str,const 
         bool macro_name_set=false;
         for(size_t parse_i=0;parse_i<=parse_len;parse_i++){
             if(macro_n_br[parse_i]==var_sep||macro_n_br[parse_i]=='\0'){
-                char* str=(char*)calloc(1,sizeof(char)*(str_len+1));
+                char* str=calloc(1,sizeof(char)*(str_len+1));
                 EXIT_IF_NULL(str,char*);
                 strncpy(str,macro_vars_p,str_len);
                 if(macro_name_set){
@@ -428,14 +428,14 @@ bool macro_paster_get_val_string(const macro_paster_t* this,const char* str_name
         fprintf(stderr,"In macro_paster, string '%s' does not exist. Did not write output.\n",str_name);
         return false;
     }
-    string_output=(char*)malloc(sizeof(char)*(strlen(this->macro_definition[str_name_i])+1));
+    string_output=malloc(sizeof(char)*(strlen(this->macro_definition[str_name_i])+1));
     EXIT_IF_NULL(string_output,char*);
     strcpy(string_output,this->macro_definition[str_name_i]);
     const int var_count=this->str_var_count[str_name_i];
-    replace_node_t* rep_list=(replace_node_t*)malloc(sizeof(replace_node_t)*var_count);
+    replace_node_t* rep_list=malloc(sizeof(replace_node_t)*var_count);
     EXIT_IF_NULL(rep_list,replace_node_t*);
     for(int str_var_i=0;str_var_i<var_count;str_var_i++){//Add prefix to all variable names and add vars/values to replace node.
-        char* prefix_str=(char*)malloc(sizeof(char)*(strlen(this->str_vars[str_name_i][str_var_i])+2));
+        char* prefix_str=malloc(sizeof(char)*(strlen(this->str_vars[str_name_i][str_var_i])+2));
         EXIT_IF_NULL(prefix_str,char*);
         prefix_str[0]=prefix;
         strcpy(prefix_str+1,this->str_vars[str_name_i][str_var_i]);
@@ -487,7 +487,7 @@ size_t trim_whitespace(char** strptr){//For null-terminated strings only, and re
         else (*strptr)[str_i-whitespace_count]=(*strptr)[str_i];//Copy the next non-whitespace character.
     }while((*strptr)[++str_i]);
     (*strptr)[str_i-whitespace_count]='\0';//Null terminate last character and reallocate as whitespace-trimmed string.
-    *strptr=(char*)realloc(*strptr,(str_i-whitespace_count+1)*sizeof(char));
+    *strptr=realloc(*strptr,(str_i-whitespace_count+1)*sizeof(char));
     EXIT_IF_NULL(*strptr,char*);
     return str_i-whitespace_count;
 }
@@ -512,7 +512,7 @@ size_t trim_comments(char** strptr){//Same as above, but with comments until new
             is_in_comment=false;
         }
     }while((*strptr)[++str_i]);
-    *strptr=(char*)realloc(*strptr,(str_i-comment_count+1)*sizeof(char));
+    *strptr=realloc(*strptr,(str_i-comment_count+1)*sizeof(char));
     EXIT_IF_NULL(*strptr,char*);
     (*strptr)[str_i-comment_count]='\0';
     return str_i-comment_count;
@@ -520,7 +520,7 @@ size_t trim_comments(char** strptr){//Same as above, but with comments until new
 _Pragma("GCC diagnostic push")
 _Pragma("GCC diagnostic ignored \"-Wstringop-truncation\"")
 void replace_str(char** strptr, const char* replace, const char* with){
-    char* new_strptr=(char*)(malloc(sizeof(char)));
+    char* new_strptr=(malloc(sizeof(char)));
     EXIT_IF_NULL(new_strptr,char*);
     size_t strptr_i=0;
     size_t new_strptr_i=0;
@@ -558,7 +558,7 @@ void replace_str(char** strptr, const char* replace, const char* with){
 //Only replaces within range of pointers begin/end (inclusive).
 //Will invalidate begin/end pointers after this call.
 void replace_str_at(char** strptr_owner, const char* replace, const char* with,const char* begin,const char* end){
-    char* new_strptr=(char*)(malloc(sizeof(char)));
+    char* new_strptr=(malloc(sizeof(char)));
     EXIT_IF_NULL(new_strptr,char*);
     size_t strptr_i=0;
     size_t new_strptr_i=0;
@@ -568,7 +568,7 @@ void replace_str_at(char** strptr_owner, const char* replace, const char* with,c
     while((current_char=(*strptr_owner)[strptr_i])){
         char* strptr_owner_p=*strptr_owner+strptr_i;
         if(strptr_owner_p>=begin&&strptr_owner_p<=end&&current_char==replace[0]&&!strncmp(strptr_owner_p,replace,replace_len)){//0 in strncmp for same string contents.
-            new_strptr=(char*)(realloc(new_strptr,sizeof(char)*(new_strptr_i+1+with_len)));
+            new_strptr=(realloc(new_strptr,sizeof(char)*(new_strptr_i+1+with_len)));
             EXIT_IF_NULL(new_strptr,char*);
             strncpy(new_strptr+new_strptr_i,with,with_len);//-Wstringop-truncation here (It null terminates after while loop)
             new_strptr_i+=with_len;
@@ -577,7 +577,7 @@ void replace_str_at(char** strptr_owner, const char* replace, const char* with,c
         }
         new_strptr[new_strptr_i++]=current_char;
         strptr_i++;
-        new_strptr=(char*)(realloc(new_strptr,sizeof(char)*new_strptr_i+1));
+        new_strptr=(realloc(new_strptr,sizeof(char)*new_strptr_i+1));
         EXIT_IF_NULL(new_strptr,char*);
     }
     new_strptr[new_strptr_i]='\0';//Null-terminate.
@@ -595,7 +595,7 @@ void replace_str_list(char** strptr_owner,replace_node_t* rep_list,size_t rep_li
     /*for(size_t i=0;i<rep_list_size;i++){
         printf("r:'%s' w:'%s'\n",rep_list[i].r,rep_list[i].w);
     }*/
-    char* new_strptr=(char*)(malloc(sizeof(char)));
+    char* new_strptr=(malloc(sizeof(char)));
     EXIT_IF_NULL(new_strptr,char*);
     int strptr_i=0;
     int new_strptr_i=0;
@@ -605,7 +605,7 @@ void replace_str_list(char** strptr_owner,replace_node_t* rep_list,size_t rep_li
             const char* const replace=rep_list[i].r,* const with=rep_list[i].w;
             const size_t replace_len=strlen(replace),with_len=strlen(with);
             if(current_char==replace[0]&&!strncmp(*strptr_owner+strptr_i,replace,replace_len)){//0 in strncmp for same string contents.
-                new_strptr=(char*)(realloc(new_strptr,sizeof(char)*(new_strptr_i+1+with_len)));
+                new_strptr=(realloc(new_strptr,sizeof(char)*(new_strptr_i+1+with_len)));
                 EXIT_IF_NULL(new_strptr,char*);
                 strncpy(new_strptr+new_strptr_i,with,with_len);
                 new_strptr_i+=with_len;
@@ -615,7 +615,7 @@ void replace_str_list(char** strptr_owner,replace_node_t* rep_list,size_t rep_li
         }
         new_strptr[new_strptr_i++]=current_char;
         strptr_i++;
-        new_strptr=(char*)(realloc(new_strptr,sizeof(char)*new_strptr_i+1));
+        new_strptr=(realloc(new_strptr,sizeof(char)*new_strptr_i+1));
         EXIT_IF_NULL(new_strptr,char*);
         do_next_char: continue;
     }

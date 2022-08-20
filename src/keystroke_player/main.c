@@ -25,7 +25,7 @@ typedef struct{
     DebugPrintType debug_print_type;
 }Config;
 const Config InitConfig={
-    .init_delay=2000000,.key_check_delay=100000,.debug_print_type=DBP_CommandNumber
+    .init_delay=2000000,.key_check_delay=100000,.debug_print_type=DBP_AllCommands
 };
 bool fgets_change(char* str,int buffer_len);
 bool write_to_config(const Config config);
@@ -35,7 +35,7 @@ bool write_to_default_file(const char* path);
 void get_pixel_color(Display* d, int x, int y, XColor* color);
 ProgramStatus parse_file(const char* path, xdo_t* xdo_obj, Config config, bool and_run);
 void timespec_diff(const struct timespec* ts_begin,struct timespec* ts_end_clone,struct timespec* ts_diff);
-bool run_program(command_array_t* cmd_arr, const char* file_str, Config config, xdo_t* xdo_obj);
+bool run_program(command_array_t* cmd_arr, const char* file_str, Config config, xdo_t* xdo_obj, VariableLoader_t* vl);
 bool test_mouse_func(void* xdo_v){
     int x_mouse,y_mouse;
     XColor pc;
@@ -300,11 +300,11 @@ ProgramStatus parse_file(const char* path, xdo_t* xdo_obj, Config config, bool a
         if(mb->token_i>mb->str_size) break;
     }
     if(!mb->parse_error){
-        if(config.debug_print_type==DBP_AllCommands) command_array_print(cmd_arr); //Always print if no read errors after processing all commands.
+        if(config.debug_print_type==DBP_AllCommands) command_array_print(cmd_arr,mb->vl); //Always print if no read errors after processing all commands.
         macro_buffer_str_id_check(mb);
     }
     if(!mb->parse_error&&and_run){
-        bool run_success=run_program(cmd_arr,cmd_output,config,xdo_obj);
+        bool run_success=run_program(cmd_arr,cmd_output,config,xdo_obj,mb->vl);
         if(!run_success){
             macro_buffer_free(mb);
             command_array_free(cmd_arr);
@@ -364,8 +364,8 @@ int* cmd_i_stack=0;
 int cmd_i_size=0;
 void store_cmd_index(int i){
     cmd_i_size++;
-    if(cmd_i_stack) cmd_i_stack=(int*)realloc(cmd_i_stack,sizeof(int)*cmd_i_size);
-    else cmd_i_stack=(int*)malloc(sizeof(int));
+    if(cmd_i_stack) cmd_i_stack=realloc(cmd_i_stack,sizeof(int)*cmd_i_size);
+    else cmd_i_stack=malloc(sizeof(int));
     EXIT_IF_NULL(cmd_i_stack,int);
     cmd_i_stack[cmd_i_size-1]=i;
 }
@@ -373,7 +373,7 @@ bool pop_cmd_index(int* cmd_i){
     if(cmd_i_stack){
         int popped_cmd_i=cmd_i_stack[--cmd_i_size];
         if(cmd_i_size){
-            cmd_i_stack=(int*)realloc(cmd_i_stack,sizeof(int)*cmd_i_size);
+            cmd_i_stack=realloc(cmd_i_stack,sizeof(int)*cmd_i_size);
             EXIT_IF_NULL(cmd_i_stack,int);
         }else{
             free(cmd_i_stack);
@@ -408,7 +408,7 @@ bool _boolean_edit_func(void* b_v){
     *(((_boolean_edit_t*)b_v)->p)=((_boolean_edit_t*)b_v)->v;
     return false;
 }
-bool run_program(command_array_t* cmd_arr, const char* file_str, Config config, xdo_t* xdo_obj){
+bool run_program(command_array_t* cmd_arr, const char* file_str, Config config, xdo_t* xdo_obj, VariableLoader_t* vl){
     puts("Press s to execute the macro. Press c to cancel.");
     {
         bool start_program;
@@ -450,11 +450,11 @@ bool run_program(command_array_t* cmd_arr, const char* file_str, Config config, 
     struct timespec ts_begin,ts_diff,ts_usleep_before,ts_usleep_before_adj;
     timespec_get(&ts_begin,TIME_UTC);
     pthread_mutex_lock(&input_mutex);
-    bool query_is_true,not_empty,no_error=true;
+    bool query_is_true,not_empty,vlsuccess,no_error=true;
     typedef long nano_sec;
     nano_sec time_after_last_usleep;
     nano_sec real_delay=0;//Adjust delay depending on time after commands and after sleeping.
-    delay_ns_t adj_usleep;
+    delay_ns_t adj_usleep,delay_ns=0;
     XColor pc;
     int x_mouse,y_mouse,x_mouse_store=0,y_mouse_store=0;
     char LastKey[LAST_CMD_BUFFER_LEN+1]={0},LastJump[LAST_CMD_BUFFER_LEN+1]={0},LastRepeat[LAST_CMD_BUFFER_LEN+1]={0},LastQuery[LAST_CMD_BUFFER_LEN+1]={0};
@@ -546,9 +546,13 @@ bool run_program(command_array_t* cmd_arr, const char* file_str, Config config, 
             case CMD_Delay://Using timespec_get and timespec_diff (custom function) to try to get "precise delays"
                 timespec_diff(&ts_usleep_before,&ts_usleep_before_adj,&ts_diff);
                 time_after_last_usleep=ts_diff.tv_sec*NSEC_TO_SEC+ts_diff.tv_nsec;
-                real_delay+=cmd_u.delay*1000-time_after_last_usleep;
+                vlsuccess=ProcessVLCallback(vl,cmd_u.delay,&delay_ns);
+                if(!vlsuccess){
+                    //TODO
+                }
+                real_delay+=delay_ns*1000-time_after_last_usleep;
                 adj_usleep=real_delay>0?((delay_ns_t)(real_delay/1000+(real_delay%1000>499?1:0))):0u;//0 and rounded nanoseconds.
-                cmdprintf("Sleeping for %ld microseconds (Adjusted to %ld due to commands) \n",cmd_u.delay,adj_usleep);
+                cmdprintf("Sleeping for %ld microseconds (Adjusted to %ld due to commands) \n",delay_ns,adj_usleep);
                 {
                     int seconds=adj_usleep/MICSEC_TO_SEC;//Split into seconds so that it doesn't sleep when mouse moved over large seconds.
                     int left_over=adj_usleep%MICSEC_TO_SEC;
@@ -698,14 +702,34 @@ bool run_program(command_array_t* cmd_arr, const char* file_str, Config config, 
                 PrintLastCommand(LastQuery);
                 break;
             case CMD_QueryCoordsWithin:
-                ;const coords_within_t coords_within=cmd_u.coords_within;
-                cmdprintf("Don't skip next command if mouse is within Top Left x:%d y:%d Bottom Right x:%d y:%d. ",coords_within.xl,coords_within.yl,coords_within.xh,coords_within.yh);
-                pthread_mutex_lock(&input_mutex);
-                xdo_get_mouse_location(xdo_obj,&x_mouse,&y_mouse,0);
-                pthread_mutex_unlock(&input_mutex);
-                query_is_true=x_mouse>=coords_within.xl&&x_mouse<=coords_within.xh&&y_mouse>=coords_within.yl&&y_mouse<=coords_within.yh;
-                cmdprintf("It is %s within the box.\n",query_is_true?"":"not");
-                PrintLastCommand(LastQuery);
+                {
+                    const coords_within_t coords_within=cmd_u.coords_within;
+                    cmdprintf("Don't skip next command if mouse is within Top Left x:%d y:%d Bottom Right x:%d y:%d. ",coords_within.xl,coords_within.yl,coords_within.xh,coords_within.yh);
+                    pthread_mutex_lock(&input_mutex);
+                    xdo_get_mouse_location(xdo_obj,&x_mouse,&y_mouse,0);
+                    pthread_mutex_unlock(&input_mutex);
+                    query_is_true=x_mouse>=coords_within.xl&&x_mouse<=coords_within.xh&&y_mouse>=coords_within.yl&&y_mouse<=coords_within.yh;
+                    cmdprintf("It is %s within the box.\n",query_is_true?"":"not");
+                    PrintLastCommand(LastQuery);
+                }
+                break;
+            case CMD_InitVar:
+                {
+                    const vlcallback_t* vlc=VL_get_callback(vl,cmd_u.init_var.vlci);
+                    cmdprintf("Initializing variable string name '%s' of type %s of value ",vlc->args.variable,VLCallbackSubtypeStr(vlc->subtype));
+                    if(config.debug_print_type==DBP_AllCommands||this_cmd.print_cmd){
+                        if(vlc->subtype==VLCallbackST_Long) printf("%ld.\n",cmd_u.init_var.LorD.l);
+                        else printf("%lf.\n",cmd_u.init_var.LorD.d);
+                    }
+                    vlsuccess=ProcessVLCallback(vl,cmd_u.init_var.vlci,vlc->subtype==VLCallbackST_Long?(void*)&cmd_u.init_var.LorD.l:(void*)&cmd_u.init_var.LorD.d);
+                    if(!vlsuccess){
+                        printf("Variable '%s' has already been initialized. Exiting program.\n",vlc->args.variable);
+                        pthread_mutex_lock(&input_mutex);
+                        srs.program_done=true;
+                        no_error=false;
+                        pthread_mutex_unlock(&input_mutex);
+                    }
+                }
                 break;
         }
         pthread_mutex_lock(&input_mutex);

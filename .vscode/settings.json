@@ -85,7 +85,9 @@
         "hash_map.h": "c",
         "macros.h": "c",
         "limits.h": "c",
-        "hash_map_impl2.h": "c"
+        "hash_map_impl2.h": "c",
+        "deque": "c",
+        "unordered_set": "c"
     },
     //"editor.autoClosingBrackets": "never",
     //"editor.autoClosingDelete": "never",

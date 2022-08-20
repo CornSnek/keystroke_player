@@ -2,12 +2,13 @@
 #define _PARSER_H_
 #include "shared_string.h"
 #include "macros.h"
+#include "variable_loader.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdbool.h>
 //Sringifying enums separately. Add e(number) and #e(number) for a new enum and string.
-#define __STR_READ_ENUMS(e1,e2,e3,e4,e5,e6,e7,e8,e9,e10,e11,e12,e13,e14,e15,e16,e17,e18,e19,ecount)\
-#e1,#e2,#e3,#e4,#e5,#e6,#e7,#e8,#e9,#e10,#e11,#e12,#e13,#e14,#e15,#e16,#e17,#e18,#e19
+#define __STR_READ_ENUMS(e1,e2,e3,e4,e5,e6,e7,e8,e9,e10,e11,e12,e13,e14,e15,e16,e17,e18,e19,e20,e21,e22,ecount)\
+#e1,#e2,#e3,#e4,#e5,#e6,#e7,#e8,#e9,#e10,#e11,#e12,#e13,#e14,#e15,#e16,#e17,#e18,#e19,#e20,#e21,#e22
 //For .h file.
 #define __ReadStateWithStringDec(...) typedef enum _ReadState{__VA_ARGS__}ReadState;\
 extern const char* ReadStateStrings[RS_Count];
@@ -34,6 +35,9 @@ extern const char* ReadStateStrings[RS_Count];
     RS_QueryCoordsType,\
     RS_QueryCoordsVar,\
     RS_QueryCoordsWithin,\
+    RS_InitVarType,\
+    RS_InitVarName,\
+    RS_InitVarValue,\
     RS_Count
 __ReadStateWithStringDec(__ReadStateEnums)
 typedef enum _InputState{
@@ -49,6 +53,7 @@ typedef struct macro_buffer_s{
     command_array_t* cmd_arr;
     repeat_id_manager_t* rim;
     jump_id_manager_t* jim;
+    VariableLoader_t* vl;
     bool parse_error;
 }macro_buffer_t;
 typedef struct keystroke_s{
@@ -116,9 +121,14 @@ typedef struct compare_coords_s{
 typedef struct coords_within_s{
     int xl,yl,xh,yh;
 }coords_within_t;
+typedef struct init_var_s{
+    vlcallback_info vlci;
+    LD_u LorD;
+}init_var_t;
 typedef union command_union{
     keystroke_t ks;
-    delay_ns_t delay;
+    vlcallback_info delay;
+    init_var_t init_var;
     repeat_start_t repeat_start;
     repeat_end_t repeat_end;
     mouse_click_t mouse_click;
@@ -146,12 +156,14 @@ typedef enum _CommandType{
     CMD_LoadMouseCoords,
     CMD_QueryComparePixel,
     CMD_QueryCompareCoords,
-    CMD_QueryCoordsWithin
+    CMD_QueryCoordsWithin,
+    CMD_InitVar
 }CommandType;
 typedef enum _CommandSubType{
     CMDST_Command,
     CMDST_Jump,
-    CMDST_Query
+    CMDST_Query,
+    CMDST_Var
 }CommandSubType;
 typedef struct command_s{//Aggregating like for SDL events (enums and unions).
     CommandType type;
@@ -184,6 +196,6 @@ void jump_id_manager_free(jump_id_manager_t* this);
 command_array_t* command_array_new(void);
 void command_array_add(command_array_t* this, command_t cmd);
 int command_array_count(const command_array_t* this);
-void command_array_print(const command_array_t* this);
+void command_array_print(const command_array_t* this,const VariableLoader_t* vl);
 void command_array_free(command_array_t* this);
 #endif

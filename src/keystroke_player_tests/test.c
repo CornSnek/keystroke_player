@@ -9,7 +9,7 @@ ssize_t getrandom(void *buf, size_t buflen, unsigned int flags);
 START_TEST(parse_from_string){
     puts("Starting Test parse_from_string");
     char a_string_stack[]="(A;Ctrl+Alt+Delete=d;m1=u;.30;)A;";
-    char* a_string_heap=(char*)malloc(sizeof(a_string_stack)/sizeof(char));
+    char* a_string_heap=malloc(sizeof(a_string_stack)/sizeof(char));
     strcpy(a_string_heap,a_string_stack);
     command_array_t* cmd_arr=command_array_new();
     macro_buffer_t* mb=macro_buffer_new(a_string_heap,cmd_arr);
@@ -17,7 +17,7 @@ START_TEST(parse_from_string){
         if(mb->token_i>mb->str_size) break;
     }
     printf("%d\n",mb->parse_error);
-    command_array_print(cmd_arr);
+    command_array_print(cmd_arr,mb->vl);
     macro_buffer_free(mb);
     command_array_free(cmd_arr);
 }
@@ -29,7 +29,7 @@ START_TEST(repeat_id_search_str_test){
     const int string_size=6;
     const char* str0="AAA",* str1="BB",* str2="DDDD";
     char** string_heaps=(char**)malloc(sizeof(char*)*num_of_strings);
-    for(int i=0;i<num_of_strings;i++) string_heaps[i]=(char*)calloc(string_size,sizeof(char));
+    for(int i=0;i<num_of_strings;i++) string_heaps[i]=calloc(string_size,sizeof(char));
     strcpy(string_heaps[0],str0);
     strcpy(string_heaps[1],str1);
     strcpy(string_heaps[2],str2);
@@ -47,7 +47,7 @@ START_TEST(shared_string_test){
     shared_string_manager_t* ssm=SSManager_new();
     const char* str0="AAA",* str1="BBB",* str2="AAA";
     char** string_heaps=(char**)malloc(sizeof(char*)*3);
-    for(int i=0;i<3;i++) string_heaps[i]=(char*)calloc(4,sizeof(char));
+    for(int i=0;i<3;i++) string_heaps[i]=calloc(4,sizeof(char));
     strcpy(string_heaps[0],str0); strcpy(string_heaps[1],str1); strcpy(string_heaps[2],str2);
     SSManager_add_string(ssm,&string_heaps[0]); SSManager_add_string(ssm,&string_heaps[1]); SSManager_add_string(ssm,&string_heaps[2]);
     for(int i=0;i<3;i++) printf("%lx\n",(uintptr_t)string_heaps[i]);
@@ -71,8 +71,8 @@ START_TEST(shared_string_test){
     free(string_heaps);
     SSManager_free(ssm);
     char a_string_stack[]="Replacing the word, word, with another word";
-    char* a_string_heap=(char*)malloc(sizeof(a_string_stack)/sizeof(char));
-    char* a_string_heap2=(char*)malloc(sizeof(a_string_stack)/sizeof(char));
+    char* a_string_heap=malloc(sizeof(a_string_stack)/sizeof(char));
+    char* a_string_heap2=malloc(sizeof(a_string_stack)/sizeof(char));
     strcpy(a_string_heap,a_string_stack);
     strcpy(a_string_heap2,a_string_stack);
     printf("%s\n",a_string_heap);
@@ -244,7 +244,7 @@ START_TEST(replace_test){
     };
     const size_t WordList_len=sizeof(WordList)/sizeof(replace_node_t);
     const char* dummy_str="abcdef abcde ab acb abc abf abcd acbde abcdef babcde";
-    char* dummy_str_heap=(char*)malloc(sizeof(char)*(strlen(dummy_str)+1));//This will be changed.
+    char* dummy_str_heap=malloc(sizeof(char)*(strlen(dummy_str)+1));//This will be changed.
     EXIT_IF_NULL(dummy_str_heap,char*);
     strcpy(dummy_str_heap,dummy_str);
     printf("%s\n",dummy_str_heap);
@@ -380,30 +380,32 @@ END_TEST
 START_TEST(variable_loader_test){
     VariableLoader_t* vl=VL_new(20);
     char* a_string="abcde",* string_no_exist="defg";
-    vlcallback_info vlc_add[4]={
+    vlcallback_info vlc_add[5]={
         VL_new_callback_add_as_l(vl,str_dup(a_string)),
         VL_new_callback_add_as_d(vl,str_dup(a_string)),
         VL_new_callback_rewrite_as_d(vl,str_dup(a_string)),
         VL_new_callback_rewrite_as_l(vl,str_dup(string_no_exist))
     };
-    ck_assert_int_eq(ProcessVLCallback(vl,&(long){100},vlc_add[0]),1);
-    ck_assert_int_eq(ProcessVLCallback(vl,&(double){200},vlc_add[1]),0);
-    ck_assert_int_eq(ProcessVLCallback(vl,&(double){69},vlc_add[2]),1);
-    ck_assert_int_eq(ProcessVLCallback(vl,&(long){70},vlc_add[3]),0);
-    vlcallback_info vlc[3];
+    ck_assert_int_eq(ProcessVLCallback(vl,vlc_add[0],&(long){123}),1);
+    ck_assert_int_eq(ProcessVLCallback(vl,vlc_add[1],&(double){200}),0);
+    ck_assert_int_eq(ProcessVLCallback(vl,vlc_add[2],&(double){69}),1);
+    ck_assert_int_eq(ProcessVLCallback(vl,vlc_add[3],&(long){70}),0);
+    vlcallback_info vlc[4];
     vlc[0]=VL_new_callback_vdouble(vl,str_dup(a_string));
-    vlc[1]=VL_new_callback_long(vl,100);
+    vlc[1]=VL_new_callback_long(vl,80085);
     vlc[2]=VL_new_callback_vlong(vl,str_dup(string_no_exist));
-    printf("%d %d %d\n",vlc[0].i,vlc[1].i,vlc[2].i);
+    vlc[3]=VL_new_callback_double(vl,420.69);
     long lnum;
-    double fnum;
-    ck_assert_int_eq(ProcessVLCallback(vl,&fnum,vlc[0]),1);
-    printf("%lf 0x%016lx\n",fnum,(LD_u){.d=fnum}.l);
-    ck_assert_int_eq(ProcessVLCallback(vl,&lnum,vlc[1]),1);
+    double dnum;
+    ck_assert_int_eq(ProcessVLCallback(vl,vlc[0],&dnum),1);
+    printf("%.50lf 0x%016lx\n",dnum,(LD_u){.d=dnum}.l);
+    ck_assert_int_eq(ProcessVLCallback(vl,vlc[1],&lnum),1);
     printf("%ld\n",lnum);
-    ck_assert_int_eq(ProcessVLCallback(vl,&lnum,vlc[2]),0);
+    ck_assert_int_eq(ProcessVLCallback(vl,vlc[2],&lnum),0);
+    ck_assert_int_eq(ProcessVLCallback(vl,vlc[3],&dnum),1);
+    printf("%.50lf 0x%016lx\n",dnum,(LD_u){.d=dnum}.l);
     SSManager_print_strings(vl->ssm);
-    VariableLoader_free(vl);
+    VL_free(vl);
 }
 END_TEST
 Suite* test_suite(void){
