@@ -1,5 +1,5 @@
 #!/bin/make
-#Use ./make.sh or "source tasks.conf" to set the proper variables as defined in the project's build.conf.
+#Use ./make.sh to set the proper variables as defined in the project's build.conf.
 ifeq ($(used_make_sh),)
 $(error Use make.sh and a project's build.conf to set the proper variables for this makefile to work properly)
 endif
@@ -45,12 +45,12 @@ all: $(build_objs) $(build_share_objs)
 #For the recipes below, @echo used to print out the "(RE)BUILDING [obj file]" and the "build object file command" simultaneously even when -j(number) is used.
 $(main_build_d)/shared_src/%.o: shared_src/%.$(prefix) $(src_headers_all_files) $(main_src_d)/build.conf#Rebuild if any of these files or the *.$(prefix) file have been edited.
 	@echo -e "\033[1;34m--------------------(RE)BUILDING SHARED [$@]-------------------\033[0m\n\
-	$(strip $(compiler) -c $(patsubst $(main_build_d)/%.o,%.$(prefix),$@) $(all_headers_d) -o $@ $(compiler_flags))"
-	@$(strip $(compiler) -c $(patsubst $(main_build_d)/%.o,%.$(prefix),$@) $(all_headers_d) -o $@ $(compiler_flags))
+	$(strip $(compiler) -c $(patsubst $(main_build_d)/%.o,%.$(prefix),$@) $(all_headers_d) $(inc_dirs) -o $@ $(compiler_flags))"
+	@$(strip $(compiler) -c $(patsubst $(main_build_d)/%.o,%.$(prefix),$@) $(all_headers_d) $(inc_dirs) -o $@ $(compiler_flags))
 $(main_build_d)/%.o: $(main_src_d)/%.$(prefix) $(src_headers_all_files) $(main_src_d)/build.conf
 	@echo -e "\033[1;34m--------------------(RE)BUILDING [$@]-------------------\033[0m\n\
-	$(strip $(compiler) -c $(patsubst $(main_build_d)/%.o,$(main_src_d)/%.$(prefix),$@) $(all_headers_d) -o $@ $(compiler_flags))"
-	@$(strip $(compiler) -c $(patsubst $(main_build_d)/%.o,$(main_src_d)/%.$(prefix),$@) $(all_headers_d) -o $@ $(compiler_flags))
+	$(strip $(compiler) -c $(patsubst $(main_build_d)/%.o,$(main_src_d)/%.$(prefix),$@) $(all_headers_d) $(inc_dirs) -o $@ $(compiler_flags))"
+	@$(strip $(compiler) -c $(patsubst $(main_build_d)/%.o,$(main_src_d)/%.$(prefix),$@) $(all_headers_d) $(inc_dirs) -o $@ $(compiler_flags))
 run:#cd to $(main_bin_d) to fix filepaths when running with make.
 	@echo -e "\033[1;34m--------------------RUNNING [$(file_output)]--------------------\033[0m"
 	cd $(main_bin_d) && $(file_executable) $(binary_arguments)
