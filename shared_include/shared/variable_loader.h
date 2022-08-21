@@ -9,6 +9,9 @@
 #include "shared_string.h"
 typedef struct VariableLoader_s VariableLoader_t;
 //To store double as a long for VariableLoader_t. First, store number as (LD_u){.l=num}.d and double converts it to (LD_u){.d=double_num}.l
+typedef enum _LD_e{
+    LD_L,LD_D
+}LD_e;
 typedef union _LD_u{
     long l;
     double d;

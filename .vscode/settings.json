@@ -87,7 +87,10 @@
         "limits.h": "c",
         "hash_map_impl2.h": "c",
         "deque": "c",
-        "unordered_set": "c"
+        "unordered_set": "c",
+        "float.h": "c",
+        "rpn_evaluator.h": "c",
+        "stack_generic.h": "c"
     },
     //"editor.autoClosingBrackets": "never",
     //"editor.autoClosingDelete": "never",

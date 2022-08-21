@@ -426,7 +426,14 @@ Suite* test_suite(void){
     suite_add_tcase(s,tc_core);
     return s;
 }
+#include "rpn_evaluator.h"
 int main(void){
+    RPNEvaluatorInit();
+    VariableLoader_t* vl=VL_new(20);
+    RPNEvaluatorValidString("(ABC)",vl,RPN_EVAL_START_B,RPN_EVAL_END_B,RPN_EVAL_SEP);
+    VL_free(vl);
+    RPNEvaluatorFree();
+    return 0;
     Suite *s;
     SRunner *sr;
     s=test_suite();

@@ -665,7 +665,7 @@ int first_innermost_bracket(const char* search_str,const char* begin_bracket,con
     }
     return depth;//0 == No mismatched brackets.
 }
-//Same as above, but for outermost brackets instead. TODO: Check.
+//Same as above, but for outermost brackets instead.
 int first_outermost_bracket(const char* search_str,const char* begin_bracket,const char* end_bracket,const char** find_begin_p,const char** find_end_p){
     *find_begin_p=0;
     *find_end_p=0;
