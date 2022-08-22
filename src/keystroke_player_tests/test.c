@@ -428,12 +428,14 @@ Suite* test_suite(void){
 }
 #include "rpn_evaluator.h"
 int main(void){
+#if 0
     RPNEvaluatorInit();
     VariableLoader_t* vl=VL_new(20);
     RPNEvaluatorValidString("(ABC)",vl,RPN_EVAL_START_B,RPN_EVAL_END_B,RPN_EVAL_SEP);
     VL_free(vl);
     RPNEvaluatorFree();
     return 0;
+#endif
     Suite *s;
     SRunner *sr;
     s=test_suite();

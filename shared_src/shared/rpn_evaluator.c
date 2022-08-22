@@ -29,12 +29,12 @@ TrigDegWrap(sin) TrigDegWrap(cos) TrigDegWrap(tan)
 #include <sys/random.h>
 #include <limits.h>
 ssize_t getrandom(void *buf, size_t buflen, unsigned int flags);
-long random_l(){
+long random_l(void){
     long rand_st=0;
     do{}while(getrandom(&rand_st,sizeof(rand_st),0)==-1);
     return rand_st;
 }
-double random_d(){
+double random_d(void){
     return (double)(size_t)random_l()/ULONG_MAX;
 }
 long castas_l(double d){
@@ -44,7 +44,7 @@ double castas_d(long l){
     return (double)l;
 }
 //To make the default StringMap before calling rpn_evaluator_new.
-void RPNEvaluatorInit(){
+void RPNEvaluatorInit(void){
     if(!DefaultRPNMap){
         DefaultRPNMap=StringMap_rpn_func_call_new(100);
 #define SMA(Str,RFT,RFT_u,F) assert(StringMap_rpn_func_call_assign(DefaultRPNMap,Str,(rpn_func_call_t){.type=RFT,.func.RFT_u=F})==VA_Written)
@@ -138,7 +138,7 @@ RPNValidStringE RPNEvaluatorValidString(const char* rpn_str,VariableLoader_t* vl
     free(rpn_str_no_b);
     return RPNVS_Valid;
 }
-void RPNEvaluatorFree(){
+void RPNEvaluatorFree(void){
     StringMap_rpn_func_call_free(DefaultRPNMap);
     DefaultRPNMap=0;
 }

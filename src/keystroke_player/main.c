@@ -386,7 +386,7 @@ bool pop_cmd_index(int* cmd_i){
         return false;
     }
 }
-void empty_cmd_index(){//If macro ends while having stack.
+void empty_cmd_index(void){//If macro ends while having stack.
     free(cmd_i_stack);
     cmd_i_stack=0;
     cmd_i_size=0;
