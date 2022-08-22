@@ -1,4 +1,5 @@
 #include "variable_loader.h"
+StringMap_ImplDef(as_number_t,as_number)
 bool _VL_callback_add_as_d(VariableLoader_t* this,const char* variable,double value);
 bool _VL_callback_add_as_l(VariableLoader_t* this,const char* variable,long value);
 bool _VL_callback_rewrite_as_d(VariableLoader_t* this,const char* variable,double new_value);
@@ -33,7 +34,7 @@ bool ProcessVLCallback(VariableLoader_t* vl,vlcallback_info vlc_info,void* at_ad
 VariableLoader_t* VL_new(size_t size){
     VariableLoader_t* this=malloc(sizeof(VariableLoader_t));
     EXIT_IF_NULL(this,VariableLoader_t*);
-    *this=(VariableLoader_t){.sml=StringMap_long_new(size),.callbacks=0,.callback_size=0,.ssm=SSManager_new()};
+    *this=(VariableLoader_t){.sml=StringMap_as_number_new(size),.callbacks=0,.callback_size=0,.ssm=SSManager_new()};
     return this;
 }
 vlcallback_info _VariableLoader_add_callback(VariableLoader_t* this,vlcallback_t* vlc){
@@ -162,26 +163,30 @@ vlcallback_t* VL_get_callback(const VariableLoader_t* this,vlcallback_info vlc_i
 }
 void VL_free(VariableLoader_t* this){
     free(this->callbacks);
-    StringMap_long_free(this->sml);
+    StringMap_as_number_free(this->sml);
     SSManager_free(this->ssm);
     free(this);
 }
 //Bool is false if full hash table, or string has already been added.
 bool _VL_callback_add_as_d(VariableLoader_t* this,const char* variable,double value){
-    return _VL_callback_add_as_l(this,variable,(LD_u){.d=value}.l);
+    return StringMap_as_number_assign(this->sml,variable,(as_number_t){.d=value,.type=VLCallbackST_Double})==VA_Written;
 }
 //Bool is false if full hash table, or string has already been added.
 bool _VL_callback_add_as_l(VariableLoader_t* this,const char* variable,long value){
-    return StringMap_long_assign(this->sml,variable,value)==VA_Written;
+    return StringMap_as_number_assign(this->sml,variable,(as_number_t){.l=value,.type=VLCallbackST_Long})==VA_Written;
 }
 //Variable should already be added by VariableLoader_add_*.
 bool _VL_callback_rewrite_as_d(VariableLoader_t* this,const char* variable,double new_value){
-    return _VL_callback_rewrite_as_l(this,variable,(LD_u){.d=new_value}.l);
+    if(StringMap_as_number_read(this->sml,variable).exists){
+        StringMap_as_number_assign(this->sml,variable,(as_number_t){.d=new_value,.type=VLCallbackST_Double});
+        return true;
+    }
+    return false;
 }
 //Variable should already be added by VariableLoader_add_*.
 bool _VL_callback_rewrite_as_l(VariableLoader_t* this,const char* variable,long new_value){
-    if(StringMap_long_read(this->sml,variable).exists){
-        StringMap_long_assign(this->sml,variable,new_value);
+    if(StringMap_as_number_read(this->sml,variable).exists){
+        StringMap_as_number_assign(this->sml,variable,(as_number_t){.l=new_value,.type=VLCallbackST_Long});
         return true;
     }
     return false;
@@ -204,33 +209,33 @@ bool _VL_callback_char_func(char* at_address,char value){
     return true;
 }
 bool _VL_callback_vdouble_func(const VariableLoader_t* this,double* at_address,const char* variable){
-    const StringMapValue_long_t v=StringMap_long_read(this->sml,variable);
+    const StringMapValue_as_number_t v=StringMap_as_number_read(this->sml,variable);
     if(v.exists){
-        *at_address=(LD_u){.l=v.value}.d;
+        *at_address=v.value.d;
         return true;
     }
     return false;
 }
 bool _VL_callback_vlong_func(const VariableLoader_t* this,long* at_address,const char* variable){
-    const StringMapValue_long_t v=StringMap_long_read(this->sml,variable);
+    const StringMapValue_as_number_t v=StringMap_as_number_read(this->sml,variable);
     if(v.exists){
-        *at_address=v.value;
+        *at_address=v.value.l;
         return true;
     }
     return false;
 }
 bool _VL_callback_vint_func(const VariableLoader_t* this,int* at_address,const char* variable){
-    const StringMapValue_long_t v=StringMap_long_read(this->sml,variable);
+    const StringMapValue_as_number_t v=StringMap_as_number_read(this->sml,variable);
     if(v.exists){
-        *at_address=(int)v.value;
+        *at_address=(int)v.value.l;
         return true;
     }
     return false;
 }
 bool _VL_callback_vchar_func(const VariableLoader_t* this,char* at_address,const char* variable){
-    const StringMapValue_long_t v=StringMap_long_read(this->sml,variable);
+    const StringMapValue_as_number_t v=StringMap_as_number_read(this->sml,variable);
     if(v.exists){
-        *at_address=(char)v.value;
+        *at_address=(char)v.value.l;
         return true;
     }
     return false;

@@ -17,7 +17,6 @@ StackV_##TypeName##_t Stack_##TypeName##_pop(Stack_##TypeName##_t* this);\
 StackV_##TypeName##_t Stack_##TypeName##_peek(Stack_##TypeName##_t* this);\
 void Stack_##TypeName##_free(Stack_##TypeName##_t* this);\
 void Stack_##TypeName##_empty(Stack_##TypeName##_t* this);
-Stack_ImplDecl(int,TypeName)
 #define Stack_ImplDef(StackType,TypeName)\
 Stack_##TypeName##_t* Stack_##TypeName##_new(void){\
     Stack_##TypeName##_t* this=calloc(1,sizeof(Stack_##TypeName##_t));\
@@ -110,5 +109,4 @@ void Stack_TypeName_free(Stack_TypeName_t* this){
     free(this);
 }
 #endif
-Stack_ImplDef(int,TypeName)
 #endif

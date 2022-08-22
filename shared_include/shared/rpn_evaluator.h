@@ -5,13 +5,14 @@
 #include <stdlib.h>
 #include <math.h>
 #include <float.h>
+#include <string.h>
 #include "macros.h"
 #include "variable_loader.h"
 #include "shared_string.h"
-typedef struct rpn_numvar_s{
-    LD_e type;
-    LD_u LD;
-}rpn_numvar_t;
+#include "generics/stack_generic.h"
+#include "generics/hash_map.h"
+Stack_ImplDecl(as_number_t,as_number)
+typedef void (*rpn_null)(void);
 typedef long (*rpn_long_f_noarg)();
 typedef long (*rpn_long_f_1long)(long);
 typedef long (*rpn_long_f_2long)(long,long);
@@ -23,6 +24,7 @@ typedef bool (*rpn_cmp_d)(double,double);
 typedef long (*rpn_castas_l)(double);
 typedef double (*rpn_castas_d)(long);
 typedef enum _RPNFuncType{
+    RPNFT_Null,
     RPNFT_Long_F_1Long,
     RPNFT_Long_F_2Long,
     RPNFT_Double_F_1Double,
@@ -35,6 +37,7 @@ typedef enum _RPNFuncType{
     RPNFT_CastAsD
 }RPNFuncType;
 typedef union _rpn_function_u{
+    rpn_null rpn_null;
     rpn_long_f_1long rpn_long_f_1long;
     rpn_long_f_2long rpn_long_f_2long;
     rpn_double_f_1double rpn_double_f_1double;
@@ -50,10 +53,10 @@ typedef struct rpn_func_call_s{
     RPNFuncType type;
     rpn_function_u func;
 }rpn_func_call_t;
-#include "generics/hash_map.h"
 StringMap_ImplDecl(rpn_func_call_t,rpn_func_call)
+Stack_ImplDecl(rpn_func_call_t,rpn_func_call)
 void RPNEvaluatorInit();
-bool _RPNEvaluatorNameUsed(const char* variable);
+bool _RPNEvaluatorNameCollision(const char* variable);
 typedef enum _RPNValidStringE{
     RPNVS_Valid,RPNVS_ImproperBrackets
 }RPNValidStringE;

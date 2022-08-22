@@ -1,11 +1,5 @@
 #ifndef _VARIABLE_LOADER_H_
 #define _VARIABLE_LOADER_H_
-//Because test and normal binary conflicts with intellisense. 2 is the test binary.
-#ifdef __KEYSTROKE_PLAYER__
-    #include "hash_map_impl.h"
-#elif __KEYSTROKE_PLAYER_TESTS__
-    #include "hash_map_impl2.h"
-#endif
 #include "shared_string.h"
 typedef struct VariableLoader_s VariableLoader_t;
 //To store double as a long for VariableLoader_t. First, store number as (LD_u){.l=num}.d and double converts it to (LD_u){.d=double_num}.l
@@ -80,8 +74,19 @@ typedef struct vlcallback_info_s{
 }vlcallback_info;
 bool ProcessVLCallback(VariableLoader_t* vl,vlcallback_info vlc_info,void* at_address);
 vlcallback_t* VL_get_callback(const VariableLoader_t* this,vlcallback_info vlc_info);
+typedef struct as_number_s{
+    union{
+        char c;
+        int i;
+        long l;
+        double d;
+    };
+    VLCallbackSubtype type;
+}as_number_t;
+#include <generics/hash_map.h>
+StringMap_ImplDecl(as_number_t,as_number)
 typedef struct VariableLoader_s{//Class that contains callbacks to load/save variables to a string using ProcessVLCallback.
-    StringMap_long_t* sml;
+    StringMap_as_number_t* sml;
     vlcallback_t* callbacks;
     int callback_size;
     shared_string_manager_t* ssm;

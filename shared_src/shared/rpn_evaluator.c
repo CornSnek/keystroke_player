@@ -1,5 +1,7 @@
 #include "rpn_evaluator.h"
 StringMap_ImplDef(rpn_func_call_t,rpn_func_call)
+Stack_ImplDef(as_number_t,as_number)
+Stack_ImplDef(rpn_func_call_t,rpn_func_call)
 StringMap_rpn_func_call_t* DefaultRPNMap=0;
 #define BinOps(Type,Type_suf,f_name,o) Type RPN_##Type_suf##_##f_name(Type a,Type b){return a o b;}
 #define BinCmp(Type,Type_suf,f_name,o) bool RPN_##Type_suf##_##f_name(Type a,Type b){return a o b;}
@@ -43,11 +45,15 @@ long castas_l(double d){
 double castas_d(long l){
     return (double)l;
 }
+void rpn_f_null(void){}
 //To make the default StringMap before calling rpn_evaluator_new.
 void RPNEvaluatorInit(void){
     if(!DefaultRPNMap){
         DefaultRPNMap=StringMap_rpn_func_call_new(100);
 #define SMA(Str,RFT,RFT_u,F) assert(StringMap_rpn_func_call_assign(DefaultRPNMap,Str,(rpn_func_call_t){.type=RFT,.func.RFT_u=F})==VA_Written)
+        SMA("abs",RPNFT_Null,rpn_null,rpn_f_null);//To check "Existance of alpha-numeric keys." The other keys not needed.
+        SMA("max",RPNFT_Null,rpn_null,rpn_f_null);
+        SMA("min",RPNFT_Null,rpn_null,rpn_f_null);
         SMA("l+",RPNFT_Long_F_2Long,rpn_long_f_2long,RPN_l_add);
         SMA("l++",RPNFT_Long_F_1Long,rpn_long_f_1long,RPN_l_inc);
         SMA("l-",RPNFT_Long_F_2Long,rpn_long_f_2long,RPN_l_sub);
@@ -124,7 +130,7 @@ if(!DefaultRPNMap){\
 #define RPNEvaluatorInitCalledFirst() (void)0
 #endif
 //To prevent name collisions from functions and variables.
-bool _RPNEvaluatorNameUsed(const char* variable){
+bool _RPNEvaluatorNameCollision(const char* variable){
     RPNEvaluatorInitCalledFirst();
     return StringMap_rpn_func_call_read(DefaultRPNMap,variable).exists;
 }
@@ -134,7 +140,29 @@ RPNValidStringE RPNEvaluatorValidString(const char* rpn_str,VariableLoader_t* vl
     int depth=first_outermost_bracket(rpn_str,rpn_start_b,rpn_end_b,&start_p,&end_p);
     if(!start_p||depth) return RPNVS_ImproperBrackets;
     char* rpn_str_no_b=char_string_slice_no_brackets(start_p,end_p,rpn_start_b);
-    //TODO Stack for functions/variables.
+    Stack_as_number_t* stack_an=Stack_as_number_new();
+    Stack_rpn_func_call_t* stack_rpn_fc=Stack_rpn_func_call_new();
+    const char* token_b_p=rpn_str_no_b,* token_e_p=rpn_str_no_b;
+    bool is_var,is_func;
+    while(true){
+        token_e_p=strchr(token_b_p,rpn_sep);
+        char* new_token;
+        if(token_e_p){
+            new_token=char_string_slice(token_b_p,token_e_p-1);
+            printf("%s\n",new_token);
+            free(new_token);
+            token_b_p=token_e_p+1;//Next token in strchr.
+            continue;
+        }//Token_b_p has the last token that is null-terminated.
+        new_token=malloc(sizeof(char)*(strlen(token_b_p)+1));
+        EXIT_IF_NULL(new_token,char*);
+        strcpy(new_token,token_b_p);
+        printf("%s\n",new_token);
+        free(new_token);
+        break;
+    }
+    Stack_as_number_free(stack_an);
+    Stack_rpn_func_call_free(stack_rpn_fc);
     free(rpn_str_no_b);
     return RPNVS_Valid;
 }
