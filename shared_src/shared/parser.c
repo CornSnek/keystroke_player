@@ -1180,7 +1180,7 @@ void command_array_print(const command_array_t* this,const VariableLoader_t* vl)
             case CMD_InitVar:
                 {
                     const vlcallback_t* vlc=VL_get_callback(vl,cmd.init_var.vlci);
-                    printf("InitVar Name: '%s' Type: '%s'\n",vlc->args.variable,VLCallbackSubtypeStr(vlc->subtype));
+                    printf("InitVar Name: '%s' Type: '%s'\n",vlc->args.variable,VLNumberTypeStr(vlc->number_type));
                 }
                 break;
         }

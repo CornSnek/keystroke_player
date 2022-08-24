@@ -30,10 +30,10 @@ typedef struct StringMap_##VName##_s{\
     char** keys;\
     ValueType* map_values;\
 }StringMap_##VName##_t;\
-typedef struct StringMapValue_##VName##_s{\
+typedef struct StringMapOpt_##VName##_s{\
     bool exists;\
     ValueType value;\
-}StringMapValue_##VName##_t;\
+}StringMapOpt_##VName##_t;\
 static inline hash_t StringMap_##VName##_Mod(const StringMap_##VName##_t* this,hash_t num){\
     return num%(this->MaxSize);\
 }\
@@ -45,10 +45,10 @@ ValueAssignE StringMap_##VName##_assign(StringMap_##VName##_t* this,const char* 
 ValueAssignE StringMap_##VName##_assign_own(StringMap_##VName##_t* this,char* key,ValueType map_value);\
 bool StringMap_##VName##_erase(StringMap_##VName##_t* this,const char* key);\
 bool StringMap_##VName##_erase_own(StringMap_##VName##_t* this,char* key);\
-StringMapValue_##VName##_t StringMap_##VName##_read(const StringMap_##VName##_t* this,const char* key);\
-StringMapValue_##VName##_t StringMap_##VName##_read_own(const StringMap_##VName##_t* this,char* key);\
-StringMapValue_##VName##_t StringMap_##VName##_pop(StringMap_##VName##_t* this,const char* key);\
-StringMapValue_##VName##_t StringMap_##VName##_pop_own(StringMap_##VName##_t* this,char* key);\
+StringMapOpt_##VName##_t StringMap_##VName##_read(const StringMap_##VName##_t* this,const char* key);\
+StringMapOpt_##VName##_t StringMap_##VName##_read_own(const StringMap_##VName##_t* this,char* key);\
+StringMapOpt_##VName##_t StringMap_##VName##_pop(StringMap_##VName##_t* this,const char* key);\
+StringMapOpt_##VName##_t StringMap_##VName##_pop_own(StringMap_##VName##_t* this,char* key);\
 void StringMap_##VName##_print(const StringMap_##VName##_t* this);\
 void StringMap_##VName##_print_debug(const StringMap_##VName##_t* this);\
 void StringMap_##VName##_free(StringMap_##VName##_t* this);\
@@ -62,10 +62,10 @@ typedef struct IntLongMap_##VName##_s{\
     bool* key_exists;\
     ValueType* map_values;\
 }IntLongMap_##VName##_t;\
-typedef struct IntLongMapValue_##VName##_s{\
+typedef struct IntLongMapOpt_##VName##_s{\
     bool exists;\
     ValueType value;\
-}IntLongMapValue_##VName##_t;\
+}IntLongMapOpt_##VName##_t;\
 static inline hash_t IntLongMap_##VName##_Mod(const IntLongMap_##VName##_t* this,hash_t num){\
     return num%(this->MaxSize);\
 }\
@@ -75,8 +75,8 @@ static inline hash_t IntLongMap_##VName##_SubMod(const IntLongMap_##VName##_t* t
 IntLongMap_##VName##_t* IntLongMap_##VName##_new(size_t size);\
 ValueAssignE IntLongMap_##VName##_assign(IntLongMap_##VName##_t* this,long key,ValueType map_value);\
 bool IntLongMap_##VName##_erase(IntLongMap_##VName##_t* this,long key);\
-IntLongMapValue_##VName##_t IntLongMap_##VName##_read(const IntLongMap_##VName##_t* this,long key);\
-IntLongMapValue_##VName##_t IntLongMap_##VName##_pop(IntLongMap_##VName##_t* this,long key);\
+IntLongMapOpt_##VName##_t IntLongMap_##VName##_read(const IntLongMap_##VName##_t* this,long key);\
+IntLongMapOpt_##VName##_t IntLongMap_##VName##_pop(IntLongMap_##VName##_t* this,long key);\
 void IntLongMap_##VName##_print(const IntLongMap_##VName##_t* this);\
 void IntLongMap_##VName##_print_debug(const IntLongMap_##VName##_t* this);\
 void IntLongMap_##VName##_free(IntLongMap_##VName##_t* this);\
@@ -173,28 +173,28 @@ bool StringMap_##VName##_erase(StringMap_##VName##_t* this,const char* key){\
     }\
     return false;\
 }\
-StringMapValue_##VName##_t StringMap_##VName##_read_own(const StringMap_##VName##_t* this,char* key){\
-    StringMapValue_##VName##_t smv=StringMap_##VName##_read(this,key);\
+StringMapOpt_##VName##_t StringMap_##VName##_read_own(const StringMap_##VName##_t* this,char* key){\
+    StringMapOpt_##VName##_t smv=StringMap_##VName##_read(this,key);\
     free(key);\
     return smv;\
 }\
-StringMapValue_##VName##_t StringMap_##VName##_read(const StringMap_##VName##_t* this,const char* key){/*Bool if key found.*/\
+StringMapOpt_##VName##_t StringMap_##VName##_read(const StringMap_##VName##_t* this,const char* key){/*Bool if key found.*/\
     const hash_t search_key_hash=StringMap_##VName##_Mod(this,StringMap_Hash(key));\
     for(size_t hash_i=0;hash_i<this->MaxSize;hash_i++){\
         const hash_t current_hash_read=StringMap_##VName##_Mod(this,search_key_hash+hash_i);\
         const char* next_key=this->keys[current_hash_read];\
         ValueType next_value=this->map_values[current_hash_read];\
-        if(!next_key) return (StringMapValue_##VName##_t){0}; /*Empty key. Not there.*/\
+        if(!next_key) return (StringMapOpt_##VName##_t){0}; /*Empty key. Not there.*/\
         const hash_t current_distance=StringMap_##VName##_SubMod(this,current_hash_read-search_key_hash);\
         const hash_t next_key_distance=StringMap_##VName##_SubMod(this,current_hash_read-StringMap_##VName##_Mod(this,StringMap_Hash(next_key)));\
         /*printf("Reading at hash %ld. Read key distance: %ld Next key distance: %ld\n",current_hash_read,current_distance,next_key_distance);*/\
-        if(current_distance>next_key_distance) return (StringMapValue_##VName##_t){0};/*The key's distance greater than next. Not there.*/\
-        if(!strcmp(next_key,key)){return (StringMapValue_##VName##_t){.exists=true,.value=next_value};}\
+        if(current_distance>next_key_distance) return (StringMapOpt_##VName##_t){0};/*The key's distance greater than next. Not there.*/\
+        if(!strcmp(next_key,key)){return (StringMapOpt_##VName##_t){.exists=true,.value=next_value};}\
     }\
-    return (StringMapValue_##VName##_t){0}; /*Not in entire array.*/\
+    return (StringMapOpt_##VName##_t){0}; /*Not in entire array.*/\
 }\
 /*Same as _erase and _read, but returns the value as well if it exists.*/\
-StringMapValue_##VName##_t StringMap_##VName##_pop(StringMap_##VName##_t* this,const char* key){\
+StringMapOpt_##VName##_t StringMap_##VName##_pop(StringMap_##VName##_t* this,const char* key){\
     const hash_t swap_hash_i=StringMap_##VName##_Mod(this,StringMap_Hash(key));\
     for(size_t offset_i=0;offset_i<this->MaxSize;offset_i++){\
         const hash_t assign_i=StringMap_##VName##_Mod(this,swap_hash_i+offset_i);\
@@ -203,13 +203,13 @@ StringMapValue_##VName##_t StringMap_##VName##_pop(StringMap_##VName##_t* this,c
         if(delete_str&&!strcmp(delete_str,key)){\
             _StringMap_##VName##_erase(this,assign_i);\
             this->size--;\
-            return (StringMapValue_##VName##_t){.exists=true,.value=get_value};\
+            return (StringMapOpt_##VName##_t){.exists=true,.value=get_value};\
         }\
     }\
-    return (StringMapValue_##VName##_t){0};\
+    return (StringMapOpt_##VName##_t){0};\
 }\
-StringMapValue_##VName##_t StringMap_##VName##_pop_own(StringMap_##VName##_t* this,char* key){\
-    StringMapValue_##VName##_t smv=StringMap_##VName##_pop(this,key);\
+StringMapOpt_##VName##_t StringMap_##VName##_pop_own(StringMap_##VName##_t* this,char* key){\
+    StringMapOpt_##VName##_t smv=StringMap_##VName##_pop(this,key);\
     free(key);\
     return smv;\
 }\
@@ -343,23 +343,23 @@ bool IntLongMap_##VName##_erase(IntLongMap_##VName##_t* this,long key){\
     }\
     return false;\
 }\
-IntLongMapValue_##VName##_t IntLongMap_##VName##_read(const IntLongMap_##VName##_t* this,long key){/*Bool if key found.*/\
+IntLongMapOpt_##VName##_t IntLongMap_##VName##_read(const IntLongMap_##VName##_t* this,long key){/*Bool if key found.*/\
     const hash_t search_key_hash=IntLongMap_##VName##_Mod(this,IntLongMap_Hash(key));\
     for(size_t hash_i=0;hash_i<this->MaxSize;hash_i++){\
         const hash_t current_hash_read=IntLongMap_##VName##_Mod(this,search_key_hash+hash_i);\
         const long next_key=this->keys[current_hash_read];\
         ValueType next_value=this->map_values[current_hash_read];\
-        if(!this->key_exists[current_hash_read]) return (IntLongMapValue_##VName##_t){0}; /*Empty key. Not there.*/\
+        if(!this->key_exists[current_hash_read]) return (IntLongMapOpt_##VName##_t){0}; /*Empty key. Not there.*/\
         const hash_t current_distance=IntLongMap_##VName##_SubMod(this,current_hash_read-search_key_hash);\
         const hash_t next_key_distance=IntLongMap_##VName##_SubMod(this,current_hash_read-IntLongMap_##VName##_Mod(this,IntLongMap_Hash(next_key)));\
         /*printf("Reading at hash %ld. Read key distance: %ld Next key distance: %ld\n",current_hash_read,current_distance,next_key_distance);*/\
-        if(current_distance>next_key_distance) return (IntLongMapValue_##VName##_t){0};/*The key's distance greater than next. Not there.*/\
-        if(next_key==key){return (IntLongMapValue_##VName##_t){.exists=true,.value=next_value};}\
+        if(current_distance>next_key_distance) return (IntLongMapOpt_##VName##_t){0};/*The key's distance greater than next. Not there.*/\
+        if(next_key==key){return (IntLongMapOpt_##VName##_t){.exists=true,.value=next_value};}\
     }\
-    return (IntLongMapValue_##VName##_t){0}; /*Not in entire array.*/\
+    return (IntLongMapOpt_##VName##_t){0}; /*Not in entire array.*/\
 }\
 /*Same as _erase and _read, but returns the value as well if it exists.*/\
-IntLongMapValue_##VName##_t IntLongMap_##VName##_pop(IntLongMap_##VName##_t* this,long key){\
+IntLongMapOpt_##VName##_t IntLongMap_##VName##_pop(IntLongMap_##VName##_t* this,long key){\
     const hash_t swap_hash_i=IntLongMap_##VName##_Mod(this,IntLongMap_Hash(key));\
     for(size_t offset_i=0;offset_i<this->MaxSize;offset_i++){\
         const hash_t assign_i=IntLongMap_##VName##_Mod(this,swap_hash_i+offset_i);\
@@ -368,10 +368,10 @@ IntLongMapValue_##VName##_t IntLongMap_##VName##_pop(IntLongMap_##VName##_t* thi
         if(this->key_exists[assign_i]&&delete_long==key){\
             _IntLongMap_##VName##_erase(this,assign_i);\
             this->size--;\
-            return (IntLongMapValue_##VName##_t){.exists=true,.value=get_value};\
+            return (IntLongMapOpt_##VName##_t){.exists=true,.value=get_value};\
         }\
     }\
-    return (IntLongMapValue_##VName##_t){0};\
+    return (IntLongMapOpt_##VName##_t){0};\
 }\
 void IntLongMap_##VName##_print(const IntLongMap_##VName##_t* this){\
     puts("---Keys in hash---");\

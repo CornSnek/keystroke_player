@@ -314,7 +314,7 @@ START_TEST(hash_map_test){
             else ck_assert_int_eq(StringMap_SizeT_assign(sm_st,this_key,j),VA_Full);
             ck_assert_int_eq(sm_st->size,j+1);
             for(size_t k=0;k<=j;k++){//To check each value that after inserting a string.
-                StringMapValue_SizeT_t smv_st=StringMap_SizeT_read(sm_st,str[k]);
+                StringMapOpt_SizeT_t smv_st=StringMap_SizeT_read(sm_st,str[k]);
                 ck_assert_int_eq(smv_st.exists,1);
                 ck_assert_int_eq(smv_st.value,k);
             }
@@ -327,7 +327,7 @@ START_TEST(hash_map_test){
             ck_assert_int_eq(sm_st->size,RandArrayAmount-j-1);
             for(size_t k=0;k<RandArrayAmount;k++){
                 if(key_exists[k]){
-                    StringMapValue_SizeT_t smv_st=StringMap_SizeT_read(sm_st,str[k]);
+                    StringMapOpt_SizeT_t smv_st=StringMap_SizeT_read(sm_st,str[k]);
                     ck_assert_int_eq(smv_st.exists,1);
                     ck_assert_int_eq(smv_st.value,k);
                 }else ck_assert_int_eq(StringMap_SizeT_read(sm_st,str[k]).exists,0);
@@ -346,7 +346,7 @@ START_TEST(hash_map_test){
             else ck_assert_int_eq(IntLongMap_SizeT_assign(ilm_st,this_key,j),VA_Full);
             ck_assert_int_eq(ilm_st->size,j+1);
             for(size_t k=0;k<=j;k++){//To check each value that after inserting a long int key.
-                IntLongMapValue_SizeT_t ilmv_st=IntLongMap_SizeT_read(ilm_st,RandLongIntsArray[rand_indices[0][k]]);
+                IntLongMapOpt_SizeT_t ilmv_st=IntLongMap_SizeT_read(ilm_st,RandLongIntsArray[rand_indices[0][k]]);
                 ck_assert_int_eq(ilmv_st.exists,1);
                 ck_assert_int_eq(ilmv_st.value,k);
             }
@@ -359,7 +359,7 @@ START_TEST(hash_map_test){
             ck_assert_int_eq(ilm_st->size,RandArrayAmount-j-1);
             for(size_t k=0;k<RandArrayAmount;k++){
                 if(key_exists[k]){
-                    IntLongMapValue_SizeT_t ilmv_st=IntLongMap_SizeT_read(ilm_st,long_arr[k]);
+                    IntLongMapOpt_SizeT_t ilmv_st=IntLongMap_SizeT_read(ilm_st,long_arr[k]);
                     ck_assert_int_eq(ilmv_st.exists,1);
                     ck_assert_int_eq(ilmv_st.value,k);
                 }else ck_assert_int_eq(IntLongMap_SizeT_read(ilm_st,long_arr[k]).exists,0);
@@ -430,7 +430,8 @@ Suite* test_suite(void){
 int main(void){
     RPNEvaluatorInit();
     VariableLoader_t* vl=VL_new(20);
-    RPNEvaluatorValidString("(ABC,DEF)",vl,RPN_EVAL_START_B,RPN_EVAL_END_B,RPN_EVAL_SEP);
+    RPNValidStringE status=RPNEvaluatorValidString("(10l,3,sin,+,++,10,++,as_d,+,random_d,*,round,as_l)",vl,RPN_EVAL_START_B,RPN_EVAL_END_B,RPN_EVAL_SEP);
+    printf("Status %d\n",status);
     VL_free(vl);
     RPNEvaluatorFree();
     return 0;

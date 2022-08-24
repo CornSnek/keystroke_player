@@ -716,12 +716,12 @@ bool run_program(command_array_t* cmd_arr, const char* file_str, Config config, 
             case CMD_InitVar:
                 {
                     const vlcallback_t* vlc=VL_get_callback(vl,cmd_u.init_var.vlci);
-                    cmdprintf("Initializing variable string name '%s' of type %s of value ",vlc->args.variable,VLCallbackSubtypeStr(vlc->subtype));
+                    cmdprintf("Initializing variable string name '%s' of type %s of value ",vlc->args.variable,VLNumberTypeStr(vlc->number_type));
                     if(config.debug_print_type==DBP_AllCommands||this_cmd.print_cmd){
-                        if(vlc->subtype==VLCallbackST_Long) printf("%ld.\n",cmd_u.init_var.LorD.l);
+                        if(vlc->number_type==VLNT_Long) printf("%ld.\n",cmd_u.init_var.LorD.l);
                         else printf("%lf.\n",cmd_u.init_var.LorD.d);
                     }
-                    vlsuccess=ProcessVLCallback(vl,cmd_u.init_var.vlci,vlc->subtype==VLCallbackST_Long?(void*)&cmd_u.init_var.LorD.l:(void*)&cmd_u.init_var.LorD.d);
+                    vlsuccess=ProcessVLCallback(vl,cmd_u.init_var.vlci,vlc->number_type==VLNT_Long?(void*)&cmd_u.init_var.LorD.l:(void*)&cmd_u.init_var.LorD.d);
                     if(!vlsuccess){
                         printf("Variable '%s' has already been initialized. Exiting program.\n",vlc->args.variable);
                         pthread_mutex_lock(&input_mutex);

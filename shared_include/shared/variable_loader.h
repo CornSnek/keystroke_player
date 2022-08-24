@@ -3,9 +3,6 @@
 #include "shared_string.h"
 typedef struct VariableLoader_s VariableLoader_t;
 //To store double as a long for VariableLoader_t. First, store number as (LD_u){.l=num}.d and double converts it to (LD_u){.d=double_num}.l
-typedef enum _LD_e{
-    LD_L,LD_D
-}LD_e;
 typedef union _LD_u{
     long l;
     double d;
@@ -24,16 +21,17 @@ typedef enum _VLCallbackType{
     VLCallback_RewriteAsLong,
     VLCallback_RewriteAsDouble
 }VLCallbackType;
-typedef enum _VLCallbackSubtype{
-    VLCallbackST_Char,
-    VLCallbackST_Int,
-    VLCallbackST_Long,
-    VLCallbackST_Double
-}VLCallbackSubtype;
-static inline const char* VLCallbackSubtypeStr(VLCallbackSubtype vlcst){
-    return  vlcst==VLCallbackST_Char?"char":
-            vlcst==VLCallbackST_Int?"int":
-            vlcst==VLCallbackST_Long?"long":"double";
+typedef enum _VLNumberType{
+    VLNT_Invalid,
+    VLNT_Char,//Used for indexing and to get number type. Do not touch the ordering.
+    VLNT_Int,
+    VLNT_Long,
+    VLNT_Double
+}VLNumberType;
+static inline const char* VLNumberTypeStr(VLNumberType vlnt){
+    return  vlnt==VLNT_Char?"char":
+            vlnt==VLNT_Int?"int":
+            vlnt==VLNT_Long?"long":"double";
 }
 typedef bool(*vlcallback_double_f_t)(double*,double);
 typedef bool(*vlcallback_long_f_t)(long*,long);
@@ -64,7 +62,7 @@ typedef union vlargs_union{
 }vlargs_union_t;
 typedef struct vlcallback_s{
     VLCallbackType callback_type;
-    VLCallbackSubtype subtype;
+    VLNumberType number_type;
     vlfunction_union_t func;
     vlargs_union_t args;
 }vlcallback_t;
@@ -81,12 +79,16 @@ typedef struct as_number_s{
         long l;
         double d;
     };
-    VLCallbackSubtype type;
+    VLNumberType type;
 }as_number_t;
+typedef struct as_number_opt_s{
+    bool exists;
+    as_number_t v;
+}as_number_opt_t;
 #include <generics/hash_map.h>
 StringMap_ImplDecl(as_number_t,as_number)
 typedef struct VariableLoader_s{//Class that contains callbacks to load/save variables to a string using ProcessVLCallback.
-    StringMap_as_number_t* sml;
+    StringMap_as_number_t* sman;
     vlcallback_t* callbacks;
     int callback_size;
     shared_string_manager_t* ssm;
@@ -107,5 +109,7 @@ vlcallback_info VL_new_callback_vdouble(VariableLoader_t* this,char* variable);
 vlcallback_info VL_new_callback_vlong(VariableLoader_t* this,char* variable);
 vlcallback_info VL_new_callback_vint(VariableLoader_t* this,char* variable);
 vlcallback_info VL_new_callback_vchar(VariableLoader_t* this,char* variable);
+//For RPNEvaluator
+StringMapOpt_as_number_t VL_get_as_number(const VariableLoader_t* this,const char* variable);
 void VL_free(VariableLoader_t* this);
 #endif

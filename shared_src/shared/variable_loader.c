@@ -34,7 +34,7 @@ bool ProcessVLCallback(VariableLoader_t* vl,vlcallback_info vlc_info,void* at_ad
 VariableLoader_t* VL_new(size_t size){
     VariableLoader_t* this=malloc(sizeof(VariableLoader_t));
     EXIT_IF_NULL(this,VariableLoader_t*);
-    *this=(VariableLoader_t){.sml=StringMap_as_number_new(size),.callbacks=0,.callback_size=0,.ssm=SSManager_new()};
+    *this=(VariableLoader_t){.sman=StringMap_as_number_new(size),.callbacks=0,.callback_size=0,.ssm=SSManager_new()};
     return this;
 }
 vlcallback_info _VariableLoader_add_callback(VariableLoader_t* this,vlcallback_t* vlc){
@@ -51,7 +51,7 @@ vlcallback_info VL_new_callback_add_as_l(VariableLoader_t* this,char* variable){
     SSManager_add_string(this->ssm,&variable);
     return _VariableLoader_add_callback(this,&(vlcallback_t){
         .callback_type=VLCallback_AddAsLong,
-        .subtype=VLCallbackST_Long,
+        .number_type=VLNT_Long,
         .func.as_add_as_l=_VL_callback_add_as_l,
         .args.variable=variable
     });
@@ -61,7 +61,7 @@ vlcallback_info VL_new_callback_add_as_d(VariableLoader_t* this,char* variable){
     SSManager_add_string(this->ssm,&variable);
     return _VariableLoader_add_callback(this,&(vlcallback_t){
         .callback_type=VLCallback_AddAsDouble,
-        .subtype=VLCallbackST_Double,
+        .number_type=VLNT_Double,
         .func.as_add_as_d=_VL_callback_add_as_d,
         .args.variable=variable
     });
@@ -71,7 +71,7 @@ vlcallback_info VL_new_callback_rewrite_as_l(VariableLoader_t* this,char* variab
     SSManager_add_string(this->ssm,&variable);
     return _VariableLoader_add_callback(this,&(vlcallback_t){
         .callback_type=VLCallback_RewriteAsLong,
-        .subtype=VLCallbackST_Long,
+        .number_type=VLNT_Long,
         .func.as_add_as_l=_VL_callback_rewrite_as_l,
         .args.variable=variable
     });
@@ -81,7 +81,7 @@ vlcallback_info VL_new_callback_rewrite_as_d(VariableLoader_t* this,char* variab
     SSManager_add_string(this->ssm,&variable);
     return _VariableLoader_add_callback(this,&(vlcallback_t){
         .callback_type=VLCallback_RewriteAsDouble,
-        .subtype=VLCallbackST_Double,
+        .number_type=VLNT_Double,
         .func.as_add_as_d=_VL_callback_rewrite_as_d,
         .args.variable=variable
     });
@@ -89,7 +89,7 @@ vlcallback_info VL_new_callback_rewrite_as_d(VariableLoader_t* this,char* variab
 vlcallback_info VL_new_callback_double(VariableLoader_t* this,double value){
     return _VariableLoader_add_callback(this,&(vlcallback_t){
         .callback_type=VLCallback_Double,
-        .subtype=VLCallbackST_Double,
+        .number_type=VLNT_Double,
         .func.as_double=_VL_callback_double_func,
         .args.dnumber=value
     });
@@ -97,7 +97,7 @@ vlcallback_info VL_new_callback_double(VariableLoader_t* this,double value){
 vlcallback_info VL_new_callback_long(VariableLoader_t* this,long value){
     return _VariableLoader_add_callback(this,&(vlcallback_t){
         .callback_type=VLCallback_Long,
-        .subtype=VLCallbackST_Long,
+        .number_type=VLNT_Long,
         .func.as_long=_VL_callback_long_func,
         .args.number=value
     });
@@ -105,7 +105,7 @@ vlcallback_info VL_new_callback_long(VariableLoader_t* this,long value){
 vlcallback_info VL_new_callback_int(VariableLoader_t* this,int value){
     return _VariableLoader_add_callback(this,&(vlcallback_t){
         .callback_type=VLCallback_Int,
-        .subtype=VLCallbackST_Int,
+        .number_type=VLNT_Int,
         .func.as_int=_VL_callback_int_func,
         .args.number=value
     });
@@ -113,7 +113,7 @@ vlcallback_info VL_new_callback_int(VariableLoader_t* this,int value){
 vlcallback_info VL_new_callback_char(VariableLoader_t* this,char value){
     return _VariableLoader_add_callback(this,&(vlcallback_t){
         .callback_type=VLCallback_Char,
-        .subtype=VLCallbackST_Char,
+        .number_type=VLNT_Char,
         .func.as_char=_VL_callback_char_func,
         .args.number=value
     });
@@ -123,7 +123,7 @@ vlcallback_info VL_new_callback_vdouble(VariableLoader_t* this,char* variable){
     SSManager_add_string(this->ssm,&variable);
     return _VariableLoader_add_callback(this,&(vlcallback_t){
         .callback_type=VLCallback_VDouble,
-        .subtype=VLCallbackST_Double,
+        .number_type=VLNT_Double,
         .func.as_vdouble=_VL_callback_vdouble_func,
         .args.variable=variable
     });
@@ -133,7 +133,7 @@ vlcallback_info VL_new_callback_vlong(VariableLoader_t* this,char* variable){
     SSManager_add_string(this->ssm,&variable);
     return _VariableLoader_add_callback(this,&(vlcallback_t){
         .callback_type=VLCallback_VLong,
-        .subtype=VLCallbackST_Long,
+        .number_type=VLNT_Long,
         .func.as_vlong=_VL_callback_vlong_func,
         .args.variable=variable
     });
@@ -143,7 +143,7 @@ vlcallback_info VL_new_callback_vint(VariableLoader_t* this,char* variable){
     SSManager_add_string(this->ssm,&variable);
     return _VariableLoader_add_callback(this,&(vlcallback_t){
         .callback_type=VLCallback_VInt,
-        .subtype=VLCallbackST_Int,
+        .number_type=VLNT_Int,
         .func.as_vint=_VL_callback_vint_func,
         .args.variable=variable
     });
@@ -153,7 +153,7 @@ vlcallback_info VL_new_callback_vchar(VariableLoader_t* this,char* variable){
     SSManager_add_string(this->ssm,&variable);
     return _VariableLoader_add_callback(this,&(vlcallback_t){
         .callback_type=VLCallback_VChar,
-        .subtype=VLCallbackST_Char,
+        .number_type=VLNT_Char,
         .func.as_vchar=_VL_callback_vchar_func,
         .args.variable=variable
     });
@@ -161,32 +161,35 @@ vlcallback_info VL_new_callback_vchar(VariableLoader_t* this,char* variable){
 vlcallback_t* VL_get_callback(const VariableLoader_t* this,vlcallback_info vlc_info){
     return this->callbacks+vlc_info.i;
 }
+StringMapOpt_as_number_t VL_get_as_number(const VariableLoader_t* this,const char* variable){
+    return StringMap_as_number_read(this->sman,variable);
+}
 void VL_free(VariableLoader_t* this){
     free(this->callbacks);
-    StringMap_as_number_free(this->sml);
+    StringMap_as_number_free(this->sman);
     SSManager_free(this->ssm);
     free(this);
 }
 //Bool is false if full hash table, or string has already been added.
 bool _VL_callback_add_as_d(VariableLoader_t* this,const char* variable,double value){
-    return StringMap_as_number_assign(this->sml,variable,(as_number_t){.d=value,.type=VLCallbackST_Double})==VA_Written;
+    return StringMap_as_number_assign(this->sman,variable,(as_number_t){.d=value,.type=VLNT_Double})==VA_Written;
 }
 //Bool is false if full hash table, or string has already been added.
 bool _VL_callback_add_as_l(VariableLoader_t* this,const char* variable,long value){
-    return StringMap_as_number_assign(this->sml,variable,(as_number_t){.l=value,.type=VLCallbackST_Long})==VA_Written;
+    return StringMap_as_number_assign(this->sman,variable,(as_number_t){.l=value,.type=VLNT_Long})==VA_Written;
 }
 //Variable should already be added by VariableLoader_add_*.
 bool _VL_callback_rewrite_as_d(VariableLoader_t* this,const char* variable,double new_value){
-    if(StringMap_as_number_read(this->sml,variable).exists){
-        StringMap_as_number_assign(this->sml,variable,(as_number_t){.d=new_value,.type=VLCallbackST_Double});
+    if(StringMap_as_number_read(this->sman,variable).exists){
+        StringMap_as_number_assign(this->sman,variable,(as_number_t){.d=new_value,.type=VLNT_Double});
         return true;
     }
     return false;
 }
 //Variable should already be added by VariableLoader_add_*.
 bool _VL_callback_rewrite_as_l(VariableLoader_t* this,const char* variable,long new_value){
-    if(StringMap_as_number_read(this->sml,variable).exists){
-        StringMap_as_number_assign(this->sml,variable,(as_number_t){.l=new_value,.type=VLCallbackST_Long});
+    if(StringMap_as_number_read(this->sman,variable).exists){
+        StringMap_as_number_assign(this->sman,variable,(as_number_t){.l=new_value,.type=VLNT_Long});
         return true;
     }
     return false;
@@ -209,7 +212,7 @@ bool _VL_callback_char_func(char* at_address,char value){
     return true;
 }
 bool _VL_callback_vdouble_func(const VariableLoader_t* this,double* at_address,const char* variable){
-    const StringMapValue_as_number_t v=StringMap_as_number_read(this->sml,variable);
+    const StringMapOpt_as_number_t v=StringMap_as_number_read(this->sman,variable);
     if(v.exists){
         *at_address=v.value.d;
         return true;
@@ -217,7 +220,7 @@ bool _VL_callback_vdouble_func(const VariableLoader_t* this,double* at_address,c
     return false;
 }
 bool _VL_callback_vlong_func(const VariableLoader_t* this,long* at_address,const char* variable){
-    const StringMapValue_as_number_t v=StringMap_as_number_read(this->sml,variable);
+    const StringMapOpt_as_number_t v=StringMap_as_number_read(this->sman,variable);
     if(v.exists){
         *at_address=v.value.l;
         return true;
@@ -225,17 +228,17 @@ bool _VL_callback_vlong_func(const VariableLoader_t* this,long* at_address,const
     return false;
 }
 bool _VL_callback_vint_func(const VariableLoader_t* this,int* at_address,const char* variable){
-    const StringMapValue_as_number_t v=StringMap_as_number_read(this->sml,variable);
+    const StringMapOpt_as_number_t v=StringMap_as_number_read(this->sman,variable);
     if(v.exists){
-        *at_address=(int)v.value.l;
+        *at_address=v.value.i;
         return true;
     }
     return false;
 }
 bool _VL_callback_vchar_func(const VariableLoader_t* this,char* at_address,const char* variable){
-    const StringMapValue_as_number_t v=StringMap_as_number_read(this->sml,variable);
+    const StringMapOpt_as_number_t v=StringMap_as_number_read(this->sman,variable);
     if(v.exists){
-        *at_address=(char)v.value.l;
+        *at_address=v.value.c;
         return true;
     }
     return false;
