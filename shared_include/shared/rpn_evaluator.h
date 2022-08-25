@@ -16,38 +16,56 @@ typedef void (*rpn_null)(void);
 typedef long (*rpn_long_f_noarg)();
 typedef long (*rpn_long_f_1long)(long);
 typedef long (*rpn_long_f_2long)(long,long);
-typedef bool (*rpn_cmp_f_l)(long,long);
+typedef bool (*rpn_cmp_f_long)(long,long);
 typedef double (*rpn_double_f_noarg)();
 typedef double (*rpn_double_f_1double)(double);
 typedef double (*rpn_double_f_2double)(double,double);
-typedef bool (*rpn_cmp_f_d)(double,double);
-typedef long (*rpn_castas_l)(double);
-typedef double (*rpn_castas_d)(long);
+typedef bool (*rpn_cmp_f_double)(double,double);
+typedef int (*rpn_int_f_noarg)();
+typedef int (*rpn_int_f_1int)(int);
+typedef int (*rpn_int_f_2int)(int,int);
+typedef bool (*rpn_cmp_f_int)(int,int);
+typedef char (*rpn_char_f_noarg)();
+typedef char (*rpn_char_f_1char)(char);
+typedef char (*rpn_char_f_2char)(char,char);
+typedef bool (*rpn_cmp_f_char)(char,char);
 typedef enum _RPNFuncType{
     RPNFT_Null,
+    RPNFT_Long_F_NoArg,
     RPNFT_Long_F_1Long,
     RPNFT_Long_F_2Long,
+    RPNFT_Cmp_F_Long,
+    RPNFT_Double_F_NoArg,
     RPNFT_Double_F_1Double,
     RPNFT_Double_F_2Double,
-    RPNFT_Cmp_F_L,
-    RPNFT_Cmp_F_D,
-    RPNFT_Long_F_NoArg,
-    RPNFT_Double_F_NoArg,
-    RPNFT_CastAsL,
-    RPNFT_CastAsD
+    RPNFT_Cmp_F_Double,
+    RPNFT_Int_F_NoArg,
+    RPNFT_Int_F_1Int,
+    RPNFT_Int_F_2Int,
+    RPNFT_Cmp_F_Int,
+    RPNFT_Char_F_NoArg,
+    RPNFT_Char_F_1Char,
+    RPNFT_Char_F_2Char,
+    RPNFT_Cmp_F_Char,
 }RPNFuncType;
 typedef union _rpn_function_u{
     rpn_null rpn_null;
+    rpn_long_f_noarg rpn_long_f_noarg;
     rpn_long_f_1long rpn_long_f_1long;
     rpn_long_f_2long rpn_long_f_2long;
+    rpn_cmp_f_long rpn_cmp_f_long;
+    rpn_double_f_noarg rpn_double_f_noarg;
     rpn_double_f_1double rpn_double_f_1double;
     rpn_double_f_2double rpn_double_f_2double;
-    rpn_cmp_f_l rpn_cmp_f_l;
-    rpn_cmp_f_d rpn_cmp_f_d;
-    rpn_long_f_noarg rpn_long_f_noarg;
-    rpn_double_f_noarg rpn_double_f_noarg;
-    rpn_castas_l rpn_castas_l;
-    rpn_castas_d rpn_castas_d;
+    rpn_cmp_f_double rpn_cmp_f_double;
+    rpn_int_f_noarg rpn_int_f_noarg;
+    rpn_int_f_1int rpn_int_f_1int;
+    rpn_int_f_2int rpn_int_f_2int;
+    rpn_cmp_f_int rpn_cmp_f_int;
+    rpn_char_f_noarg rpn_char_f_noarg;
+    rpn_char_f_1char rpn_char_f_1char;
+    rpn_char_f_2char rpn_char_f_2char;
+    rpn_cmp_f_char rpn_cmp_f_char;
 }rpn_function_u;
 typedef struct rpn_func_call_s{
     RPNFuncType type;
@@ -61,7 +79,7 @@ typedef enum _RPNValidStringE{
     RPNVS_Ok,
     RPNVS_ImproperBrackets,
     RPNVS_NameCollision,
-    RPNVS_NoVLName,
+    RPNVS_NameNotAdded,
     RPNVS_IsFunction,
     RPNVS_IsVLName,
     RPNVS_OutOfNumbers,
