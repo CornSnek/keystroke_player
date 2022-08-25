@@ -34,6 +34,7 @@ typedef char (*rpn_char_f_2char)(char,char);
 typedef bool (*rpn_char_f_cmp)(char,char);
 typedef char (*rpn_char_f_ternary)(bool,char,char);
 typedef bool (*rpn_invert)(bool);
+typedef bool (*rpn_f_2_bools)(bool,bool);
 typedef enum _RPNFuncType{
     RPNFT_Null,
     RPNFT_Long_F_NoArg,
@@ -57,6 +58,7 @@ typedef enum _RPNFuncType{
     RPNFT_Char_F_Cmp,
     RPNFT_Char_F_Ternary,
     RPNFT_Invert,
+    RPNFT_2_Bools,
 }RPNFuncType;
 typedef union _rpn_function_u{
     rpn_null rpn_null;
@@ -81,21 +83,19 @@ typedef union _rpn_function_u{
     rpn_char_f_cmp rpn_char_f_cmp;
     rpn_char_f_ternary rpn_char_f_ternary;
     rpn_invert rpn_invert;
+    rpn_f_2_bools rpn_f_2_bools;
 }rpn_function_u;
 typedef struct rpn_func_call_s{
     RPNFuncType type;
     rpn_function_u func;
     int num_args;
-    VLNumberType return_type;//To truncate to the return type in case of casts that downgrade a number.
+    VLNumberType return_type;//To truncate to the return type in case of casts that may downgrade a number.
 }rpn_func_call_t;
 StringMap_ImplDecl(rpn_func_call_t,rpn_func_call,
 (const char* str){
-    hash_t hash=0;//Hashing based on the last 8 characters.
-    hash_t len_str=(hash_t)strlen(str);
-    for(hash_t i=len_str-1,j=0;i>len_str-9;i--,j++){
-        if(i==-1) break;
-        hash|=((hash_t)(*(str+i))<<(j*8));
-    }
+    hash_t hash=5381;//djb hashing
+    int c;
+    while((c=*str++)) hash=((hash<<5)+hash)+c;
     return hash;
 })
 void RPNEvaluatorInit();
@@ -103,7 +103,7 @@ typedef enum _RPNValidStringE{
     RPNVS_Ok,
     RPNVS_ImproperBrackets,
     RPNVS_NameCollision,
-    RPNVS_NameNotAdded,
+    RPNVS_NameUndefined,
     RPNVS_IsFunction,
     RPNVS_IsVLName,
     RPNVS_OutOfNumbers,

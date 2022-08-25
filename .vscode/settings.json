@@ -90,7 +90,8 @@
         "unordered_set": "c",
         "float.h": "c",
         "rpn_evaluator.h": "c",
-        "stack_generic.h": "c"
+        "stack_generic.h": "c",
+        "frequency.h": "c"
     },
     //"editor.autoClosingBrackets": "never",
     //"editor.autoClosingDelete": "never",

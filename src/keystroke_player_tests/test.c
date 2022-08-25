@@ -430,7 +430,7 @@ Suite* test_suite(void){
 int main(void){
     RPNEvaluatorInit();
     VariableLoader_t* vl=VL_new(20);
-    RPNValidStringE status=RPNEvaluatorValidString("(1,!,420d,69c,?t:f)",vl,RPN_EVAL_START_B,RPN_EVAL_END_B,RPN_EVAL_SEP);
+    RPNValidStringE status=RPNEvaluatorValidString("(-1,!,!,69c,420d,b?t:f)",vl,RPN_EVAL_START_B,RPN_EVAL_END_B,RPN_EVAL_SEP);
     printf("Status %d \n",status);
     VL_free(vl);
     RPNEvaluatorFree();

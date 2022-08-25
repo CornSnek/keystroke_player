@@ -79,11 +79,13 @@ double castas_d(double num){return num;}
 double ternary_d(bool b,double x,double y){return b?x:y;}
 
 bool bool_invert(bool b){return !b;}
+bool bool_and(bool b1,bool b2){return b1&&b2;}
+bool bool_or(bool b1,bool b2){return b1||b2;}
 void rpn_f_null(void){}
 //To make the default StringMap before calling rpn_evaluator_new.
 void RPNEvaluatorInit(void){
     if(!DefaultRPNFunctionMap){
-        DefaultRPNFunctionMap=StringMap_rpn_func_call_new(199);//157 4
+        DefaultRPNFunctionMap=StringMap_rpn_func_call_new(199);
 #define SMA(Str,RFT,RFT_u,F,NumArgs,ReturnType) assert(StringMap_rpn_func_call_assign(DefaultRPNFunctionMap,Str,(rpn_func_call_t){.type=RFT,.func.RFT_u=F,.num_args=NumArgs,.return_type=ReturnType})==VA_Written)
         SMA("abs",RPNFT_Null,rpn_null,rpn_f_null,0,VLNT_Invalid);//To check for "Existence" for any name collisions. Will not be calculated.
         SMA("max",RPNFT_Null,rpn_null,rpn_f_null,0,VLNT_Invalid);
@@ -114,7 +116,7 @@ void RPNEvaluatorInit(void){
         SMA("__cmin",RPNFT_Char_F_2Char,rpn_char_f_2char,RPN_c_min,2,VLNT_Char);
         SMA("random_c",RPNFT_Char_F_NoArg,rpn_char_f_noarg,random_c,0,VLNT_Char);
         SMA("as_c",RPNFT_Char_F_1Char,rpn_char_f_1char,castas_c,1,VLNT_Char);
-        SMA("__c?t:f",RPNFT_Char_F_Ternary,rpn_char_f_ternary,ternary_c,3,VLNT_Char);
+        SMA("__cb?t:f",RPNFT_Char_F_Ternary,rpn_char_f_ternary,ternary_c,3,VLNT_Char);
 
         SMA("__i+",RPNFT_Int_F_2Int,rpn_int_f_2int,RPN_i_add,2,VLNT_Int);
         SMA("__i++",RPNFT_Int_F_1Int,rpn_int_f_1int,RPN_i_inc,1,VLNT_Int);
@@ -141,7 +143,7 @@ void RPNEvaluatorInit(void){
         SMA("__imin",RPNFT_Int_F_2Int,rpn_int_f_2int,RPN_i_min,2,VLNT_Int);
         SMA("random_i",RPNFT_Int_F_NoArg,rpn_int_f_noarg,random_i,0,VLNT_Int);
         SMA("as_i",RPNFT_Int_F_1Int,rpn_int_f_1int,castas_i,1,VLNT_Int);
-        SMA("__i?t:f",RPNFT_Int_F_Ternary,rpn_int_f_ternary,ternary_i,3,VLNT_Int);
+        SMA("__ib?t:f",RPNFT_Int_F_Ternary,rpn_int_f_ternary,ternary_i,3,VLNT_Int);
 
         SMA("__l+",RPNFT_Long_F_2Long,rpn_long_f_2long,RPN_l_add,2,VLNT_Long);
         SMA("__l++",RPNFT_Long_F_1Long,rpn_long_f_1long,RPN_l_inc,1,VLNT_Long);
@@ -168,7 +170,7 @@ void RPNEvaluatorInit(void){
         SMA("__lmin",RPNFT_Long_F_2Long,rpn_long_f_2long,RPN_l_min,2,VLNT_Long);
         SMA("random_l",RPNFT_Long_F_NoArg,rpn_long_f_noarg,random_l,0,VLNT_Long);
         SMA("as_l",RPNFT_Long_F_1Long,rpn_long_f_1long,castas_l,1,VLNT_Long);
-        SMA("__l?t:f",RPNFT_Long_F_Ternary,rpn_long_f_ternary,ternary_l,3,VLNT_Long);
+        SMA("__lb?t:f",RPNFT_Long_F_Ternary,rpn_long_f_ternary,ternary_l,3,VLNT_Long);
         
         SMA("__d+",RPNFT_Double_F_2Double,rpn_double_f_2double,RPN_d_add,2,VLNT_Double);
         SMA("__d++",RPNFT_Double_F_1Double,rpn_double_f_1double,RPN_d_inc,1,VLNT_Double);
@@ -205,9 +207,11 @@ void RPNEvaluatorInit(void){
         SMA("round",RPNFT_Double_F_1Double,rpn_double_f_1double,round,1,VLNT_Double);
         SMA("trunc",RPNFT_Double_F_1Double,rpn_double_f_1double,trunc,1,VLNT_Double);
         SMA("as_d",RPNFT_Double_F_1Double,rpn_double_f_1double,castas_d,1,VLNT_Double);
-        SMA("__d?t:f",RPNFT_Double_F_Ternary,rpn_double_f_ternary,ternary_d,3,VLNT_Double);
+        SMA("__db?t:f",RPNFT_Double_F_Ternary,rpn_double_f_ternary,ternary_d,3,VLNT_Double);
 
         SMA("!",RPNFT_Invert,rpn_invert,bool_invert,1,VLNT_Int);
+        SMA("&&",RPNFT_2_Bools,rpn_f_2_bools,bool_and,2,VLNT_Int);
+        SMA("||",RPNFT_2_Bools,rpn_f_2_bools,bool_or,2,VLNT_Int);
         StringMap_rpn_func_call_print_debug(DefaultRPNFunctionMap);
     }else{
         puts("RPNEvaluatorInit has already been initialized.");
@@ -284,6 +288,7 @@ as_number_opt_t _RPNEvaluatorIsNumber(const char* token){
     for(size_t i=0;i<strlen(token);i++){
         const char current_char=token[i];
         if(isdigit(current_char)) continue;
+        if(i==0&&current_char=='-') continue;
         if(current_char=='.'){
             if(vlnt==VLNT_Double) return (as_number_opt_t){0};//Only one dot.
             if(vlnt!=VLNT_Double) vlnt=VLNT_Double;
@@ -343,7 +348,7 @@ RPNValidStringE _RPNEvaluatorIsVarNameOk(const char* token,const VariableLoader_
     }else if(smorfc_wprf.exists){
         if(!_ProcessRPNFunctionCall(stack_an,&smorfc_wprf.value)) return RPNVS_OutOfNumbers;
     }else{
-        return token_is_var?RPNVS_IsVLName:RPNVS_NameNotAdded;//If not VLVar, then NameNotAdded since no match for token.
+        return token_is_var?RPNVS_IsVLName:RPNVS_NameUndefined;//If not VLVar, then NameNotAdded since no match for token.
     }
     return token_is_var?RPNVS_IsVLName:RPNVS_IsFunction;
 }
@@ -385,6 +390,7 @@ bool _ProcessRPNFunctionCall(Stack_as_number_t* stack_an,const rpn_func_call_t* 
         case RPNFT_Double_F_Ternary: result.d=rpn_fu.rpn_double_f_ternary(ARGS_CAST(0),ARGS_CAST(1),ARGS_CAST(2)); break;
         case RPNFT_Double_F_Cmp: result.i=rpn_fu.rpn_double_f_cmp(ARGS_CAST(0),ARGS_CAST(1)); break;
         case RPNFT_Invert: result.i=rpn_fu.rpn_invert(ARGS_CAST(0)); break;
+        case RPNFT_2_Bools: result.i=rpn_fu.rpn_f_2_bools(ARGS_CAST(0),ARGS_CAST(1)); break;
         case RPNFT_Null: free(args); return true; break; //Shouldn't be accessed.
     }
     Stack_as_number_push(stack_an,result);

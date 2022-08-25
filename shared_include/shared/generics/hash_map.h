@@ -1,6 +1,7 @@
 #ifndef _HASH_MAP_H_
 #define _HASH_MAP_H_
 #include "macros.h"
+#include "frequency.h"
 #include <string.h>
 #include <stdbool.h>
 typedef long hash_t;
@@ -215,11 +216,13 @@ void StringMap_##VName##_print(const StringMap_##VName##_t* this){\
     }\
 }\
 void StringMap_##VName##_print_debug(const StringMap_##VName##_t* this){\
+    Frequency_t* f=Frequency_new();\
     hash_t highest_distance=-1;\
     printf("Size:%lu [",this->size);\
     for(size_t hash_i=0;hash_i<this->MaxSize;hash_i++){\
         const char* key=this->keys[hash_i];\
         hash_t key_distance=key?StringMap_##VName##_SubMod(this,hash_i-StringMap_##VName##_Mod(this,StringMap_##VName##_Hash(key))):-1;\
+        if(key_distance>-1) Frequency_add(f,(unsigned int)key_distance);\
         highest_distance=key_distance>highest_distance?key_distance:highest_distance;\
         printf("%s%lu:'%s':[%ld:%ld%s%s"\
             ,key?"\x1B[47;30m":""\
@@ -231,7 +234,9 @@ void StringMap_##VName##_print_debug(const StringMap_##VName##_t* this){\
             ,(hash_i!=this->MaxSize-1)?", ":""\
         );\
     }/*Format: index hash:'key':[key hash:Distance of key's hash to its original hash]*/\
-    printf(", highest_distance: %ld]\n",highest_distance);\
+    printf("]\nhighest_distance: %ld, Frequency: ",highest_distance);\
+    Frequency_print(f);\
+    Frequency_free(f);\
 }\
 void StringMap_##VName##_free(StringMap_##VName##_t* this){\
     for(size_t i=0;i<this->MaxSize;i++){\
