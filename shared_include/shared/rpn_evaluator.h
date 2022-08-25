@@ -16,56 +16,71 @@ typedef void (*rpn_null)(void);
 typedef long (*rpn_long_f_noarg)();
 typedef long (*rpn_long_f_1long)(long);
 typedef long (*rpn_long_f_2long)(long,long);
-typedef bool (*rpn_cmp_f_long)(long,long);
+typedef bool (*rpn_long_f_cmp)(long,long);
+typedef long (*rpn_long_f_ternary)(bool,long,long);
 typedef double (*rpn_double_f_noarg)();
 typedef double (*rpn_double_f_1double)(double);
 typedef double (*rpn_double_f_2double)(double,double);
-typedef bool (*rpn_cmp_f_double)(double,double);
+typedef bool (*rpn_double_f_cmp)(double,double);
+typedef double (*rpn_double_f_ternary)(bool,double,double);
 typedef int (*rpn_int_f_noarg)();
 typedef int (*rpn_int_f_1int)(int);
 typedef int (*rpn_int_f_2int)(int,int);
-typedef bool (*rpn_cmp_f_int)(int,int);
+typedef bool (*rpn_int_f_cmp)(int,int);
+typedef int (*rpn_int_f_ternary)(bool,int,int);
 typedef char (*rpn_char_f_noarg)();
 typedef char (*rpn_char_f_1char)(char);
 typedef char (*rpn_char_f_2char)(char,char);
-typedef bool (*rpn_cmp_f_char)(char,char);
+typedef bool (*rpn_char_f_cmp)(char,char);
+typedef char (*rpn_char_f_ternary)(bool,char,char);
+typedef bool (*rpn_invert)(bool);
 typedef enum _RPNFuncType{
     RPNFT_Null,
     RPNFT_Long_F_NoArg,
     RPNFT_Long_F_1Long,
     RPNFT_Long_F_2Long,
-    RPNFT_Cmp_F_Long,
+    RPNFT_Long_F_Cmp,
+    RPNFT_Long_F_Ternary,
     RPNFT_Double_F_NoArg,
     RPNFT_Double_F_1Double,
     RPNFT_Double_F_2Double,
-    RPNFT_Cmp_F_Double,
+    RPNFT_Double_F_Cmp,
+    RPNFT_Double_F_Ternary,
     RPNFT_Int_F_NoArg,
     RPNFT_Int_F_1Int,
     RPNFT_Int_F_2Int,
-    RPNFT_Cmp_F_Int,
+    RPNFT_Int_F_Cmp,
+    RPNFT_Int_F_Ternary,
     RPNFT_Char_F_NoArg,
     RPNFT_Char_F_1Char,
     RPNFT_Char_F_2Char,
-    RPNFT_Cmp_F_Char,
+    RPNFT_Char_F_Cmp,
+    RPNFT_Char_F_Ternary,
+    RPNFT_Invert,
 }RPNFuncType;
 typedef union _rpn_function_u{
     rpn_null rpn_null;
     rpn_long_f_noarg rpn_long_f_noarg;
     rpn_long_f_1long rpn_long_f_1long;
     rpn_long_f_2long rpn_long_f_2long;
-    rpn_cmp_f_long rpn_cmp_f_long;
+    rpn_long_f_cmp rpn_long_f_cmp;
+    rpn_long_f_ternary rpn_long_f_ternary;
     rpn_double_f_noarg rpn_double_f_noarg;
     rpn_double_f_1double rpn_double_f_1double;
     rpn_double_f_2double rpn_double_f_2double;
-    rpn_cmp_f_double rpn_cmp_f_double;
+    rpn_double_f_ternary rpn_double_f_ternary;
+    rpn_double_f_cmp rpn_double_f_cmp;
     rpn_int_f_noarg rpn_int_f_noarg;
     rpn_int_f_1int rpn_int_f_1int;
     rpn_int_f_2int rpn_int_f_2int;
-    rpn_cmp_f_int rpn_cmp_f_int;
+    rpn_int_f_cmp rpn_int_f_cmp;
+    rpn_int_f_ternary rpn_int_f_ternary;
     rpn_char_f_noarg rpn_char_f_noarg;
     rpn_char_f_1char rpn_char_f_1char;
     rpn_char_f_2char rpn_char_f_2char;
-    rpn_cmp_f_char rpn_cmp_f_char;
+    rpn_char_f_cmp rpn_char_f_cmp;
+    rpn_char_f_ternary rpn_char_f_ternary;
+    rpn_invert rpn_invert;
 }rpn_function_u;
 typedef struct rpn_func_call_s{
     RPNFuncType type;
@@ -73,7 +88,16 @@ typedef struct rpn_func_call_s{
     int num_args;
     VLNumberType return_type;//To truncate to the return type in case of casts that downgrade a number.
 }rpn_func_call_t;
-StringMap_ImplDecl(rpn_func_call_t,rpn_func_call)
+StringMap_ImplDecl(rpn_func_call_t,rpn_func_call,
+(const char* str){
+    hash_t hash=0;//Hashing based on the last 8 characters.
+    hash_t len_str=(hash_t)strlen(str);
+    for(hash_t i=len_str-1,j=0;i>len_str-9;i--,j++){
+        if(i==-1) break;
+        hash|=((hash_t)(*(str+i))<<(j*8));
+    }
+    return hash;
+})
 void RPNEvaluatorInit();
 typedef enum _RPNValidStringE{
     RPNVS_Ok,

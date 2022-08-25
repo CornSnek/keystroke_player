@@ -37,7 +37,7 @@ typedef enum _MacroProcessStatus{
     MPS_NoMacros,
     MPS_ImproperBrackets,
     MPS_HasDefinitions,
-    MPS_HasBuiltins //TODO
+    MPS_HasBuiltins
 }MacroProcessStatus;
 MacroProcessStatus file_contains_macro_definitions(const char* file_str,const char* start_m,const char* end_m);
 bool macro_paster_process_macros(macro_paster_t* this,const char* file_str,const char* start_m,const char* end_m,const char*start_b,const char* end_b,const char* def_sep,char var_sep);

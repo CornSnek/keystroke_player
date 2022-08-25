@@ -7,15 +7,6 @@ typedef long hash_t;
 typedef enum _ValueAssignE{
     VA_Full,VA_Written,VA_Rewritten
 }ValueAssignE;
-static inline hash_t StringMap_Hash(const char* str){
-    hash_t hash=5381;
-    int c;
-    while((c=*str++)) hash=((hash<<5)+hash)+c;
-    return hash;
-}
-static inline hash_t IntLongMap_Hash(long intl){
-    return intl;//TODO
-}
 /*To copy string value.*/
 static inline char* _string_copy(const char* key){
     char* this=malloc(sizeof(char)*strlen(key)+1);
@@ -23,7 +14,8 @@ static inline char* _string_copy(const char* key){
     EXIT_IF_NULL(this,char*);
     return this;
 }
-#define StringMap_ImplDecl(ValueType,VName)\
+#define StringMap_ImplDecl(ValueType,VName,HashImpl)\
+static inline hash_t StringMap_##VName##_Hash HashImpl \
 typedef struct StringMap_##VName##_s{\
     const size_t MaxSize;\
     size_t size;\
@@ -106,7 +98,7 @@ void _StringMap_##VName##_erase(StringMap_##VName##_t* this,hash_t delete_offset
         null_this=this->keys+this_i;\
         char** const next_erase_k=this->keys+next_i;\
         if(!*next_erase_k) goto null_this;/*No need to shift backwards if next string is non-existant.*/\
-        if(StringMap_##VName##_Mod(this,StringMap_Hash(*next_erase_k))-next_i){/*Backwards shift if a slot's probe length is not in its intended slot (!=0)*/\
+        if(StringMap_##VName##_Mod(this,StringMap_##VName##_Hash(*next_erase_k))-next_i){/*Backwards shift if a slot's probe length is not in its intended slot (!=0)*/\
             this->map_values[this_i]=this->map_values[next_i];\
             this->keys[this_i]=this->keys[next_i];\
             continue;\
@@ -126,7 +118,7 @@ ValueAssignE StringMap_##VName##_assign_own(StringMap_##VName##_t* this,char* ke
     char* key_to_add=key; /*Assign copied string to free later.*/\
     hash_t swap_difference=0; /*To readjust assign_slot_i (swapping causes a skip in reading HashSlots* in linear order) by the hash difference of Mod(HashF(key)) with Mod(HashF(key_to_add)).*/\
     for(size_t offset_i=0;offset_i<this->MaxSize;offset_i++){\
-        const hash_t swap_hash_i=StringMap_##VName##_Mod(this,StringMap_Hash(key_to_add));\
+        const hash_t swap_hash_i=StringMap_##VName##_Mod(this,StringMap_##VName##_Hash(key_to_add));\
         const hash_t assign_i=StringMap_##VName##_Mod(this,swap_hash_i+offset_i+swap_difference);\
         char** const assign_str=this->keys+assign_i;\
         ValueType* const assign_val=this->map_values+assign_i;\
@@ -143,13 +135,13 @@ ValueAssignE StringMap_##VName##_assign_own(StringMap_##VName##_t* this,char* ke
         }\
         char* key_next_swap=*assign_str;\
         const ValueType value_next_swap=*assign_val;\
-        const hash_t read_hash_i=StringMap_##VName##_Mod(this,StringMap_Hash(*assign_str));\
+        const hash_t read_hash_i=StringMap_##VName##_Mod(this,StringMap_##VName##_Hash(*assign_str));\
         if(StringMap_##VName##_SubMod(this,assign_i-swap_hash_i)>StringMap_##VName##_SubMod(this,assign_i-read_hash_i)){/*Swap key/value contents if distance from the original hash of swap_difference is greater.*/\
             *assign_str=key_to_add;\
             *assign_val=map_value;\
             key_to_add=key_next_swap; /*Insert for the next iteration.*/\
             map_value=value_next_swap;\
-            swap_difference=StringMap_##VName##_Mod(this,StringMap_Hash(key))-read_hash_i;\
+            swap_difference=StringMap_##VName##_Mod(this,StringMap_##VName##_Hash(key))-read_hash_i;\
         }\
     }\
     free(key_to_add);/*Is full.*/\
@@ -161,7 +153,7 @@ bool StringMap_##VName##_erase_own(StringMap_##VName##_t* this,char* key){\
     return b;\
 }\
 bool StringMap_##VName##_erase(StringMap_##VName##_t* this,const char* key){\
-    const hash_t swap_hash_i=StringMap_##VName##_Mod(this,StringMap_Hash(key));\
+    const hash_t swap_hash_i=StringMap_##VName##_Mod(this,StringMap_##VName##_Hash(key));\
     for(size_t offset_i=0;offset_i<this->MaxSize;offset_i++){\
         const hash_t assign_i=StringMap_##VName##_Mod(this,swap_hash_i+offset_i);\
         char* const delete_str=this->keys[assign_i];\
@@ -179,14 +171,14 @@ StringMapOpt_##VName##_t StringMap_##VName##_read_own(const StringMap_##VName##_
     return smv;\
 }\
 StringMapOpt_##VName##_t StringMap_##VName##_read(const StringMap_##VName##_t* this,const char* key){/*Bool if key found.*/\
-    const hash_t search_key_hash=StringMap_##VName##_Mod(this,StringMap_Hash(key));\
+    const hash_t search_key_hash=StringMap_##VName##_Mod(this,StringMap_##VName##_Hash(key));\
     for(size_t hash_i=0;hash_i<this->MaxSize;hash_i++){\
         const hash_t current_hash_read=StringMap_##VName##_Mod(this,search_key_hash+hash_i);\
         const char* next_key=this->keys[current_hash_read];\
         ValueType next_value=this->map_values[current_hash_read];\
         if(!next_key) return (StringMapOpt_##VName##_t){0}; /*Empty key. Not there.*/\
         const hash_t current_distance=StringMap_##VName##_SubMod(this,current_hash_read-search_key_hash);\
-        const hash_t next_key_distance=StringMap_##VName##_SubMod(this,current_hash_read-StringMap_##VName##_Mod(this,StringMap_Hash(next_key)));\
+        const hash_t next_key_distance=StringMap_##VName##_SubMod(this,current_hash_read-StringMap_##VName##_Mod(this,StringMap_##VName##_Hash(next_key)));\
         /*printf("Reading at hash %ld. Read key distance: %ld Next key distance: %ld\n",current_hash_read,current_distance,next_key_distance);*/\
         if(current_distance>next_key_distance) return (StringMapOpt_##VName##_t){0};/*The key's distance greater than next. Not there.*/\
         if(!strcmp(next_key,key)){return (StringMapOpt_##VName##_t){.exists=true,.value=next_value};}\
@@ -195,7 +187,7 @@ StringMapOpt_##VName##_t StringMap_##VName##_read(const StringMap_##VName##_t* t
 }\
 /*Same as _erase and _read, but returns the value as well if it exists.*/\
 StringMapOpt_##VName##_t StringMap_##VName##_pop(StringMap_##VName##_t* this,const char* key){\
-    const hash_t swap_hash_i=StringMap_##VName##_Mod(this,StringMap_Hash(key));\
+    const hash_t swap_hash_i=StringMap_##VName##_Mod(this,StringMap_##VName##_Hash(key));\
     for(size_t offset_i=0;offset_i<this->MaxSize;offset_i++){\
         const hash_t assign_i=StringMap_##VName##_Mod(this,swap_hash_i+offset_i);\
         char* const delete_str=this->keys[assign_i];\
@@ -223,20 +215,23 @@ void StringMap_##VName##_print(const StringMap_##VName##_t* this){\
     }\
 }\
 void StringMap_##VName##_print_debug(const StringMap_##VName##_t* this){\
+    hash_t highest_distance=-1;\
     printf("Size:%lu [",this->size);\
     for(size_t hash_i=0;hash_i<this->MaxSize;hash_i++){\
         const char* key=this->keys[hash_i];\
+        hash_t key_distance=key?StringMap_##VName##_SubMod(this,hash_i-StringMap_##VName##_Mod(this,StringMap_##VName##_Hash(key))):-1;\
+        highest_distance=key_distance>highest_distance?key_distance:highest_distance;\
         printf("%s%lu:'%s':[%ld:%ld%s%s"\
             ,key?"\x1B[47;30m":""\
             ,hash_i\
             ,key?key:"N/A"\
-            ,key?StringMap_##VName##_Mod(this,StringMap_Hash(key)):-1\
-            ,key?StringMap_##VName##_SubMod(this,hash_i-StringMap_##VName##_Mod(this,StringMap_Hash(key))):-1\
+            ,key?StringMap_##VName##_Mod(this,StringMap_##VName##_Hash(key)):-1\
+            ,key_distance\
             ,"]\x1B[0m"\
             ,(hash_i!=this->MaxSize-1)?", ":""\
         );\
     }/*Format: index hash:'key':[key hash:Distance of key's hash to its original hash]*/\
-    puts("]");\
+    printf(", highest_distance: %ld]\n",highest_distance);\
 }\
 void StringMap_##VName##_free(StringMap_##VName##_t* this){\
     for(size_t i=0;i<this->MaxSize;i++){\
@@ -261,8 +256,8 @@ bool StringMap_##VName##_resize(StringMap_##VName##_t** this,size_t new_size){\
     return true;\
 }
 
-/*TODO: Check IntLongMap and add key_exists so that -1 can be used*/
-#define IntLongMap_ImplDef(ValueType,VName)\
+#define IntLongMap_ImplDef(ValueType,VName,HashImpl)\
+static inline hash_t IntLongMap_##VName##_Hash HashImpl \
 IntLongMap_##VName##_t* IntLongMap_##VName##_new(size_t size){\
     IntLongMap_##VName##_t* this=malloc(sizeof(IntLongMap_##VName##_t));\
     EXIT_IF_NULL(this,IntLongMap_##VName##_t);\
@@ -287,7 +282,7 @@ void _IntLongMap_##VName##_erase(IntLongMap_##VName##_t* this,hash_t delete_offs
         null_this=this->key_exists+this_i;\
         bool* const next_erase_kc=this->key_exists+next_i;\
         if(!*next_erase_kc) goto null_this;/*No need to shift backwards if next key is non-existant.*/\
-        if(IntLongMap_##VName##_Mod(this,IntLongMap_Hash(this->keys[next_i]))-next_i){/*Backwards shift if a slot's probe length is not in its intended slot (!=0)*/\
+        if(IntLongMap_##VName##_Mod(this,IntLongMap_##VName##_Hash(this->keys[next_i]))-next_i){/*Backwards shift if a slot's probe length is not in its intended slot (!=0)*/\
             this->map_values[this_i]=this->map_values[next_i];\
             this->keys[this_i]=this->keys[next_i];\
             continue;\
@@ -302,7 +297,7 @@ ValueAssignE IntLongMap_##VName##_assign(IntLongMap_##VName##_t* this,long key,V
     long key_to_add=key;\
     hash_t swap_difference=0; /*To readjust assign_slot_i (swapping causes a skip in reading HashSlots* in linear order) by the hash difference of Mod(HashF(key)) with Mod(HashF(key_to_add)).*/\
     for(size_t offset_i=0;offset_i<this->MaxSize;offset_i++){\
-        const hash_t swap_hash_i=IntLongMap_##VName##_Mod(this,IntLongMap_Hash(key_to_add));\
+        const hash_t swap_hash_i=IntLongMap_##VName##_Mod(this,IntLongMap_##VName##_Hash(key_to_add));\
         const hash_t assign_i=IntLongMap_##VName##_Mod(this,swap_hash_i+offset_i+swap_difference);\
         long* const assign_long=this->keys+assign_i;\
         ValueType* const assign_val=this->map_values+assign_i;\
@@ -319,19 +314,19 @@ ValueAssignE IntLongMap_##VName##_assign(IntLongMap_##VName##_t* this,long key,V
         }\
         long key_next_swap=*assign_long;\
         const ValueType value_next_swap=*assign_val;\
-        const hash_t read_hash_i=IntLongMap_##VName##_Mod(this,IntLongMap_Hash(*assign_long));\
+        const hash_t read_hash_i=IntLongMap_##VName##_Mod(this,IntLongMap_##VName##_Hash(*assign_long));\
         if(IntLongMap_##VName##_SubMod(this,assign_i-swap_hash_i)>IntLongMap_##VName##_SubMod(this,assign_i-read_hash_i)){/*Swap key/value contents if distance from the original hash of swap_difference is greater.*/\
             *assign_long=key_to_add;\
             *assign_val=map_value;\
             key_to_add=key_next_swap; /*Insert for the next iteration.*/\
             map_value=value_next_swap;\
-            swap_difference=IntLongMap_##VName##_Mod(this,IntLongMap_Hash(key))-read_hash_i;\
+            swap_difference=IntLongMap_##VName##_Mod(this,IntLongMap_##VName##_Hash(key))-read_hash_i;\
         }\
     }\
     return VA_Full;\
 }\
 bool IntLongMap_##VName##_erase(IntLongMap_##VName##_t* this,long key){\
-    const hash_t swap_hash_i=IntLongMap_##VName##_Mod(this,IntLongMap_Hash(key));\
+    const hash_t swap_hash_i=IntLongMap_##VName##_Mod(this,IntLongMap_##VName##_Hash(key));\
     for(size_t offset_i=0;offset_i<this->MaxSize;offset_i++){\
         const hash_t assign_i=IntLongMap_##VName##_Mod(this,swap_hash_i+offset_i);\
         long const delete_long=this->keys[assign_i];\
@@ -344,14 +339,14 @@ bool IntLongMap_##VName##_erase(IntLongMap_##VName##_t* this,long key){\
     return false;\
 }\
 IntLongMapOpt_##VName##_t IntLongMap_##VName##_read(const IntLongMap_##VName##_t* this,long key){/*Bool if key found.*/\
-    const hash_t search_key_hash=IntLongMap_##VName##_Mod(this,IntLongMap_Hash(key));\
+    const hash_t search_key_hash=IntLongMap_##VName##_Mod(this,IntLongMap_##VName##_Hash(key));\
     for(size_t hash_i=0;hash_i<this->MaxSize;hash_i++){\
         const hash_t current_hash_read=IntLongMap_##VName##_Mod(this,search_key_hash+hash_i);\
         const long next_key=this->keys[current_hash_read];\
         ValueType next_value=this->map_values[current_hash_read];\
         if(!this->key_exists[current_hash_read]) return (IntLongMapOpt_##VName##_t){0}; /*Empty key. Not there.*/\
         const hash_t current_distance=IntLongMap_##VName##_SubMod(this,current_hash_read-search_key_hash);\
-        const hash_t next_key_distance=IntLongMap_##VName##_SubMod(this,current_hash_read-IntLongMap_##VName##_Mod(this,IntLongMap_Hash(next_key)));\
+        const hash_t next_key_distance=IntLongMap_##VName##_SubMod(this,current_hash_read-IntLongMap_##VName##_Mod(this,IntLongMap_##VName##_Hash(next_key)));\
         /*printf("Reading at hash %ld. Read key distance: %ld Next key distance: %ld\n",current_hash_read,current_distance,next_key_distance);*/\
         if(current_distance>next_key_distance) return (IntLongMapOpt_##VName##_t){0};/*The key's distance greater than next. Not there.*/\
         if(next_key==key){return (IntLongMapOpt_##VName##_t){.exists=true,.value=next_value};}\
@@ -360,7 +355,7 @@ IntLongMapOpt_##VName##_t IntLongMap_##VName##_read(const IntLongMap_##VName##_t
 }\
 /*Same as _erase and _read, but returns the value as well if it exists.*/\
 IntLongMapOpt_##VName##_t IntLongMap_##VName##_pop(IntLongMap_##VName##_t* this,long key){\
-    const hash_t swap_hash_i=IntLongMap_##VName##_Mod(this,IntLongMap_Hash(key));\
+    const hash_t swap_hash_i=IntLongMap_##VName##_Mod(this,IntLongMap_##VName##_Hash(key));\
     for(size_t offset_i=0;offset_i<this->MaxSize;offset_i++){\
         const hash_t assign_i=IntLongMap_##VName##_Mod(this,swap_hash_i+offset_i);\
         const long delete_long=this->keys[assign_i];\
@@ -391,8 +386,8 @@ void IntLongMap_##VName##_print_debug(const IntLongMap_##VName##_t* this){\
             ,key_exists?"\x1B[47;30m":""\
             ,hash_i\
             ,key\
-            ,key_exists?IntLongMap_##VName##_Mod(this,IntLongMap_Hash(key)):-1\
-            ,key_exists?IntLongMap_##VName##_SubMod(this,hash_i-IntLongMap_##VName##_Mod(this,IntLongMap_Hash(key))):-1\
+            ,key_exists?IntLongMap_##VName##_Mod(this,IntLongMap_##VName##_Hash(key)):-1\
+            ,key_exists?IntLongMap_##VName##_SubMod(this,hash_i-IntLongMap_##VName##_Mod(this,IntLongMap_##VName##_Hash(key))):-1\
             ,"]\x1B[0m"\
             ,(hash_i!=this->MaxSize-1)?", ":""\
         );\

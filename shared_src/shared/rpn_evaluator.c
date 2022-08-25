@@ -25,6 +25,7 @@ char random_c(void){
     do{}while(getrandom(&rand_st,sizeof(rand_st),0)==-1);
     return rand_st;
 }
+char ternary_c(bool b,char x,char y){return b?x:y;}
 
 BinOps(int,i,add,+) UnOps(int,i,inc,++)
 BinOps(int,i,sub,-) UnOps(int,i,neg,-) UnOps(int,i,dec,--)
@@ -41,6 +42,7 @@ int random_i(void){
     do{}while(getrandom(&rand_st,sizeof(rand_st),0)==-1);
     return rand_st;
 }
+int ternary_i(bool b,int x,int y){return b?x:y;}
 
 BinOps(long,l,add,+) UnOps(long,l,inc,++)
 BinOps(long,l,sub,-) UnOps(long,l,neg,-) UnOps(long,l,dec,--)
@@ -57,6 +59,7 @@ long random_l(void){
     do{}while(getrandom(&rand_st,sizeof(rand_st),0)==-1);
     return rand_st;
 }
+long ternary_l(bool b,long x,long y){return b?x:y;}
 
 BinOps(double,d,add,+) UnOps(double,d,inc,++)
 BinOps(double,d,sub,-) UnOps(double,d,dec,--) UnOps(double,d,neg,-)
@@ -73,13 +76,16 @@ static inline double deg_to_rad(double deg){
 TrigDegWrap(sin) TrigDegWrap(cos) TrigDegWrap(tan)
 double random_d(void){return (double)(size_t)random_l()/ULONG_MAX;}
 double castas_d(double num){return num;}
+double ternary_d(bool b,double x,double y){return b?x:y;}
+
+bool bool_invert(bool b){return !b;}
 void rpn_f_null(void){}
 //To make the default StringMap before calling rpn_evaluator_new.
 void RPNEvaluatorInit(void){
     if(!DefaultRPNFunctionMap){
-        DefaultRPNFunctionMap=StringMap_rpn_func_call_new(200);
+        DefaultRPNFunctionMap=StringMap_rpn_func_call_new(199);//157 4
 #define SMA(Str,RFT,RFT_u,F,NumArgs,ReturnType) assert(StringMap_rpn_func_call_assign(DefaultRPNFunctionMap,Str,(rpn_func_call_t){.type=RFT,.func.RFT_u=F,.num_args=NumArgs,.return_type=ReturnType})==VA_Written)
-        SMA("abs",RPNFT_Null,rpn_null,rpn_f_null,0,VLNT_Invalid);//To check "Existance of alpha-numeric keys." The other keys not needed.
+        SMA("abs",RPNFT_Null,rpn_null,rpn_f_null,0,VLNT_Invalid);//To check for "Existence" for any name collisions. Will not be calculated.
         SMA("max",RPNFT_Null,rpn_null,rpn_f_null,0,VLNT_Invalid);
         SMA("min",RPNFT_Null,rpn_null,rpn_f_null,0,VLNT_Invalid);
 
@@ -97,17 +103,18 @@ void RPNEvaluatorInit(void){
         SMA("__c^",RPNFT_Char_F_2Char,rpn_char_f_2char,RPN_c_b_xor,2,VLNT_Char);
         SMA("__c<<",RPNFT_Char_F_2Char,rpn_char_f_2char,RPN_c_bs_l,2,VLNT_Char);
         SMA("__c>>",RPNFT_Char_F_2Char,rpn_char_f_2char,RPN_c_bs_r,2,VLNT_Char);
-        SMA("__c==",RPNFT_Cmp_F_Char,rpn_cmp_f_char,RPN_c_eq,2,VLNT_Char);
-        SMA("__c!=",RPNFT_Cmp_F_Char,rpn_cmp_f_char,RPN_c_neq,2,VLNT_Char);
-        SMA("__c>",RPNFT_Cmp_F_Char,rpn_cmp_f_char,RPN_c_gt,2,VLNT_Char);
-        SMA("__c<",RPNFT_Cmp_F_Char,rpn_cmp_f_char,RPN_c_lt,2,VLNT_Char);
-        SMA("__c>=",RPNFT_Cmp_F_Char,rpn_cmp_f_char,RPN_c_gte,2,VLNT_Char);
-        SMA("__c<=",RPNFT_Cmp_F_Char,rpn_cmp_f_char,RPN_c_lte,2,VLNT_Char);
+        SMA("__c==",RPNFT_Char_F_Cmp,rpn_char_f_cmp,RPN_c_eq,2,VLNT_Char);
+        SMA("__c!=",RPNFT_Char_F_Cmp,rpn_char_f_cmp,RPN_c_neq,2,VLNT_Char);
+        SMA("__c>",RPNFT_Char_F_Cmp,rpn_char_f_cmp,RPN_c_gt,2,VLNT_Char);
+        SMA("__c<",RPNFT_Char_F_Cmp,rpn_char_f_cmp,RPN_c_lt,2,VLNT_Char);
+        SMA("__c>=",RPNFT_Char_F_Cmp,rpn_char_f_cmp,RPN_c_gte,2,VLNT_Char);
+        SMA("__c<=",RPNFT_Char_F_Cmp,rpn_char_f_cmp,RPN_c_lte,2,VLNT_Char);
         SMA("__cabs",RPNFT_Char_F_1Char,rpn_char_f_1char,_cabs,1,VLNT_Char);
         SMA("__cmax",RPNFT_Char_F_2Char,rpn_char_f_2char,RPN_c_max,2,VLNT_Char);
         SMA("__cmin",RPNFT_Char_F_2Char,rpn_char_f_2char,RPN_c_min,2,VLNT_Char);
         SMA("random_c",RPNFT_Char_F_NoArg,rpn_char_f_noarg,random_c,0,VLNT_Char);
         SMA("as_c",RPNFT_Char_F_1Char,rpn_char_f_1char,castas_c,1,VLNT_Char);
+        SMA("__c?t:f",RPNFT_Char_F_Ternary,rpn_char_f_ternary,ternary_c,3,VLNT_Char);
 
         SMA("__i+",RPNFT_Int_F_2Int,rpn_int_f_2int,RPN_i_add,2,VLNT_Int);
         SMA("__i++",RPNFT_Int_F_1Int,rpn_int_f_1int,RPN_i_inc,1,VLNT_Int);
@@ -123,17 +130,18 @@ void RPNEvaluatorInit(void){
         SMA("__i^",RPNFT_Int_F_2Int,rpn_int_f_2int,RPN_i_b_xor,2,VLNT_Int);
         SMA("__i<<",RPNFT_Int_F_2Int,rpn_int_f_2int,RPN_i_bs_l,2,VLNT_Int);
         SMA("__i>>",RPNFT_Int_F_2Int,rpn_int_f_2int,RPN_i_bs_r,2,VLNT_Int);
-        SMA("__i==",RPNFT_Cmp_F_Int,rpn_cmp_f_int,RPN_i_eq,2,VLNT_Int);
-        SMA("__i!=",RPNFT_Cmp_F_Int,rpn_cmp_f_int,RPN_i_neq,2,VLNT_Int);
-        SMA("__i>",RPNFT_Cmp_F_Int,rpn_cmp_f_int,RPN_i_gt,2,VLNT_Int);
-        SMA("__i<",RPNFT_Cmp_F_Int,rpn_cmp_f_int,RPN_i_lt,2,VLNT_Int);
-        SMA("__i>=",RPNFT_Cmp_F_Int,rpn_cmp_f_int,RPN_i_gte,2,VLNT_Int);
-        SMA("__i<=",RPNFT_Cmp_F_Int,rpn_cmp_f_int,RPN_i_lte,2,VLNT_Int);
+        SMA("__i==",RPNFT_Int_F_Cmp,rpn_int_f_cmp,RPN_i_eq,2,VLNT_Int);
+        SMA("__i!=",RPNFT_Int_F_Cmp,rpn_int_f_cmp,RPN_i_neq,2,VLNT_Int);
+        SMA("__i>",RPNFT_Int_F_Cmp,rpn_int_f_cmp,RPN_i_gt,2,VLNT_Int);
+        SMA("__i<",RPNFT_Int_F_Cmp,rpn_int_f_cmp,RPN_i_lt,2,VLNT_Int);
+        SMA("__i>=",RPNFT_Int_F_Cmp,rpn_int_f_cmp,RPN_i_gte,2,VLNT_Int);
+        SMA("__i<=",RPNFT_Int_F_Cmp,rpn_int_f_cmp,RPN_i_lte,2,VLNT_Int);
         SMA("__iabs",RPNFT_Int_F_1Int,rpn_int_f_1int,abs,1,VLNT_Int);
         SMA("__imax",RPNFT_Int_F_2Int,rpn_int_f_2int,RPN_i_max,2,VLNT_Int);
         SMA("__imin",RPNFT_Int_F_2Int,rpn_int_f_2int,RPN_i_min,2,VLNT_Int);
         SMA("random_i",RPNFT_Int_F_NoArg,rpn_int_f_noarg,random_i,0,VLNT_Int);
         SMA("as_i",RPNFT_Int_F_1Int,rpn_int_f_1int,castas_i,1,VLNT_Int);
+        SMA("__i?t:f",RPNFT_Int_F_Ternary,rpn_int_f_ternary,ternary_i,3,VLNT_Int);
 
         SMA("__l+",RPNFT_Long_F_2Long,rpn_long_f_2long,RPN_l_add,2,VLNT_Long);
         SMA("__l++",RPNFT_Long_F_1Long,rpn_long_f_1long,RPN_l_inc,1,VLNT_Long);
@@ -149,18 +157,19 @@ void RPNEvaluatorInit(void){
         SMA("__l^",RPNFT_Long_F_2Long,rpn_long_f_2long,RPN_l_b_xor,2,VLNT_Long);
         SMA("__l<<",RPNFT_Long_F_2Long,rpn_long_f_2long,RPN_l_bs_l,2,VLNT_Long);
         SMA("__l>>",RPNFT_Long_F_2Long,rpn_long_f_2long,RPN_l_bs_r,2,VLNT_Long);
-        SMA("__l==",RPNFT_Cmp_F_Long,rpn_cmp_f_long,RPN_l_eq,2,VLNT_Int);
-        SMA("__l!=",RPNFT_Cmp_F_Long,rpn_cmp_f_long,RPN_l_neq,2,VLNT_Int);
-        SMA("__l>",RPNFT_Cmp_F_Long,rpn_cmp_f_long,RPN_l_gt,2,VLNT_Int);
-        SMA("__l<",RPNFT_Cmp_F_Long,rpn_cmp_f_long,RPN_l_lt,2,VLNT_Int);
-        SMA("__l>=",RPNFT_Cmp_F_Long,rpn_cmp_f_long,RPN_l_gte,2,VLNT_Int);
-        SMA("__l<=",RPNFT_Cmp_F_Long,rpn_cmp_f_long,RPN_l_lte,2,VLNT_Int);
+        SMA("__l==",RPNFT_Long_F_Cmp,rpn_long_f_cmp,RPN_l_eq,2,VLNT_Int);
+        SMA("__l!=",RPNFT_Long_F_Cmp,rpn_long_f_cmp,RPN_l_neq,2,VLNT_Int);
+        SMA("__l>",RPNFT_Long_F_Cmp,rpn_long_f_cmp,RPN_l_gt,2,VLNT_Int);
+        SMA("__l<",RPNFT_Long_F_Cmp,rpn_long_f_cmp,RPN_l_lt,2,VLNT_Int);
+        SMA("__l>=",RPNFT_Long_F_Cmp,rpn_long_f_cmp,RPN_l_gte,2,VLNT_Int);
+        SMA("__l<=",RPNFT_Long_F_Cmp,rpn_long_f_cmp,RPN_l_lte,2,VLNT_Int);
         SMA("__labs",RPNFT_Long_F_1Long,rpn_long_f_1long,labs,1,VLNT_Long);
         SMA("__lmax",RPNFT_Long_F_2Long,rpn_long_f_2long,RPN_l_max,2,VLNT_Long);
         SMA("__lmin",RPNFT_Long_F_2Long,rpn_long_f_2long,RPN_l_min,2,VLNT_Long);
         SMA("random_l",RPNFT_Long_F_NoArg,rpn_long_f_noarg,random_l,0,VLNT_Long);
         SMA("as_l",RPNFT_Long_F_1Long,rpn_long_f_1long,castas_l,1,VLNT_Long);
-
+        SMA("__l?t:f",RPNFT_Long_F_Ternary,rpn_long_f_ternary,ternary_l,3,VLNT_Long);
+        
         SMA("__d+",RPNFT_Double_F_2Double,rpn_double_f_2double,RPN_d_add,2,VLNT_Double);
         SMA("__d++",RPNFT_Double_F_1Double,rpn_double_f_1double,RPN_d_inc,1,VLNT_Double);
         SMA("__d-",RPNFT_Double_F_2Double,rpn_double_f_2double,RPN_d_sub,2,VLNT_Double);
@@ -169,12 +178,12 @@ void RPNEvaluatorInit(void){
         SMA("__d*",RPNFT_Double_F_2Double,rpn_double_f_2double,RPN_d_mul,2,VLNT_Double);
         SMA("__d/",RPNFT_Double_F_2Double,rpn_double_f_2double,RPN_d_div,2,VLNT_Double);
         SMA("__d%",RPNFT_Double_F_2Double,rpn_double_f_2double,fmod,2,VLNT_Double);
-        SMA("__d==",RPNFT_Cmp_F_Double,rpn_cmp_f_double,RPN_d_eq,2,VLNT_Int);
-        SMA("__d!=",RPNFT_Cmp_F_Double,rpn_cmp_f_double,RPN_d_neq,2,VLNT_Int);
-        SMA("__d>",RPNFT_Cmp_F_Double,rpn_cmp_f_double,RPN_d_gt,2,VLNT_Int);
-        SMA("__d<",RPNFT_Cmp_F_Double,rpn_cmp_f_double,RPN_d_lt,2,VLNT_Int);
-        SMA("__d>=",RPNFT_Cmp_F_Double,rpn_cmp_f_double,RPN_d_gte,2,VLNT_Int);
-        SMA("__d<=",RPNFT_Cmp_F_Double,rpn_cmp_f_double,RPN_d_lte,2,VLNT_Int);
+        SMA("__d==",RPNFT_Double_F_Cmp,rpn_double_f_cmp,RPN_d_eq,2,VLNT_Int);
+        SMA("__d!=",RPNFT_Double_F_Cmp,rpn_double_f_cmp,RPN_d_neq,2,VLNT_Int);
+        SMA("__d>",RPNFT_Double_F_Cmp,rpn_double_f_cmp,RPN_d_gt,2,VLNT_Int);
+        SMA("__d<",RPNFT_Double_F_Cmp,rpn_double_f_cmp,RPN_d_lt,2,VLNT_Int);
+        SMA("__d>=",RPNFT_Double_F_Cmp,rpn_double_f_cmp,RPN_d_gte,2,VLNT_Int);
+        SMA("__d<=",RPNFT_Double_F_Cmp,rpn_double_f_cmp,RPN_d_lte,2,VLNT_Int);
         SMA("__dabs",RPNFT_Double_F_1Double,rpn_double_f_1double,fabs,1,VLNT_Double);
         SMA("__dmax",RPNFT_Double_F_2Double,rpn_double_f_2double,fmax,2,VLNT_Double);
         SMA("__dmin",RPNFT_Double_F_2Double,rpn_double_f_2double,fmin,2,VLNT_Double);
@@ -196,6 +205,9 @@ void RPNEvaluatorInit(void){
         SMA("round",RPNFT_Double_F_1Double,rpn_double_f_1double,round,1,VLNT_Double);
         SMA("trunc",RPNFT_Double_F_1Double,rpn_double_f_1double,trunc,1,VLNT_Double);
         SMA("as_d",RPNFT_Double_F_1Double,rpn_double_f_1double,castas_d,1,VLNT_Double);
+        SMA("__d?t:f",RPNFT_Double_F_Ternary,rpn_double_f_ternary,ternary_d,3,VLNT_Double);
+
+        SMA("!",RPNFT_Invert,rpn_invert,bool_invert,1,VLNT_Int);
         StringMap_rpn_func_call_print_debug(DefaultRPNFunctionMap);
     }else{
         puts("RPNEvaluatorInit has already been initialized.");
@@ -352,38 +364,27 @@ bool _ProcessRPNFunctionCall(Stack_as_number_t* stack_an,const rpn_func_call_t* 
     (args[I].v.type==VLNT_Long)?args[I].v.l:\
     (args[I].v.type==VLNT_Int)?args[I].v.i:args[I].v.c)
     switch(rpn_f_c->type){
-        case RPNFT_Char_F_NoArg:
-            result.c=rpn_fu.rpn_char_f_noarg(); break;
-        case RPNFT_Char_F_1Char:
-            result.c=rpn_fu.rpn_char_f_1char(ARGS_CAST(0)); break;
-        case RPNFT_Char_F_2Char:
-            result.c=rpn_fu.rpn_char_f_2char(ARGS_CAST(0),ARGS_CAST(1)); break;
-        case RPNFT_Cmp_F_Char:
-            result.c=rpn_fu.rpn_cmp_f_char(ARGS_CAST(0),ARGS_CAST(1)); break;
-        case RPNFT_Int_F_NoArg:
-            result.i=rpn_fu.rpn_int_f_noarg(); break;
-        case RPNFT_Int_F_1Int:
-            result.i=rpn_fu.rpn_int_f_1int(ARGS_CAST(0)); break;
-        case RPNFT_Int_F_2Int:
-            result.i=rpn_fu.rpn_int_f_2int(ARGS_CAST(0),ARGS_CAST(1)); break;
-        case RPNFT_Cmp_F_Int:
-            result.i=rpn_fu.rpn_cmp_f_int(ARGS_CAST(0),ARGS_CAST(1)); break;
-        case RPNFT_Long_F_NoArg:
-            result.l=rpn_fu.rpn_long_f_noarg(); break;
-        case RPNFT_Long_F_1Long:
-            result.l=rpn_fu.rpn_long_f_1long(ARGS_CAST(0)); break;
-        case RPNFT_Long_F_2Long:
-            result.l=rpn_fu.rpn_long_f_2long(ARGS_CAST(0),ARGS_CAST(1)); break;
-        case RPNFT_Cmp_F_Long:
-            result.i=rpn_fu.rpn_cmp_f_long(ARGS_CAST(0),ARGS_CAST(1)); break;
-        case RPNFT_Double_F_NoArg:
-            result.d=rpn_fu.rpn_double_f_noarg(); break;
-        case RPNFT_Double_F_1Double:
-            result.d=rpn_fu.rpn_double_f_1double(ARGS_CAST(0)); break;
-        case RPNFT_Double_F_2Double:
-            result.d=rpn_fu.rpn_double_f_2double(ARGS_CAST(0),ARGS_CAST(1)); break;
-        case RPNFT_Cmp_F_Double:
-            result.i=rpn_fu.rpn_cmp_f_double(ARGS_CAST(0),ARGS_CAST(1)); break;
+        case RPNFT_Char_F_NoArg: result.c=rpn_fu.rpn_char_f_noarg(); break;
+        case RPNFT_Char_F_1Char: result.c=rpn_fu.rpn_char_f_1char(ARGS_CAST(0)); break;
+        case RPNFT_Char_F_2Char: result.c=rpn_fu.rpn_char_f_2char(ARGS_CAST(0),ARGS_CAST(1)); break;
+        case RPNFT_Char_F_Cmp: result.c=rpn_fu.rpn_char_f_cmp(ARGS_CAST(0),ARGS_CAST(1)); break;
+        case RPNFT_Char_F_Ternary: result.l=rpn_fu.rpn_char_f_ternary(ARGS_CAST(0),ARGS_CAST(1),ARGS_CAST(2)); break;
+        case RPNFT_Int_F_NoArg: result.i=rpn_fu.rpn_int_f_noarg(); break;
+        case RPNFT_Int_F_1Int: result.i=rpn_fu.rpn_int_f_1int(ARGS_CAST(0)); break;
+        case RPNFT_Int_F_2Int: result.i=rpn_fu.rpn_int_f_2int(ARGS_CAST(0),ARGS_CAST(1)); break;
+        case RPNFT_Int_F_Cmp: result.i=rpn_fu.rpn_int_f_cmp(ARGS_CAST(0),ARGS_CAST(1)); break;
+        case RPNFT_Int_F_Ternary: result.l=rpn_fu.rpn_int_f_ternary(ARGS_CAST(0),ARGS_CAST(1),ARGS_CAST(2)); break;
+        case RPNFT_Long_F_NoArg: result.l=rpn_fu.rpn_long_f_noarg(); break;
+        case RPNFT_Long_F_1Long: result.l=rpn_fu.rpn_long_f_1long(ARGS_CAST(0)); break;
+        case RPNFT_Long_F_2Long: result.l=rpn_fu.rpn_long_f_2long(ARGS_CAST(0),ARGS_CAST(1)); break;
+        case RPNFT_Long_F_Cmp: result.i=rpn_fu.rpn_long_f_cmp(ARGS_CAST(0),ARGS_CAST(1)); break;
+        case RPNFT_Long_F_Ternary: result.l=rpn_fu.rpn_long_f_ternary(ARGS_CAST(0),ARGS_CAST(1),ARGS_CAST(2)); break;
+        case RPNFT_Double_F_NoArg: result.d=rpn_fu.rpn_double_f_noarg(); break;
+        case RPNFT_Double_F_1Double: result.d=rpn_fu.rpn_double_f_1double(ARGS_CAST(0)); break;
+        case RPNFT_Double_F_2Double: result.d=rpn_fu.rpn_double_f_2double(ARGS_CAST(0),ARGS_CAST(1)); break;
+        case RPNFT_Double_F_Ternary: result.d=rpn_fu.rpn_double_f_ternary(ARGS_CAST(0),ARGS_CAST(1),ARGS_CAST(2)); break;
+        case RPNFT_Double_F_Cmp: result.i=rpn_fu.rpn_double_f_cmp(ARGS_CAST(0),ARGS_CAST(1)); break;
+        case RPNFT_Invert: result.i=rpn_fu.rpn_invert(ARGS_CAST(0)); break;
         case RPNFT_Null: free(args); return true; break; //Shouldn't be accessed.
     }
     Stack_as_number_push(stack_an,result);
