@@ -715,6 +715,7 @@ bool run_program(command_array_t* cmd_arr, const char* file_str, Config config, 
                 break;
             case CMD_InitVar:
                 {
+                    #if 0
                     const vlcallback_t* vlc=VL_get_callback(vl,cmd_u.init_var.vlci);
                     cmdprintf("Initializing variable string name '%s' of type %s of value ",vlc->args.variable,VLNumberTypeStr(vlc->number_type));
                     if(config.debug_print_type==DBP_AllCommands||this_cmd.print_cmd){
@@ -729,6 +730,7 @@ bool run_program(command_array_t* cmd_arr, const char* file_str, Config config, 
                         no_error=false;
                         pthread_mutex_unlock(&input_mutex);
                     }
+                    #endif
                 }
                 break;
         }

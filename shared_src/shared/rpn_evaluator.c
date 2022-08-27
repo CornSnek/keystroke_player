@@ -5,15 +5,18 @@ ssize_t getrandom(void *buf, size_t buflen, unsigned int flags);
 StringMap_ImplDef(rpn_func_call_t,rpn_func_call)
 Stack_ImplDef(as_number_t,as_number)
 StringMap_rpn_func_call_t* DefaultRPNFunctionMap=0;
+bool _DividedByZero=false;
 #define BinOps(Type,Type_suf,f_name,o) Type RPN_##Type_suf##_##f_name(Type a,Type b){return a o b;}
+//For '/' and '%'
+#define BinOpsDiv(Type,Type_suf,f_name,o) Type RPN_##Type_suf##_##f_name(Type a,Type b){if(!b){ _DividedByZero=true; return 0; }return a o b;}
 #define BinCmp(Type,Type_suf,f_name,o) bool RPN_##Type_suf##_##f_name(Type a,Type b){return a o b;}
 #define UnOps(Type,Type_suf,f_name,o) Type RPN_##Type_suf##_##f_name(Type a){return o a;}
-
+//TODO: Check for divide by zero error and stop program when it happens.
 BinOps(char,c,add,+) UnOps(char,c,inc,++)
 BinOps(char,c,sub,-) UnOps(char,c,neg,-) UnOps(char,c,dec,--)
 BinOps(char,c,mul,*)
-BinOps(char,c,div,/)
-BinOps(char,c,mod,%)
+BinOpsDiv(char,c,div,/)
+BinOpsDiv(char,c,mod,%)
 BinOps(char,c,b_and,&) BinOps(char,c,b_or,|) UnOps(char,c,b_not,~) BinOps(char,c,b_xor,^) BinOps(char,c,bs_l,<<) BinOps(char,c,bs_r,>>)
 BinCmp(char,c,eq,==) BinCmp(char,c,neq,!=) BinCmp(char,c,lt,<) BinCmp(char,c,gt,>) BinCmp(char,c,lte,<=) BinCmp(char,c,gte,>=)
 char RPN_c_max(char a,char b){return a>b?a:b;}
@@ -30,8 +33,8 @@ char ternary_c(bool b,char x,char y){return b?x:y;}
 BinOps(int,i,add,+) UnOps(int,i,inc,++)
 BinOps(int,i,sub,-) UnOps(int,i,neg,-) UnOps(int,i,dec,--)
 BinOps(int,i,mul,*)
-BinOps(int,i,div,/)
-BinOps(int,i,mod,%)
+BinOpsDiv(int,i,div,/)
+BinOpsDiv(int,i,mod,%)
 BinOps(int,i,b_and,&) BinOps(int,i,b_or,|) UnOps(int,i,b_not,~) BinOps(int,i,b_xor,^) BinOps(int,i,bs_l,<<) BinOps(int,i,bs_r,>>)
 BinCmp(int,i,eq,==) BinCmp(int,i,neq,!=) BinCmp(int,i,lt,<) BinCmp(int,i,gt,>) BinCmp(int,i,lte,<=) BinCmp(int,i,gte,>=)
 int RPN_i_max(int a,int b){return a>b?a:b;}
@@ -47,8 +50,8 @@ int ternary_i(bool b,int x,int y){return b?x:y;}
 BinOps(long,l,add,+) UnOps(long,l,inc,++)
 BinOps(long,l,sub,-) UnOps(long,l,neg,-) UnOps(long,l,dec,--)
 BinOps(long,l,mul,*)
-BinOps(long,l,div,/)
-BinOps(long,l,mod,%)
+BinOpsDiv(long,l,div,/)
+BinOpsDiv(long,l,mod,%)
 BinOps(long,l,b_and,&) BinOps(long,l,b_or,|) UnOps(long,l,b_not,~) BinOps(long,l,b_xor,^) BinOps(long,l,bs_l,<<) BinOps(long,l,bs_r,>>)
 BinCmp(long,l,eq,==) BinCmp(long,l,neq,!=) BinCmp(long,l,lt,<) BinCmp(long,l,gt,>) BinCmp(long,l,lte,<=) BinCmp(long,l,gte,>=)
 long RPN_l_max(long a,long b){return a>b?a:b;}
@@ -233,6 +236,7 @@ VLNumberType _Stack_get_highest_number_type(const Stack_as_number_t* this,int nu
 void _Stack_as_number_print(const Stack_as_number_t* this);
 RPNValidStringE RPNEvaluatorValidString(const char* rpn_str,const VariableLoader_t* vl,const char* rpn_start_b,const char* rpn_end_b,char rpn_sep){
     RPNEvaluatorInitCalledFirst();
+    _DividedByZero=false;
     const char* start_p,* end_p;
     int depth=first_outermost_bracket(rpn_str,rpn_start_b,rpn_end_b,&start_p,&end_p);
     if(!start_p||depth) return RPNVS_ImproperBrackets;
@@ -345,8 +349,10 @@ RPNValidStringE _RPNEvaluatorIsVarNameOk(const char* token,const VariableLoader_
     if(rpn_f_num_args) smorfc_wprf=rpn_f_c_array[_Stack_get_highest_number_type(stack_an,rpn_f_num_args)];
     if(smorfc_noprf.exists&&smorfc_noprf.value.type!=RPNFT_Null){//Don't process if RPNFT_Null for any name collisions.
         if(!_ProcessRPNFunctionCall(stack_an,&smorfc_noprf.value)) return RPNVS_OutOfNumbers;
+        if(_DividedByZero) return RPNVS_DivideByZero;
     }else if(smorfc_wprf.exists){
         if(!_ProcessRPNFunctionCall(stack_an,&smorfc_wprf.value)) return RPNVS_OutOfNumbers;
+        if(_DividedByZero) return RPNVS_DivideByZero;
     }else{
         return token_is_var?RPNVS_IsVLName:RPNVS_NameUndefined;//If not VLVar, then NameNotAdded since no match for token.
     }

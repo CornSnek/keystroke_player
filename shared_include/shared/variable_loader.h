@@ -16,10 +16,10 @@ typedef enum _VLCallbackType{
     VLCallback_VLong,
     VLCallback_VInt,
     VLCallback_VChar,
-    VLCallback_AddAsLong,
-    VLCallback_AddAsDouble,
     VLCallback_RewriteAsLong,
-    VLCallback_RewriteAsDouble
+    VLCallback_RewriteAsDouble,
+    VLCallback_RewriteAsInt,
+    VLCallback_RewriteAsChar
 }VLCallbackType;
 typedef enum _VLNumberType{
     VLNT_Invalid,
@@ -43,6 +43,8 @@ typedef bool(*vlcallback_vint_f_t)(const VariableLoader_t*,int*,const char*);
 typedef bool(*vlcallback_vchar_f_t)(const VariableLoader_t*,char*,const char*);
 typedef bool(*vlcallback_add_as_l)(VariableLoader_t*,const char*,long);
 typedef bool(*vlcallback_add_as_d)(VariableLoader_t*,const char*,double);
+typedef bool(*vlcallback_add_as_i)(VariableLoader_t*,const char*,int);
+typedef bool(*vlcallback_add_as_c)(VariableLoader_t*,const char*,char);
 typedef union vlfunction_union{
     vlcallback_double_f_t as_double;
     vlcallback_long_f_t as_long;
@@ -54,6 +56,8 @@ typedef union vlfunction_union{
     vlcallback_vchar_f_t as_vchar;
     vlcallback_add_as_l as_add_as_l;
     vlcallback_add_as_d as_add_as_d;
+    vlcallback_add_as_i as_add_as_i;
+    vlcallback_add_as_c as_add_as_c;
 }vlfunction_union_t;
 typedef union vlargs_union{
     long number;
@@ -100,12 +104,15 @@ typedef struct VariableLoader_s{//Class that contains callbacks to load/save var
     shared_string_manager_t* ssm;
 }VariableLoader_t;
 VariableLoader_t* VL_new(size_t size);
-//Add variables to hash table to (re)modify values.
-//TODO: Just remove this and initialize values in parser.h instead.
-vlcallback_info VL_new_callback_add_as_l(VariableLoader_t* this,char* variable);
-vlcallback_info VL_new_callback_add_as_d(VariableLoader_t* this,char* variable);
-vlcallback_info VL_new_callback_rewrite_as_l(VariableLoader_t* this,char* variable);
-vlcallback_info VL_new_callback_rewrite_as_d(VariableLoader_t* this,char* variable);
+//Use these for parser.h instead.
+bool VL_callback_add_as_double(VariableLoader_t* this,const char* variable,double value);
+bool VL_callback_add_as_long(VariableLoader_t* this,const char* variable,long value);
+bool VL_callback_add_as_int(VariableLoader_t* this,const char* variable,int value);
+bool VL_callback_add_as_char(VariableLoader_t* this,const char* variable,char value);
+vlcallback_info VL_new_callback_rewrite_as_long(VariableLoader_t* this,char* variable);
+vlcallback_info VL_new_callback_rewrite_as_double(VariableLoader_t* this,char* variable);
+vlcallback_info VL_new_callback_rewrite_as_int(VariableLoader_t* this,char* variable);
+vlcallback_info VL_new_callback_rewrite_as_char(VariableLoader_t* this,char* variable);
 //Constant values (Doesn't use VariableLoader)
 vlcallback_info VL_new_callback_double(VariableLoader_t* this,double value);
 vlcallback_info VL_new_callback_long(VariableLoader_t* this,long value);

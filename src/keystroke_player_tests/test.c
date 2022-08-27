@@ -380,16 +380,12 @@ END_TEST
 START_TEST(variable_loader_test){
     VariableLoader_t* vl=VL_new(20);
     char* a_string="abcde",* string_no_exist="defg";
-    vlcallback_info vlc_add[5]={
-        VL_new_callback_add_as_l(vl,str_dup(a_string)),
-        VL_new_callback_add_as_d(vl,str_dup(a_string)),
-        VL_new_callback_rewrite_as_d(vl,str_dup(a_string)),
-        VL_new_callback_rewrite_as_l(vl,str_dup(string_no_exist))
+    vlcallback_info vlc_add[2]={
+        VL_new_callback_rewrite_as_double(vl,str_dup(a_string)),
+        VL_new_callback_rewrite_as_long(vl,str_dup(string_no_exist))
     };
-    ck_assert_int_eq(ProcessVLCallback(vl,vlc_add[0],&(long){123}),1);
-    ck_assert_int_eq(ProcessVLCallback(vl,vlc_add[1],&(double){200}),0);
-    ck_assert_int_eq(ProcessVLCallback(vl,vlc_add[2],&(double){69}),1);
-    ck_assert_int_eq(ProcessVLCallback(vl,vlc_add[3],&(long){70}),0);
+    ck_assert_int_eq(ProcessVLCallback(vl,vlc_add[0],&(double){69}),1);
+    ck_assert_int_eq(ProcessVLCallback(vl,vlc_add[1],&(long){70}),0);
     vlcallback_info vlc[4];
     vlc[0]=VL_new_callback_vdouble(vl,str_dup(a_string));
     vlc[1]=VL_new_callback_long(vl,80085);
@@ -430,7 +426,9 @@ Suite* test_suite(void){
 int main(void){
     RPNEvaluatorInit();
     VariableLoader_t* vl=VL_new(20);
-    RPNValidStringE status=RPNEvaluatorValidString("(-1,!,!,69c,420d,b?t:f)",vl,RPN_EVAL_START_B,RPN_EVAL_END_B,RPN_EVAL_SEP);
+    RPNValidStringE status=RPNEvaluatorValidString("(-1,!,!,69c,420d,b?t:f,as_l,0,%)",vl,RPN_EVAL_START_B,RPN_EVAL_END_B,RPN_EVAL_SEP);
+    printf("Status %d \n",status);
+    status=RPNEvaluatorValidString("(3,4,+)",vl,RPN_EVAL_START_B,RPN_EVAL_END_B,RPN_EVAL_SEP);
     printf("Status %d \n",status);
     VL_free(vl);
     RPNEvaluatorFree();

@@ -890,6 +890,7 @@ bool macro_buffer_process_next(macro_buffer_t* this,bool print_debug){//Returns 
                     num_str[read_offset_i]='\0';
                     switch(vct){
                         case VLCallback_VLong:
+                            #if 0
                             command_array_add(this->cmd_arr,
                                 (command_t){.type=CMD_InitVar,.subtype=CMDST_Var,.print_cmd=print_cmd,
                                     .cmd_u.init_var=(init_var_t){
@@ -898,8 +899,10 @@ bool macro_buffer_process_next(macro_buffer_t* this,bool print_debug){//Returns 
                                     }
                                 }
                             );
+                            #endif
                             break;
                         case VLCallback_VDouble:
+                            #if 0
                             command_array_add(this->cmd_arr,
                                 (command_t){.type=CMD_InitVar,.subtype=CMDST_Var,.print_cmd=print_cmd,
                                     .cmd_u.init_var=(init_var_t){
@@ -908,10 +911,13 @@ bool macro_buffer_process_next(macro_buffer_t* this,bool print_debug){//Returns 
                                     }
                                 }
                             );
+                            #endif
                             break;
                         default: break; //Code shouldn't be here.
                     }
                     free(num_str);
+                    fprintf(stderr,"Disabled InitVarValue command.\n");
+                    this->parse_error=true;
                     key_processed=true;
                     break;
                 }

@@ -1,9 +1,11 @@
 #include "variable_loader.h"
 StringMap_ImplDef(as_number_t,as_number)
-bool _VL_callback_add_as_d(VariableLoader_t* this,const char* variable,double value);
-bool _VL_callback_add_as_l(VariableLoader_t* this,const char* variable,long value);
-bool _VL_callback_rewrite_as_d(VariableLoader_t* this,const char* variable,double new_value);
-bool _VL_callback_rewrite_as_l(VariableLoader_t* this,const char* variable,long new_value);
+bool VL_callback_add_as_double(VariableLoader_t* this,const char* variable,double value);
+bool VL_callback_add_as_long(VariableLoader_t* this,const char* variable,long value);
+bool _VL_callback_rewrite_as_double(VariableLoader_t* this,const char* variable,double new_value);
+bool _VL_callback_rewrite_as_long(VariableLoader_t* this,const char* variable,long new_value);
+bool _VL_callback_rewrite_as_int(VariableLoader_t* this,const char* variable,int new_value);
+bool _VL_callback_rewrite_as_char(VariableLoader_t* this,const char* variable,char new_value);
 bool _VL_callback_double_func(double* at_address,double value);
 bool _VL_callback_long_func(long* at_address,long value);
 bool _VL_callback_int_func(int* at_address,int value);
@@ -24,10 +26,10 @@ bool ProcessVLCallback(VariableLoader_t* vl,vlcallback_info vlc_info,void* at_ad
         case VLCallback_VLong: return callback->func.as_vlong(vl,at_address,callback->args.variable);
         case VLCallback_VInt: return callback->func.as_vint(vl,at_address,callback->args.variable);
         case VLCallback_VChar: return callback->func.as_vchar(vl,at_address,callback->args.variable);
-        case VLCallback_RewriteAsLong://Fallthrough (Same function type)
-        case VLCallback_AddAsLong: return callback->func.as_add_as_l(vl,callback->args.variable,*((long*)at_address));
-        case VLCallback_RewriteAsDouble://Fallthrough (Same function type)
-        case VLCallback_AddAsDouble: return callback->func.as_add_as_d(vl,callback->args.variable,*((double*)at_address));
+        case VLCallback_RewriteAsLong: return callback->func.as_add_as_l(vl,callback->args.variable,*((long*)at_address));
+        case VLCallback_RewriteAsDouble: return callback->func.as_add_as_d(vl,callback->args.variable,*((double*)at_address));
+        case VLCallback_RewriteAsInt: return callback->func.as_add_as_i(vl,callback->args.variable,*((int*)at_address));
+        case VLCallback_RewriteAsChar: return callback->func.as_add_as_c(vl,callback->args.variable,*((char*)at_address));
     }
     fprintf(stderr,"Bad callback type. Code shouldn't reach here.\n"); exit(EXIT_FAILURE); return false;
 }
@@ -47,42 +49,42 @@ vlcallback_info _VariableLoader_add_callback(VariableLoader_t* this,vlcallback_t
     return (vlcallback_info){this_index};
 }
 //Takes malloc ownership of pointer.
-vlcallback_info VL_new_callback_add_as_l(VariableLoader_t* this,char* variable){
-    SSManager_add_string(this->ssm,&variable);
-    return _VariableLoader_add_callback(this,&(vlcallback_t){
-        .callback_type=VLCallback_AddAsLong,
-        .number_type=VLNT_Long,
-        .func.as_add_as_l=_VL_callback_add_as_l,
-        .args.variable=variable
-    });
-}
-//Takes malloc ownership of pointer.
-vlcallback_info VL_new_callback_add_as_d(VariableLoader_t* this,char* variable){
-    SSManager_add_string(this->ssm,&variable);
-    return _VariableLoader_add_callback(this,&(vlcallback_t){
-        .callback_type=VLCallback_AddAsDouble,
-        .number_type=VLNT_Double,
-        .func.as_add_as_d=_VL_callback_add_as_d,
-        .args.variable=variable
-    });
-}
-//Takes malloc ownership of pointer.
-vlcallback_info VL_new_callback_rewrite_as_l(VariableLoader_t* this,char* variable){
+vlcallback_info VL_new_callback_rewrite_as_long(VariableLoader_t* this,char* variable){
     SSManager_add_string(this->ssm,&variable);
     return _VariableLoader_add_callback(this,&(vlcallback_t){
         .callback_type=VLCallback_RewriteAsLong,
         .number_type=VLNT_Long,
-        .func.as_add_as_l=_VL_callback_rewrite_as_l,
+        .func.as_add_as_l=_VL_callback_rewrite_as_long,
         .args.variable=variable
     });
 }
 //Takes malloc ownership of pointer.
-vlcallback_info VL_new_callback_rewrite_as_d(VariableLoader_t* this,char* variable){
+vlcallback_info VL_new_callback_rewrite_as_double(VariableLoader_t* this,char* variable){
     SSManager_add_string(this->ssm,&variable);
     return _VariableLoader_add_callback(this,&(vlcallback_t){
         .callback_type=VLCallback_RewriteAsDouble,
         .number_type=VLNT_Double,
-        .func.as_add_as_d=_VL_callback_rewrite_as_d,
+        .func.as_add_as_d=_VL_callback_rewrite_as_double,
+        .args.variable=variable
+    });
+}
+//Takes malloc ownership of pointer.
+vlcallback_info VL_new_callback_rewrite_as_int(VariableLoader_t* this,char* variable){
+    SSManager_add_string(this->ssm,&variable);
+    return _VariableLoader_add_callback(this,&(vlcallback_t){
+        .callback_type=VLCallback_RewriteAsInt,
+        .number_type=VLNT_Int,
+        .func.as_add_as_i=_VL_callback_rewrite_as_int,
+        .args.variable=variable
+    });
+}
+//Takes malloc ownership of pointer.
+vlcallback_info VL_new_callback_rewrite_as_char(VariableLoader_t* this,char* variable){
+    SSManager_add_string(this->ssm,&variable);
+    return _VariableLoader_add_callback(this,&(vlcallback_t){
+        .callback_type=VLCallback_RewriteAsChar,
+        .number_type=VLNT_Char,
+        .func.as_add_as_c=_VL_callback_rewrite_as_char,
         .args.variable=variable
     });
 }
@@ -171,25 +173,45 @@ void VL_free(VariableLoader_t* this){
     free(this);
 }
 //Bool is false if full hash table, or string has already been added.
-bool _VL_callback_add_as_d(VariableLoader_t* this,const char* variable,double value){
+bool VL_callback_add_as_double(VariableLoader_t* this,const char* variable,double value){
     return StringMap_as_number_assign(this->sman,variable,(as_number_t){.d=value,.type=VLNT_Double})==VA_Written;
 }
 //Bool is false if full hash table, or string has already been added.
-bool _VL_callback_add_as_l(VariableLoader_t* this,const char* variable,long value){
+bool VL_callback_add_as_long(VariableLoader_t* this,const char* variable,long value){
     return StringMap_as_number_assign(this->sman,variable,(as_number_t){.l=value,.type=VLNT_Long})==VA_Written;
 }
-//Variable should already be added by VariableLoader_add_*.
-bool _VL_callback_rewrite_as_d(VariableLoader_t* this,const char* variable,double new_value){
+//Bool is false if full hash table, or string has already been added.
+bool VL_callback_add_as_int(VariableLoader_t* this,const char* variable,int value){
+    return StringMap_as_number_assign(this->sman,variable,(as_number_t){.i=value,.type=VLNT_Int})==VA_Written;
+}
+//Bool is false if full hash table, or string has already been added.
+bool VL_callback_add_as_char(VariableLoader_t* this,const char* variable,char value){
+    return StringMap_as_number_assign(this->sman,variable,(as_number_t){.c=value,.type=VLNT_Char})==VA_Written;
+}
+bool _VL_callback_rewrite_as_double(VariableLoader_t* this,const char* variable,double new_value){
     if(StringMap_as_number_read(this->sman,variable).exists){
         StringMap_as_number_assign(this->sman,variable,(as_number_t){.d=new_value,.type=VLNT_Double});
         return true;
     }
     return false;
 }
-//Variable should already be added by VariableLoader_add_*.
-bool _VL_callback_rewrite_as_l(VariableLoader_t* this,const char* variable,long new_value){
+bool _VL_callback_rewrite_as_long(VariableLoader_t* this,const char* variable,long new_value){
     if(StringMap_as_number_read(this->sman,variable).exists){
         StringMap_as_number_assign(this->sman,variable,(as_number_t){.l=new_value,.type=VLNT_Long});
+        return true;
+    }
+    return false;
+}
+bool _VL_callback_rewrite_as_int(VariableLoader_t* this,const char* variable,int new_value){
+    if(StringMap_as_number_read(this->sman,variable).exists){
+        StringMap_as_number_assign(this->sman,variable,(as_number_t){.i=new_value,.type=VLNT_Int});
+        return true;
+    }
+    return false;
+}
+bool _VL_callback_rewrite_as_char(VariableLoader_t* this,const char* variable,char new_value){
+    if(StringMap_as_number_read(this->sman,variable).exists){
+        StringMap_as_number_assign(this->sman,variable,(as_number_t){.c=new_value,.type=VLNT_Char});
         return true;
     }
     return false;

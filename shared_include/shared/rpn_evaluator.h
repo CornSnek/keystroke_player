@@ -107,7 +107,8 @@ typedef enum _RPNValidStringE{
     RPNVS_IsFunction,
     RPNVS_IsVLName,
     RPNVS_OutOfNumbers,
-    RPNVS_TooManyNumbers
+    RPNVS_TooManyNumbers,
+    RPNVS_DivideByZero
 }RPNValidStringE;
 RPNValidStringE RPNEvaluatorValidString(const char* rpn_str,const VariableLoader_t* vl,const char* rpn_start_b,const char* rpn_end_b,char rpn_sep);
 void RPNEvaluatorFree();
