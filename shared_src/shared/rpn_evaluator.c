@@ -234,9 +234,10 @@ RPNValidStringE _RPNEvaluatorIsVarNameOk(const char* token,const VariableLoader_
 bool _ProcessRPNFunctionCall(Stack_as_number_t* stack_an,const rpn_func_call_t* rpn_f_c);
 VLNumberType _Stack_get_highest_number_type(const Stack_as_number_t* this,int num_args);
 void _Stack_as_number_print(const Stack_as_number_t* this);
-RPNValidStringE RPNEvaluatorValidString(const char* rpn_str,const VariableLoader_t* vl,const char* rpn_start_b,const char* rpn_end_b,char rpn_sep){
+RPNValidStringE RPNEvaluatorGetNumber(const char* rpn_str,const VariableLoader_t* vl,as_number_t* get_value,const char* rpn_start_b,const char* rpn_end_b,char rpn_sep){
     RPNEvaluatorInitCalledFirst();
     _DividedByZero=false;
+    *get_value=(as_number_t){0};
     const char* start_p,* end_p;
     int depth=first_outermost_bracket(rpn_str,rpn_start_b,rpn_end_b,&start_p,&end_p);
     if(!start_p||depth) return RPNVS_ImproperBrackets;
@@ -279,6 +280,7 @@ RPNValidStringE RPNEvaluatorValidString(const char* rpn_str,const VariableLoader
     }
     _Stack_as_number_print(stack_an);
     int stack_size_now=stack_an->size;
+    if(stack_size_now==1) *get_value=stack_an->stack[0];
     Stack_as_number_free(stack_an);
     free(rpn_str_no_b);
     return (stack_size_now==1)?RPNVS_Ok:RPNVS_TooManyNumbers;
@@ -373,18 +375,19 @@ bool _ProcessRPNFunctionCall(Stack_as_number_t* stack_an,const rpn_func_call_t* 
     result.type=rpn_f_c->return_type;
 #define ARGS_CAST(I) ((args[I].v.type==VLNT_Double)?args[I].v.d:\
     (args[I].v.type==VLNT_Long)?args[I].v.l:\
-    (args[I].v.type==VLNT_Int)?args[I].v.i:args[I].v.c)
+    (args[I].v.type==VLNT_Int)?args[I].v.i:\
+    (args[I].v.type==VLNT_Char)?args[I].v.c:0)
     switch(rpn_f_c->type){
         case RPNFT_Char_F_NoArg: result.c=rpn_fu.rpn_char_f_noarg(); break;
         case RPNFT_Char_F_1Char: result.c=rpn_fu.rpn_char_f_1char(ARGS_CAST(0)); break;
         case RPNFT_Char_F_2Char: result.c=rpn_fu.rpn_char_f_2char(ARGS_CAST(0),ARGS_CAST(1)); break;
-        case RPNFT_Char_F_Cmp: result.c=rpn_fu.rpn_char_f_cmp(ARGS_CAST(0),ARGS_CAST(1)); break;
-        case RPNFT_Char_F_Ternary: result.l=rpn_fu.rpn_char_f_ternary(ARGS_CAST(0),ARGS_CAST(1),ARGS_CAST(2)); break;
+        case RPNFT_Char_F_Cmp: result.i=rpn_fu.rpn_char_f_cmp(ARGS_CAST(0),ARGS_CAST(1)); break;
+        case RPNFT_Char_F_Ternary: result.c=rpn_fu.rpn_char_f_ternary(ARGS_CAST(0),ARGS_CAST(1),ARGS_CAST(2)); break;
         case RPNFT_Int_F_NoArg: result.i=rpn_fu.rpn_int_f_noarg(); break;
         case RPNFT_Int_F_1Int: result.i=rpn_fu.rpn_int_f_1int(ARGS_CAST(0)); break;
         case RPNFT_Int_F_2Int: result.i=rpn_fu.rpn_int_f_2int(ARGS_CAST(0),ARGS_CAST(1)); break;
         case RPNFT_Int_F_Cmp: result.i=rpn_fu.rpn_int_f_cmp(ARGS_CAST(0),ARGS_CAST(1)); break;
-        case RPNFT_Int_F_Ternary: result.l=rpn_fu.rpn_int_f_ternary(ARGS_CAST(0),ARGS_CAST(1),ARGS_CAST(2)); break;
+        case RPNFT_Int_F_Ternary: result.i=rpn_fu.rpn_int_f_ternary(ARGS_CAST(0),ARGS_CAST(1),ARGS_CAST(2)); break;
         case RPNFT_Long_F_NoArg: result.l=rpn_fu.rpn_long_f_noarg(); break;
         case RPNFT_Long_F_1Long: result.l=rpn_fu.rpn_long_f_1long(ARGS_CAST(0)); break;
         case RPNFT_Long_F_2Long: result.l=rpn_fu.rpn_long_f_2long(ARGS_CAST(0),ARGS_CAST(1)); break;
@@ -402,6 +405,7 @@ bool _ProcessRPNFunctionCall(Stack_as_number_t* stack_an,const rpn_func_call_t* 
     Stack_as_number_push(stack_an,result);
     free(args);
     return true;
+#undef ARGS_CAST
 }
 VLNumberType _Stack_get_highest_number_type(const Stack_as_number_t* this,int num_args){
     VLNumberType highest_nt=VLNT_Invalid;

@@ -110,6 +110,6 @@ typedef enum _RPNValidStringE{
     RPNVS_TooManyNumbers,
     RPNVS_DivideByZero
 }RPNValidStringE;
-RPNValidStringE RPNEvaluatorValidString(const char* rpn_str,const VariableLoader_t* vl,const char* rpn_start_b,const char* rpn_end_b,char rpn_sep);
+RPNValidStringE RPNEvaluatorGetNumber(const char* rpn_str,const VariableLoader_t* vl,as_number_t* get_value,const char* rpn_start_b,const char* rpn_end_b,char rpn_sep);
 void RPNEvaluatorFree();
 #endif

@@ -122,8 +122,8 @@ typedef struct coords_within_s{
     int xl,yl,xh,yh;
 }coords_within_t;
 typedef struct init_var_s{
-    vlcallback_info vlci;
-    LD_u LorD;
+    as_number_t as_number;
+    const char* variable;
 }init_var_t;
 typedef union command_union{
     keystroke_t ks;

@@ -454,7 +454,8 @@ bool run_program(command_array_t* cmd_arr, const char* file_str, Config config, 
     typedef long nano_sec;
     nano_sec time_after_last_usleep;
     nano_sec real_delay=0;//Adjust delay depending on time after commands and after sleeping.
-    delay_ns_t adj_usleep,delay_ns=0;
+    delay_ns_t adj_usleep;
+    as_number_t an_output={0};
     XColor pc;
     int x_mouse,y_mouse,x_mouse_store=0,y_mouse_store=0;
     char LastKey[LAST_CMD_BUFFER_LEN+1]={0},LastJump[LAST_CMD_BUFFER_LEN+1]={0},LastRepeat[LAST_CMD_BUFFER_LEN+1]={0},LastQuery[LAST_CMD_BUFFER_LEN+1]={0};
@@ -546,13 +547,13 @@ bool run_program(command_array_t* cmd_arr, const char* file_str, Config config, 
             case CMD_Delay://Using timespec_get and timespec_diff (custom function) to try to get "precise delays"
                 timespec_diff(&ts_usleep_before,&ts_usleep_before_adj,&ts_diff);
                 time_after_last_usleep=ts_diff.tv_sec*NSEC_TO_SEC+ts_diff.tv_nsec;
-                vlsuccess=ProcessVLCallback(vl,cmd_u.delay,&delay_ns);
+                vlsuccess=ProcessVLCallback(vl,cmd_u.delay,&an_output);
                 if(!vlsuccess){
                     //TODO
                 }
-                real_delay+=delay_ns*1000-time_after_last_usleep;
+                real_delay+=an_output.l*1000-time_after_last_usleep;
                 adj_usleep=real_delay>0?((delay_ns_t)(real_delay/1000+(real_delay%1000>499?1:0))):0u;//0 and rounded nanoseconds.
-                cmdprintf("Sleeping for %ld microseconds (Adjusted to %ld due to commands) \n",delay_ns,adj_usleep);
+                cmdprintf("Sleeping for %ld microseconds (Adjusted to %ld due to commands) \n",an_output.l,adj_usleep);
                 {
                     int seconds=adj_usleep/MICSEC_TO_SEC;//Split into seconds so that it doesn't sleep when mouse moved over large seconds.
                     int left_over=adj_usleep%MICSEC_TO_SEC;

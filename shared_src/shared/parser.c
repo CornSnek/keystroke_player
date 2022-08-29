@@ -845,8 +845,12 @@ bool macro_buffer_process_next(macro_buffer_t* this,bool print_debug){//Returns 
                 break;
             case RS_InitVarType:
                 switch(current_char){
+                    #if 0
+                    case 'c': vct=VLCallback_VChar; goto valid_var_char;
+                    case 'i': vct=VLCallback_VInt; goto valid_var_char;
                     case 'l': vct=VLCallback_VLong; goto valid_var_char;
                     case 'd': vct=VLCallback_VDouble; goto valid_var_char;
+                    #endif
                     default: goto invalid_var_char;
                 }
                 valid_var_char:
@@ -888,33 +892,67 @@ bool macro_buffer_process_next(macro_buffer_t* this,bool print_debug){//Returns 
                     EXIT_IF_NULL(num_str,char*);
                     strncpy(num_str,this->contents+this->token_i+read_i,read_offset_i);
                     num_str[read_offset_i]='\0';
+                    #if 0
                     switch(vct){
-                        case VLCallback_VLong:
-                            #if 0
+                        case VLCallback_VChar:
+                            VL_add_as_char(this->vl,str_name,strtol(num_str,0,10));
                             command_array_add(this->cmd_arr,
                                 (command_t){.type=CMD_InitVar,.subtype=CMDST_Var,.print_cmd=print_cmd,
                                     .cmd_u.init_var=(init_var_t){
-                                        .vlci=VL_new_callback_add_as_l(this->vl,str_name),
-                                        .LorD.l=strtol(num_str,0,10)
+                                        .as_number=(as_number_t){
+                                            .c=strtol(num_str,0,10),
+                                            .type=VLNT_Char
+                                        },
+                                        .variable=str_name
                                     }
                                 }
                             );
-                            #endif
+                            break;
+                        case VLCallback_VInt:
+                            VL_add_as_int(this->vl,str_name,strtol(num_str,0,10));
+                            command_array_add(this->cmd_arr,
+                                (command_t){.type=CMD_InitVar,.subtype=CMDST_Var,.print_cmd=print_cmd,
+                                    .cmd_u.init_var=(init_var_t){
+                                        .as_number=(as_number_t){
+                                            .i=strtol(num_str,0,10),
+                                            .type=VLNT_Int
+                                        },
+                                        .variable=str_name
+                                    }
+                                }
+                            );
+                            break;
+                        case VLCallback_VLong:
+                            VL_add_as_long(this->vl,str_name,strtol(num_str,0,10));
+                            command_array_add(this->cmd_arr,
+                                (command_t){.type=CMD_InitVar,.subtype=CMDST_Var,.print_cmd=print_cmd,
+                                    .cmd_u.init_var=(init_var_t){
+                                        .as_number=(as_number_t){
+                                            .l=strtol(num_str,0,10),
+                                            .type=VLNT_Long
+                                        },
+                                        .variable=str_name
+                                    }
+                                }
+                            );
                             break;
                         case VLCallback_VDouble:
-                            #if 0
+                            VL_add_as_double(this->vl,str_name,strtol(num_str,0,10));
                             command_array_add(this->cmd_arr,
                                 (command_t){.type=CMD_InitVar,.subtype=CMDST_Var,.print_cmd=print_cmd,
                                     .cmd_u.init_var=(init_var_t){
-                                        .vlci=VL_new_callback_add_as_d(this->vl,str_name),
-                                        .LorD.d=strtod(num_str,0)
+                                        .as_number=(as_number_t){
+                                            .d=strtod(num_str,0),
+                                            .type=VLNT_Double
+                                        },
+                                        .variable=str_name
                                     }
                                 }
                             );
-                            #endif
                             break;
                         default: break; //Code shouldn't be here.
                     }
+                    #endif
                     free(num_str);
                     fprintf(stderr,"Disabled InitVarValue command.\n");
                     this->parse_error=true;
@@ -1185,8 +1223,7 @@ void command_array_print(const command_array_t* this,const VariableLoader_t* vl)
                 break;
             case CMD_InitVar:
                 {
-                    const vlcallback_t* vlc=VL_get_callback(vl,cmd.init_var.vlci);
-                    printf("InitVar Name: '%s' Type: '%s'\n",vlc->args.variable,VLNumberTypeStr(vlc->number_type));
+                    printf("InitVar Name: '%s' Type: '%s'\n","TODO","TODO");
                 }
                 break;
         }

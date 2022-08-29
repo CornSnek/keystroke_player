@@ -378,30 +378,19 @@ START_TEST(hash_map_test){
 }
 END_TEST
 START_TEST(variable_loader_test){
+}
+END_TEST
+#include "rpn_evaluator.h"
+START_TEST(rpn_evaluator_test){
+    RPNEvaluatorInit();
     VariableLoader_t* vl=VL_new(20);
-    char* a_string="abcde",* string_no_exist="defg";
-    vlcallback_info vlc_add[2]={
-        VL_new_callback_rewrite_as_double(vl,str_dup(a_string)),
-        VL_new_callback_rewrite_as_long(vl,str_dup(string_no_exist))
-    };
-    ck_assert_int_eq(ProcessVLCallback(vl,vlc_add[0],&(double){69}),1);
-    ck_assert_int_eq(ProcessVLCallback(vl,vlc_add[1],&(long){70}),0);
-    vlcallback_info vlc[4];
-    vlc[0]=VL_new_callback_vdouble(vl,str_dup(a_string));
-    vlc[1]=VL_new_callback_long(vl,80085);
-    vlc[2]=VL_new_callback_vlong(vl,str_dup(string_no_exist));
-    vlc[3]=VL_new_callback_double(vl,420.69);
-    long lnum;
-    double dnum;
-    ck_assert_int_eq(ProcessVLCallback(vl,vlc[0],&dnum),1);
-    printf("%.50lf 0x%016lx\n",dnum,(LD_u){.d=dnum}.l);
-    ck_assert_int_eq(ProcessVLCallback(vl,vlc[1],&lnum),1);
-    printf("%ld\n",lnum);
-    ck_assert_int_eq(ProcessVLCallback(vl,vlc[2],&lnum),0);
-    ck_assert_int_eq(ProcessVLCallback(vl,vlc[3],&dnum),1);
-    printf("%.50lf 0x%016lx\n",dnum,(LD_u){.d=dnum}.l);
-    SSManager_print_strings(vl->ssm);
+    as_number_t num;
+    RPNValidStringE status=RPNEvaluatorGetNumber("(-1,!,!,69c,420d,b?t:f,as_l,0,%)",vl,&num,RPN_EVAL_START_B,RPN_EVAL_END_B,RPN_EVAL_SEP);
+    printf("Status %d-%s\n",status,VLNumberTypeStr(num.type));
+    status=RPNEvaluatorGetNumber("(3,4,+)",vl,&num,RPN_EVAL_START_B,RPN_EVAL_END_B,RPN_EVAL_SEP);
+    printf("Status %d-%ld-%s\n",status,num.l,VLNumberTypeStr(num.type));
     VL_free(vl);
+    RPNEvaluatorFree();
 }
 END_TEST
 Suite* test_suite(void){
@@ -419,19 +408,34 @@ Suite* test_suite(void){
     tcase_set_timeout(tc_core,1000.);
     tcase_add_test(tc_core,hash_map_test);
     tcase_add_test(tc_core,variable_loader_test);
+    tcase_add_test(tc_core,rpn_evaluator_test);
     suite_add_tcase(s,tc_core);
     return s;
 }
-#include "rpn_evaluator.h"
 int main(void){
-    RPNEvaluatorInit();
     VariableLoader_t* vl=VL_new(20);
-    RPNValidStringE status=RPNEvaluatorValidString("(-1,!,!,69c,420d,b?t:f,as_l,0,%)",vl,RPN_EVAL_START_B,RPN_EVAL_END_B,RPN_EVAL_SEP);
-    printf("Status %d \n",status);
-    status=RPNEvaluatorValidString("(3,4,+)",vl,RPN_EVAL_START_B,RPN_EVAL_END_B,RPN_EVAL_SEP);
-    printf("Status %d \n",status);
+    const char str[]="abc";
+    VL_add_as_long(vl,str_dup(str),69);
+    vlcallback_info vlci_arr[]={
+        VL_new_callback_long(vl,200),
+        VL_new_callback_load_variable(vl,str_dup(str)),
+        VL_new_callback_rewrite_variable(vl,str_dup(str)),
+        VL_new_callback_rewrite_variable(vl,str_dup("None")),
+        VL_new_callback_load_variable(vl,str_dup("None")),
+    };
+    as_number_t an_output[3];
+    as_number_t an_input=(as_number_t){.type=VLNT_Double,.d=123.456};
+#define PRINT_STATUS(Code) printf("%d\n",(Code));
+    PRINT_STATUS(ProcessVLCallback(vl,vlci_arr[0],an_output));
+    PRINT_STATUS(ProcessVLCallback(vl,vlci_arr[1],an_output+1));
+    PRINT_STATUS(ProcessVLCallback(vl,vlci_arr[2],&an_input));
+    PRINT_STATUS(ProcessVLCallback(vl,vlci_arr[3],&an_input));
+    PRINT_STATUS(ProcessVLCallback(vl,vlci_arr[4],an_output+2));
+    PRINT_STATUS(ProcessVLCallback(vl,vlci_arr[1],an_output+2));
+#undef PRINT_STATUS
+    printf("%ld %ld %ld\n",an_output[0].l,an_output[1].l,an_output[2].l);
+    SSManager_print_strings(vl->ssm);
     VL_free(vl);
-    RPNEvaluatorFree();
     return 0;
     Suite *s;
     SRunner *sr;
