@@ -19,6 +19,7 @@ BinOpsDiv(char,c,div,/)
 BinOpsDiv(char,c,mod,%)
 BinOps(char,c,b_and,&) BinOps(char,c,b_or,|) UnOps(char,c,b_not,~) BinOps(char,c,b_xor,^) BinOps(char,c,bs_l,<<) BinOps(char,c,bs_r,>>)
 BinCmp(char,c,eq,==) BinCmp(char,c,neq,!=) BinCmp(char,c,lt,<) BinCmp(char,c,gt,>) BinCmp(char,c,lte,<=) BinCmp(char,c,gte,>=)
+BinCmp(unsigned char,uc,eq,==) BinCmp(unsigned char,uc,neq,!=) BinCmp(unsigned char,uc,lt,<) BinCmp(unsigned char,uc,gt,>) BinCmp(unsigned char,uc,lte,<=) BinCmp(unsigned char,uc,gte,>=)
 char RPN_c_max(char a,char b){return a>b?a:b;}
 char RPN_c_min(char a,char b){return a<b?a:b;}
 char _cabs(char a){return abs(a);}
@@ -37,6 +38,7 @@ BinOpsDiv(int,i,div,/)
 BinOpsDiv(int,i,mod,%)
 BinOps(int,i,b_and,&) BinOps(int,i,b_or,|) UnOps(int,i,b_not,~) BinOps(int,i,b_xor,^) BinOps(int,i,bs_l,<<) BinOps(int,i,bs_r,>>)
 BinCmp(int,i,eq,==) BinCmp(int,i,neq,!=) BinCmp(int,i,lt,<) BinCmp(int,i,gt,>) BinCmp(int,i,lte,<=) BinCmp(int,i,gte,>=)
+BinCmp(unsigned int,ui,eq,==) BinCmp(unsigned int,ui,neq,!=) BinCmp(unsigned int,ui,lt,<) BinCmp(unsigned int,ui,gt,>) BinCmp(unsigned int,ui,lte,<=) BinCmp(unsigned int,ui,gte,>=)
 int RPN_i_max(int a,int b){return a>b?a:b;}
 int RPN_i_min(int a,int b){return a<b?a:b;}
 int castas_i(int num){return num;}
@@ -54,6 +56,7 @@ BinOpsDiv(long,l,div,/)
 BinOpsDiv(long,l,mod,%)
 BinOps(long,l,b_and,&) BinOps(long,l,b_or,|) UnOps(long,l,b_not,~) BinOps(long,l,b_xor,^) BinOps(long,l,bs_l,<<) BinOps(long,l,bs_r,>>)
 BinCmp(long,l,eq,==) BinCmp(long,l,neq,!=) BinCmp(long,l,lt,<) BinCmp(long,l,gt,>) BinCmp(long,l,lte,<=) BinCmp(long,l,gte,>=)
+BinCmp(unsigned long,ul,eq,==) BinCmp(unsigned long,ul,neq,!=) BinCmp(unsigned long,ul,lt,<) BinCmp(unsigned long,ul,gt,>) BinCmp(unsigned long,ul,lte,<=) BinCmp(unsigned long,ul,gte,>=)
 long RPN_l_max(long a,long b){return a>b?a:b;}
 long RPN_l_min(long a,long b){return a<b?a:b;}
 long castas_l(long num){return num;}
@@ -70,7 +73,7 @@ BinOps(double,d,mul,*)
 BinOps(double,d,div,/)
 bool RPN_d_eq(double a,double b){ return fabs(a-b)<=DBL_EPSILON; }
 bool RPN_d_neq(double a,double b){ return fabs(a-b)>DBL_EPSILON; }
-BinCmp(double,d,lt,<) BinCmp(double,d,gt,>) BinCmp(double,d,lte,<=) BinCmp(double,d,gte,>=)
+BinCmp(double,d,lt,<) BinCmp(double,d,gt,>) BinCmp(double,d,lte,<=) BinCmp(double,d,gte,>=)//No unsigned double, but these will be used twice for number promotions.
 #define __PI 3.141592653589793238
 static inline double deg_to_rad(double deg){
     return deg*__PI/180.;
@@ -88,9 +91,9 @@ void rpn_f_null(void){}
 //To make the default StringMap before calling rpn_evaluator_new.
 void RPNEvaluatorInit(void){
     if(!DefaultRPNFunctionMap){
-        DefaultRPNFunctionMap=StringMap_rpn_func_call_new(199);
+        DefaultRPNFunctionMap=StringMap_rpn_func_call_new(211);
 #define SMA(Str,RFT,RFT_u,F,NumArgs,ReturnType) assert(StringMap_rpn_func_call_assign(DefaultRPNFunctionMap,Str,(rpn_func_call_t){.type=RFT,.func.RFT_u=F,.num_args=NumArgs,.return_type=ReturnType})==VA_Written)
-        SMA("abs",RPNFT_Null,rpn_null,rpn_f_null,0,VLNT_Invalid);//To check for "Existence" for any name collisions. Will not be calculated.
+        SMA("abs",RPNFT_Null,rpn_null,rpn_f_null,0,VLNT_Invalid);//To check for "Existence" for any name collisions for char/int/long/double. Will not be calculated.
         SMA("max",RPNFT_Null,rpn_null,rpn_f_null,0,VLNT_Invalid);
         SMA("min",RPNFT_Null,rpn_null,rpn_f_null,0,VLNT_Invalid);
 
@@ -108,12 +111,18 @@ void RPNEvaluatorInit(void){
         SMA("__c^",RPNFT_Char_F_2Char,rpn_char_f_2char,RPN_c_b_xor,2,VLNT_Char);
         SMA("__c<<",RPNFT_Char_F_2Char,rpn_char_f_2char,RPN_c_bs_l,2,VLNT_Char);
         SMA("__c>>",RPNFT_Char_F_2Char,rpn_char_f_2char,RPN_c_bs_r,2,VLNT_Char);
-        SMA("__c==",RPNFT_Char_F_Cmp,rpn_char_f_cmp,RPN_c_eq,2,VLNT_Char);
-        SMA("__c!=",RPNFT_Char_F_Cmp,rpn_char_f_cmp,RPN_c_neq,2,VLNT_Char);
-        SMA("__c>",RPNFT_Char_F_Cmp,rpn_char_f_cmp,RPN_c_gt,2,VLNT_Char);
-        SMA("__c<",RPNFT_Char_F_Cmp,rpn_char_f_cmp,RPN_c_lt,2,VLNT_Char);
-        SMA("__c>=",RPNFT_Char_F_Cmp,rpn_char_f_cmp,RPN_c_gte,2,VLNT_Char);
-        SMA("__c<=",RPNFT_Char_F_Cmp,rpn_char_f_cmp,RPN_c_lte,2,VLNT_Char);
+        SMA("__c==",RPNFT_Char_F_Cmp,rpn_char_f_cmp,RPN_c_eq,2,VLNT_Int);//Int as boolean.
+        SMA("__c!=",RPNFT_Char_F_Cmp,rpn_char_f_cmp,RPN_c_neq,2,VLNT_Int);
+        SMA("__c>",RPNFT_Char_F_Cmp,rpn_char_f_cmp,RPN_c_gt,2,VLNT_Int);
+        SMA("__c<",RPNFT_Char_F_Cmp,rpn_char_f_cmp,RPN_c_lt,2,VLNT_Int);
+        SMA("__c>=",RPNFT_Char_F_Cmp,rpn_char_f_cmp,RPN_c_gte,2,VLNT_Int);
+        SMA("__c<=",RPNFT_Char_F_Cmp,rpn_char_f_cmp,RPN_c_lte,2,VLNT_Int);
+        SMA("__c==u",RPNFT_Char_F_UCmp,rpn_char_f_ucmp,RPN_uc_eq,2,VLNT_Int);
+        SMA("__c!=u",RPNFT_Char_F_UCmp,rpn_char_f_ucmp,RPN_uc_neq,2,VLNT_Int);
+        SMA("__c>u",RPNFT_Char_F_UCmp,rpn_char_f_ucmp,RPN_uc_gt,2,VLNT_Int);
+        SMA("__c<u",RPNFT_Char_F_UCmp,rpn_char_f_ucmp,RPN_uc_lt,2,VLNT_Int);
+        SMA("__c>=u",RPNFT_Char_F_UCmp,rpn_char_f_ucmp,RPN_uc_gte,2,VLNT_Int);
+        SMA("__c<=u",RPNFT_Char_F_UCmp,rpn_char_f_ucmp,RPN_uc_lte,2,VLNT_Int);
         SMA("__cabs",RPNFT_Char_F_1Char,rpn_char_f_1char,_cabs,1,VLNT_Char);
         SMA("__cmax",RPNFT_Char_F_2Char,rpn_char_f_2char,RPN_c_max,2,VLNT_Char);
         SMA("__cmin",RPNFT_Char_F_2Char,rpn_char_f_2char,RPN_c_min,2,VLNT_Char);
@@ -141,6 +150,12 @@ void RPNEvaluatorInit(void){
         SMA("__i<",RPNFT_Int_F_Cmp,rpn_int_f_cmp,RPN_i_lt,2,VLNT_Int);
         SMA("__i>=",RPNFT_Int_F_Cmp,rpn_int_f_cmp,RPN_i_gte,2,VLNT_Int);
         SMA("__i<=",RPNFT_Int_F_Cmp,rpn_int_f_cmp,RPN_i_lte,2,VLNT_Int);
+        SMA("__i==u",RPNFT_Int_F_UCmp,rpn_int_f_ucmp,RPN_ui_eq,2,VLNT_Int);
+        SMA("__i!=u",RPNFT_Int_F_UCmp,rpn_int_f_ucmp,RPN_ui_neq,2,VLNT_Int);
+        SMA("__i>u",RPNFT_Int_F_UCmp,rpn_int_f_ucmp,RPN_ui_gt,2,VLNT_Int);
+        SMA("__i<u",RPNFT_Int_F_UCmp,rpn_int_f_ucmp,RPN_ui_lt,2,VLNT_Int);
+        SMA("__i>=u",RPNFT_Int_F_UCmp,rpn_int_f_ucmp,RPN_ui_gte,2,VLNT_Int);
+        SMA("__i<=u",RPNFT_Int_F_UCmp,rpn_int_f_ucmp,RPN_ui_lte,2,VLNT_Int);
         SMA("__iabs",RPNFT_Int_F_1Int,rpn_int_f_1int,abs,1,VLNT_Int);
         SMA("__imax",RPNFT_Int_F_2Int,rpn_int_f_2int,RPN_i_max,2,VLNT_Int);
         SMA("__imin",RPNFT_Int_F_2Int,rpn_int_f_2int,RPN_i_min,2,VLNT_Int);
@@ -168,6 +183,12 @@ void RPNEvaluatorInit(void){
         SMA("__l<",RPNFT_Long_F_Cmp,rpn_long_f_cmp,RPN_l_lt,2,VLNT_Int);
         SMA("__l>=",RPNFT_Long_F_Cmp,rpn_long_f_cmp,RPN_l_gte,2,VLNT_Int);
         SMA("__l<=",RPNFT_Long_F_Cmp,rpn_long_f_cmp,RPN_l_lte,2,VLNT_Int);
+        SMA("__l==u",RPNFT_Long_F_UCmp,rpn_long_f_ucmp,RPN_ul_eq,2,VLNT_Int);
+        SMA("__l!=u",RPNFT_Long_F_UCmp,rpn_long_f_ucmp,RPN_ul_neq,2,VLNT_Int);
+        SMA("__l>u",RPNFT_Long_F_UCmp,rpn_long_f_ucmp,RPN_ul_gt,2,VLNT_Int);
+        SMA("__l<u",RPNFT_Long_F_UCmp,rpn_long_f_ucmp,RPN_ul_lt,2,VLNT_Int);
+        SMA("__l>=u",RPNFT_Long_F_UCmp,rpn_long_f_ucmp,RPN_ul_gte,2,VLNT_Int);
+        SMA("__l<=u",RPNFT_Long_F_UCmp,rpn_long_f_ucmp,RPN_ul_lte,2,VLNT_Int);
         SMA("__labs",RPNFT_Long_F_1Long,rpn_long_f_1long,labs,1,VLNT_Long);
         SMA("__lmax",RPNFT_Long_F_2Long,rpn_long_f_2long,RPN_l_max,2,VLNT_Long);
         SMA("__lmin",RPNFT_Long_F_2Long,rpn_long_f_2long,RPN_l_min,2,VLNT_Long);
@@ -229,18 +250,19 @@ if(!DefaultRPNFunctionMap){\
 #else
 #define RPNEvaluatorInitCalledFirst() (void)0
 #endif
-as_number_opt_t _RPNEvaluatorIsNumber(const char* token);
+as_number_opt_t String_to_as_number_t(const char* token);
 RPNValidStringE _RPNEvaluatorIsVarNameOk(const char* token,const VariableLoader_t* vl,Stack_as_number_t* stack_an);
 bool _ProcessRPNFunctionCall(Stack_as_number_t* stack_an,const rpn_func_call_t* rpn_f_c);
 VLNumberType _Stack_get_highest_number_type(const Stack_as_number_t* this,int num_args);
 void _Stack_as_number_print(const Stack_as_number_t* this);
-RPNValidStringE RPNEvaluatorGetNumber(const char* rpn_str,const VariableLoader_t* vl,as_number_t* get_value,const char* rpn_start_b,const char* rpn_end_b,char rpn_sep){
+RPNValidStringE RPNEvaluatorGetNumber(const char* rpn_str,const VariableLoader_t* vl,as_number_t* get_value,bool see_stack,const char* rpn_start_b,const char* rpn_end_b,char rpn_sep){
     RPNEvaluatorInitCalledFirst();
     _DividedByZero=false;
     *get_value=(as_number_t){0};
     const char* start_p,* end_p;
     int depth=first_outermost_bracket(rpn_str,rpn_start_b,rpn_end_b,&start_p,&end_p);
     if(!start_p||depth) return RPNVS_ImproperBrackets;
+    if(start_p+1==end_p) return RPNVS_OutOfNumbers;//Only just "()"
     char* rpn_str_no_b=char_string_slice_no_brackets(start_p,end_p,rpn_start_b);
     Stack_as_number_t* stack_an=Stack_as_number_new();
     const char* token_b_p=rpn_str_no_b,* token_e_p=rpn_str_no_b;
@@ -249,11 +271,11 @@ RPNValidStringE RPNEvaluatorGetNumber(const char* rpn_str,const VariableLoader_t
         char* current_token;
         as_number_opt_t an_opt;
         RPNValidStringE status;
-        _Stack_as_number_print(stack_an);
+        if(see_stack) _Stack_as_number_print(stack_an);
         if(token_e_p){
             current_token=char_string_slice(token_b_p,token_e_p-1);
-            puts(current_token);
-            if((an_opt=_RPNEvaluatorIsNumber(current_token)).exists) Stack_as_number_push(stack_an,an_opt.v);
+            if(see_stack) puts(current_token);
+            if((an_opt=String_to_as_number_t(current_token)).exists) Stack_as_number_push(stack_an,an_opt.v);
             else if((status=_RPNEvaluatorIsVarNameOk(current_token,vl,stack_an))!=RPNVS_IsVLName&&status!=RPNVS_IsFunction){
                 free(current_token);
                 free(rpn_str_no_b);
@@ -267,8 +289,8 @@ RPNValidStringE RPNEvaluatorGetNumber(const char* rpn_str,const VariableLoader_t
         current_token=malloc(sizeof(char)*(strlen(token_b_p)+1));
         EXIT_IF_NULL(current_token,char*);
         strcpy(current_token,token_b_p);
-        puts(current_token);
-        if((an_opt=_RPNEvaluatorIsNumber(current_token)).exists) Stack_as_number_push(stack_an,an_opt.v);
+        if(see_stack) puts(current_token);
+        if((an_opt=String_to_as_number_t(current_token)).exists) Stack_as_number_push(stack_an,an_opt.v);
         else if((status=_RPNEvaluatorIsVarNameOk(current_token,vl,stack_an))!=RPNVS_IsVLName&&status!=RPNVS_IsFunction){
             free(current_token);
             Stack_as_number_free(stack_an);
@@ -278,7 +300,7 @@ RPNValidStringE RPNEvaluatorGetNumber(const char* rpn_str,const VariableLoader_t
         free(current_token);
         break;
     }
-    _Stack_as_number_print(stack_an);
+    if(see_stack) _Stack_as_number_print(stack_an);
     int stack_size_now=stack_an->size;
     if(stack_size_now==1) *get_value=stack_an->stack[0];
     Stack_as_number_free(stack_an);
@@ -288,37 +310,6 @@ RPNValidStringE RPNEvaluatorGetNumber(const char* rpn_str,const VariableLoader_t
 void RPNEvaluatorFree(void){
     StringMap_rpn_func_call_free(DefaultRPNFunctionMap);
     DefaultRPNFunctionMap=0;
-}
-as_number_opt_t _RPNEvaluatorIsNumber(const char* token){
-    VLNumberType vlnt=VLNT_Long;//Default
-    for(size_t i=0;i<strlen(token);i++){
-        const char current_char=token[i];
-        if(isdigit(current_char)) continue;
-        if(i==0&&current_char=='-') continue;
-        if(current_char=='.'){
-            if(vlnt==VLNT_Double) return (as_number_opt_t){0};//Only one dot.
-            if(vlnt!=VLNT_Double) vlnt=VLNT_Double;
-            continue;
-        }
-        if(vlnt!=VLNT_Double&&i==strlen(token)-1){
-            switch(current_char){
-                case 'c': vlnt=VLNT_Char; goto valid_num;
-                case 'i': vlnt=VLNT_Int; goto valid_num;
-                case 'l': vlnt=VLNT_Long; goto valid_num;
-                case 'd': vlnt=VLNT_Double; goto valid_num;
-                default: return (as_number_opt_t){0};
-            }
-        }
-        return (as_number_opt_t){0};
-    }
-    valid_num:
-    switch(vlnt){ 
-        case VLNT_Char: return (as_number_opt_t){.exists=true,.v=(as_number_t){.type=vlnt,.c=(char)strtol(token,0,10)}};
-        case VLNT_Int: return (as_number_opt_t){.exists=true,.v=(as_number_t){.type=vlnt,.i=(int)strtol(token,0,10)}};
-        case VLNT_Long: return (as_number_opt_t){.exists=true,.v=(as_number_t){.type=vlnt,.l=strtol(token,0,10)}};
-        case VLNT_Double: return (as_number_opt_t){.exists=true,.v=(as_number_t){.type=vlnt,.d=strtod(token,0)}};
-        default: return (as_number_opt_t){0};//Should be unreachable.
-    }
 }
 //Check if VariableLoader names doesn't share any names in DefaultRPNFunctionMap.
 RPNValidStringE _RPNEvaluatorIsVarNameOk(const char* token,const VariableLoader_t* vl,Stack_as_number_t* stack_an){
@@ -373,7 +364,7 @@ bool _ProcessRPNFunctionCall(Stack_as_number_t* stack_an,const rpn_func_call_t* 
     }
     const rpn_function_u rpn_fu=rpn_f_c->func;
     result.type=rpn_f_c->return_type;
-#define ARGS_CAST(I) ((args[I].v.type==VLNT_Double)?args[I].v.d:\
+    #define ARGS_CAST(I) ((args[I].v.type==VLNT_Double)?args[I].v.d:\
     (args[I].v.type==VLNT_Long)?args[I].v.l:\
     (args[I].v.type==VLNT_Int)?args[I].v.i:\
     (args[I].v.type==VLNT_Char)?args[I].v.c:0)
@@ -382,16 +373,19 @@ bool _ProcessRPNFunctionCall(Stack_as_number_t* stack_an,const rpn_func_call_t* 
         case RPNFT_Char_F_1Char: result.c=rpn_fu.rpn_char_f_1char(ARGS_CAST(0)); break;
         case RPNFT_Char_F_2Char: result.c=rpn_fu.rpn_char_f_2char(ARGS_CAST(0),ARGS_CAST(1)); break;
         case RPNFT_Char_F_Cmp: result.i=rpn_fu.rpn_char_f_cmp(ARGS_CAST(0),ARGS_CAST(1)); break;
+        case RPNFT_Char_F_UCmp: result.i=rpn_fu.rpn_char_f_ucmp(ARGS_CAST(0),ARGS_CAST(1)); break;
         case RPNFT_Char_F_Ternary: result.c=rpn_fu.rpn_char_f_ternary(ARGS_CAST(0),ARGS_CAST(1),ARGS_CAST(2)); break;
         case RPNFT_Int_F_NoArg: result.i=rpn_fu.rpn_int_f_noarg(); break;
         case RPNFT_Int_F_1Int: result.i=rpn_fu.rpn_int_f_1int(ARGS_CAST(0)); break;
         case RPNFT_Int_F_2Int: result.i=rpn_fu.rpn_int_f_2int(ARGS_CAST(0),ARGS_CAST(1)); break;
         case RPNFT_Int_F_Cmp: result.i=rpn_fu.rpn_int_f_cmp(ARGS_CAST(0),ARGS_CAST(1)); break;
+        case RPNFT_Int_F_UCmp: result.i=rpn_fu.rpn_int_f_ucmp(ARGS_CAST(0),ARGS_CAST(1)); break;
         case RPNFT_Int_F_Ternary: result.i=rpn_fu.rpn_int_f_ternary(ARGS_CAST(0),ARGS_CAST(1),ARGS_CAST(2)); break;
         case RPNFT_Long_F_NoArg: result.l=rpn_fu.rpn_long_f_noarg(); break;
         case RPNFT_Long_F_1Long: result.l=rpn_fu.rpn_long_f_1long(ARGS_CAST(0)); break;
         case RPNFT_Long_F_2Long: result.l=rpn_fu.rpn_long_f_2long(ARGS_CAST(0),ARGS_CAST(1)); break;
         case RPNFT_Long_F_Cmp: result.i=rpn_fu.rpn_long_f_cmp(ARGS_CAST(0),ARGS_CAST(1)); break;
+        case RPNFT_Long_F_UCmp: result.i=rpn_fu.rpn_long_f_ucmp(ARGS_CAST(0),ARGS_CAST(1)); break;
         case RPNFT_Long_F_Ternary: result.l=rpn_fu.rpn_long_f_ternary(ARGS_CAST(0),ARGS_CAST(1),ARGS_CAST(2)); break;
         case RPNFT_Double_F_NoArg: result.d=rpn_fu.rpn_double_f_noarg(); break;
         case RPNFT_Double_F_1Double: result.d=rpn_fu.rpn_double_f_1double(ARGS_CAST(0)); break;
@@ -405,7 +399,7 @@ bool _ProcessRPNFunctionCall(Stack_as_number_t* stack_an,const rpn_func_call_t* 
     Stack_as_number_push(stack_an,result);
     free(args);
     return true;
-#undef ARGS_CAST
+    #undef ARGS_CAST
 }
 VLNumberType _Stack_get_highest_number_type(const Stack_as_number_t* this,int num_args){
     VLNumberType highest_nt=VLNT_Invalid;
@@ -422,14 +416,7 @@ VLNumberType _Stack_get_highest_number_type(const Stack_as_number_t* this,int nu
 void _Stack_as_number_print(const Stack_as_number_t* this){
     printf("[");
     for(int i=0;i<this->size;i++){
-        as_number_t an;
-        switch((an=this->stack[i]).type){
-            case VLNT_Char: printf("%dc",an.c); break;
-            case VLNT_Int: printf("%di",an.i); break;
-            case VLNT_Long: printf("%ldl",an.l); break;
-            case VLNT_Double: printf("%lfd",an.d); break;
-            default: printf("NaN"); break;//Shouldn't reach here.
-        }
+        VLNumberPrintNumber(this->stack[i]);
         fputs(i!=this->size-1?", ":"",stdout);
     }
     printf("]\n");

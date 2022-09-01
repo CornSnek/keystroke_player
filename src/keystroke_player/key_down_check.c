@@ -110,3 +110,7 @@ bool CallbackEndLoop(void* v){
     (void)v;
     return false;
 }
+bool _boolean_edit_func(void* b_v){
+    *(((_boolean_edit_t*)b_v)->p)=((_boolean_edit_t*)b_v)->v;
+    return false;
+}

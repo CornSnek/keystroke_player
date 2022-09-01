@@ -6,6 +6,46 @@ bool _VL_callback_long_func(as_number_t* at_address,long value);
 bool _VL_callback_int_func(as_number_t* at_address,int value);
 bool _VL_callback_char_func(as_number_t* at_address,char value);
 bool _VL_callback_load_variable_func(const VariableLoader_t* this,as_number_t* at_address,const char* variable);
+as_number_opt_t String_to_as_number_t(const char* token){
+    VLNumberType vlnt=VLNT_Long;//Default
+    for(size_t i=0;i<strlen(token);i++){
+        const char current_char=token[i];
+        if(isdigit(current_char)) continue;
+        if(i==0&&current_char=='-') continue;
+        if(current_char=='.'){
+            if(vlnt==VLNT_Double) return (as_number_opt_t){0};//Only one dot.
+            if(vlnt!=VLNT_Double) vlnt=VLNT_Double;
+            continue;
+        }
+        if(vlnt!=VLNT_Double&&i==strlen(token)-1){
+            switch(current_char){
+                case 'c': vlnt=VLNT_Char; goto valid_num;
+                case 'i': vlnt=VLNT_Int; goto valid_num;
+                case 'l': vlnt=VLNT_Long; goto valid_num;
+                case 'd': vlnt=VLNT_Double; goto valid_num;
+                default: return (as_number_opt_t){0};
+            }
+        }
+        return (as_number_opt_t){0};
+    }
+    valid_num:
+    switch(vlnt){ 
+        case VLNT_Char: return (as_number_opt_t){.exists=true,.v=(as_number_t){.type=vlnt,.c=strtol(token,0,10)}};
+        case VLNT_Int: return (as_number_opt_t){.exists=true,.v=(as_number_t){.type=vlnt,.i=strtol(token,0,10)}};
+        case VLNT_Long: return (as_number_opt_t){.exists=true,.v=(as_number_t){.type=vlnt,.l=strtol(token,0,10)}};
+        case VLNT_Double: return (as_number_opt_t){.exists=true,.v=(as_number_t){.type=vlnt,.d=strtod(token,0)}};
+        default: return (as_number_opt_t){0};//Should be unreachable.
+    }
+}
+void VLNumberPrintNumber(as_number_t num){
+    switch(num.type){
+        case VLNT_Invalid: printf("NaN"); break;
+        case VLNT_Char: printf("%dc",num.c); break;
+        case VLNT_Int: printf("%di",num.i); break;
+        case VLNT_Long: printf("%ldl",num.l); break;
+        case VLNT_Double: printf("%lfd",num.d); break;
+    }
+}
 //Can return false for variable types if the variable string did not exist yet.
 bool ProcessVLCallback(VariableLoader_t* vl,vlcallback_info vlc_info,as_number_t* number_io){
     const vlcallback_t* callback=VL_get_callback(vl,vlc_info);
@@ -98,21 +138,25 @@ void VL_free(VariableLoader_t* this){
     SSManager_free(this->ssm);
     free(this);
 }
-//Takes string malloc ownership.
-ValueAssignE VL_add_as_double(VariableLoader_t* this,char* variable,double value){
-    return StringMap_as_number_assign_own(this->sman,variable,(as_number_t){.d=value,.type=VLNT_Double});
+//Reedits and owns malloc variable string to get pointer of the same string.
+ValueAssignE VL_add_as_double(VariableLoader_t* this,char** variable,double value){
+    SSManager_add_string(this->ssm,variable);
+    return StringMap_as_number_assign(this->sman,*variable,(as_number_t){.d=value,.type=VLNT_Double});
 }
-//Takes string malloc ownership.
-ValueAssignE VL_add_as_long(VariableLoader_t* this,char* variable,long value){
-    return StringMap_as_number_assign_own(this->sman,variable,(as_number_t){.l=value,.type=VLNT_Long});
+//Reedits and owns malloc variable string to get pointer of the same string.
+ValueAssignE VL_add_as_long(VariableLoader_t* this,char** variable,long value){
+    SSManager_add_string(this->ssm,variable);
+    return StringMap_as_number_assign(this->sman,*variable,(as_number_t){.l=value,.type=VLNT_Long});
 }
-//Takes string malloc ownership.
-ValueAssignE VL_add_as_int(VariableLoader_t* this,char* variable,int value){
-    return StringMap_as_number_assign_own(this->sman,variable,(as_number_t){.i=value,.type=VLNT_Int});
+//Reedits and owns malloc variable string to get pointer of the same string.
+ValueAssignE VL_add_as_int(VariableLoader_t* this,char** variable,int value){
+    SSManager_add_string(this->ssm,variable);
+    return StringMap_as_number_assign(this->sman,*variable,(as_number_t){.i=value,.type=VLNT_Int});
 }
-//Takes string malloc ownership.
-ValueAssignE VL_add_as_char(VariableLoader_t* this,char* variable,char value){
-    return StringMap_as_number_assign_own(this->sman,variable,(as_number_t){.c=value,.type=VLNT_Char});
+//Reedits and owns malloc variable string to get pointer of the same string.
+ValueAssignE VL_add_as_char(VariableLoader_t* this,char** variable,char value){
+    SSManager_add_string(this->ssm,variable);
+    return StringMap_as_number_assign(this->sman,*variable,(as_number_t){.c=value,.type=VLNT_Char});
 }
 //Rewrite by casting the number to the original variable's type.
 bool _VL_callback_rewrite_variable(VariableLoader_t* this,as_number_t* new_value,const char* variable){

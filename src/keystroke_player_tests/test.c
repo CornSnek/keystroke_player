@@ -378,6 +378,30 @@ START_TEST(hash_map_test){
 }
 END_TEST
 START_TEST(variable_loader_test){
+    VariableLoader_t* vl=VL_new(20);
+    const char str[]="abc";
+    char* str_heap=str_dup(str);
+    VL_add_as_long(vl,&str_heap,69);
+    vlcallback_info vlci_arr[]={
+        VL_new_callback_long(vl,200),
+        VL_new_callback_load_variable(vl,str_dup(str)),
+        VL_new_callback_rewrite_variable(vl,str_dup(str)),
+        VL_new_callback_rewrite_variable(vl,str_dup("None")),
+        VL_new_callback_load_variable(vl,str_dup("None")),
+    };
+    as_number_t an_output[3];
+    as_number_t an_input=(as_number_t){.type=VLNT_Double,.d=123.456};
+#define PRINT_STATUS(Code) printf("%d\n",(Code));
+    PRINT_STATUS(ProcessVLCallback(vl,vlci_arr[0],an_output));
+    PRINT_STATUS(ProcessVLCallback(vl,vlci_arr[1],an_output+1));
+    PRINT_STATUS(ProcessVLCallback(vl,vlci_arr[2],&an_input));
+    PRINT_STATUS(ProcessVLCallback(vl,vlci_arr[3],&an_input));
+    PRINT_STATUS(ProcessVLCallback(vl,vlci_arr[4],an_output+2));
+    PRINT_STATUS(ProcessVLCallback(vl,vlci_arr[1],an_output+2));
+#undef PRINT_STATUS
+    printf("%ld %ld %ld\n",an_output[0].l,an_output[1].l,an_output[2].l);
+    SSManager_print_strings(vl->ssm);
+    VL_free(vl);
 }
 END_TEST
 #include "rpn_evaluator.h"
@@ -385,9 +409,9 @@ START_TEST(rpn_evaluator_test){
     RPNEvaluatorInit();
     VariableLoader_t* vl=VL_new(20);
     as_number_t num;
-    RPNValidStringE status=RPNEvaluatorGetNumber("(-1,!,!,69c,420d,b?t:f,as_l,0,%)",vl,&num,RPN_EVAL_START_B,RPN_EVAL_END_B,RPN_EVAL_SEP);
+    RPNValidStringE status=RPNEvaluatorGetNumber("(-1,!,!,69c,420d,b?t:f,as_l,0,%)",vl,&num,true,RPN_EVAL_START_B,RPN_EVAL_END_B,RPN_EVAL_SEP);
     printf("Status %d-%s\n",status,VLNumberTypeStr(num.type));
-    status=RPNEvaluatorGetNumber("(3,4,+)",vl,&num,RPN_EVAL_START_B,RPN_EVAL_END_B,RPN_EVAL_SEP);
+    status=RPNEvaluatorGetNumber("(3,4,+)",vl,&num,true,RPN_EVAL_START_B,RPN_EVAL_END_B,RPN_EVAL_SEP);
     printf("Status %d-%ld-%s\n",status,num.l,VLNumberTypeStr(num.type));
     VL_free(vl);
     RPNEvaluatorFree();
@@ -413,30 +437,6 @@ Suite* test_suite(void){
     return s;
 }
 int main(void){
-    VariableLoader_t* vl=VL_new(20);
-    const char str[]="abc";
-    VL_add_as_long(vl,str_dup(str),69);
-    vlcallback_info vlci_arr[]={
-        VL_new_callback_long(vl,200),
-        VL_new_callback_load_variable(vl,str_dup(str)),
-        VL_new_callback_rewrite_variable(vl,str_dup(str)),
-        VL_new_callback_rewrite_variable(vl,str_dup("None")),
-        VL_new_callback_load_variable(vl,str_dup("None")),
-    };
-    as_number_t an_output[3];
-    as_number_t an_input=(as_number_t){.type=VLNT_Double,.d=123.456};
-#define PRINT_STATUS(Code) printf("%d\n",(Code));
-    PRINT_STATUS(ProcessVLCallback(vl,vlci_arr[0],an_output));
-    PRINT_STATUS(ProcessVLCallback(vl,vlci_arr[1],an_output+1));
-    PRINT_STATUS(ProcessVLCallback(vl,vlci_arr[2],&an_input));
-    PRINT_STATUS(ProcessVLCallback(vl,vlci_arr[3],&an_input));
-    PRINT_STATUS(ProcessVLCallback(vl,vlci_arr[4],an_output+2));
-    PRINT_STATUS(ProcessVLCallback(vl,vlci_arr[1],an_output+2));
-#undef PRINT_STATUS
-    printf("%ld %ld %ld\n",an_output[0].l,an_output[1].l,an_output[2].l);
-    SSManager_print_strings(vl->ssm);
-    VL_free(vl);
-    return 0;
     Suite *s;
     SRunner *sr;
     s=test_suite();

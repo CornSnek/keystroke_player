@@ -67,7 +67,6 @@ char* random_str(unsigned char len){
     return rand_str;
 }
 size_t* random_unique_indices(size_t len){
-    assert(len); //Shouldn't be 0 due to malloc and %.
     size_t* return_this=malloc(sizeof(size_t)*len);
     EXIT_IF_NULL(return_this,size_t*);
     size_t ind[len];

@@ -2,6 +2,7 @@
 #include "parser.h"
 #include "key_down_check.h"
 #include "variable_loader.h"
+#include "rpn_evaluator.h"
 #include <math.h>
 #include <time.h>
 #include <string.h>
@@ -46,7 +47,7 @@ bool test_mouse_func(void* xdo_v){
     return true;
 }
 typedef enum _MenuState{
-    MS_Start,MS_EditConfig,MS_BuildFile,MS_RunFile,MS_MouseCoords,MS_Done
+    MS_Start,MS_EditConfig,MS_BuildFile,MS_RunFile,MS_MouseCoords,MS_RpnEvaluatorStart,MS_RpnEvaluator,MS_Done
 }MenuState;
 typedef struct ms_cont{
     MenuState* ms;
@@ -63,22 +64,30 @@ int main(void){
     Config config;
     char input_str[INPUT_BUFFER_LEN+1];
     MenuState menu_state=MS_Start;
-    bool also_run=false;
+    bool also_run=false,do_rpn=false,rpn_see_stack=false,var_menu=false,add_var=false,remove_var=false,list_var=false;
+    VariableLoader_t* vl;
+    char* input_str_end=0,* var_str,* num_str;
+    as_number_t an_output;
+    as_number_opt_t an_opt_output;
+    RPNValidStringE rpnvs_e;
+    RPNEvaluatorInit();
     while(true){
         //printf(CLEAR_TERM);
         switch(menu_state){
             case MS_Start:
                 also_run=false;
                 printf(
+                    "--------------------\n"
                     "Keystroke Player: Plays mouse/keyboard macro scripts and stops when the q key is pressed, or the script exits\n"
-                    "Type c for Config\n"
-                    "Type b to Build File\n"
-                    "Type r to Build and Run File\n"
-                    "Type t to Test coordinates of mouse and color\n"
-                    "Type q to Quit\n"
+                    "Press c for Config\n"
+                    "Press b to Build File\n"
+                    "Press r to Build and Run File\n"
+                    "Press t to Test coordinates of mouse and color\n"
+                    "Press e to Test equations in Reverse Polish Notation (RPN)\n"
+                    "Press q to Quit\n"
                     "Escape key toggles enabling/disabling keybinds outside of macro scripts\n"
                 );
-                keypress_loop(xdo_obj->xdpy,(callback_t[5]){{
+                keypress_loop(xdo_obj->xdpy,(callback_t[6]){{
                     .func=_input_state_func,
                     .arg=&(ms_cont_t){.ms=&menu_state,.v=MS_Done},
                     .ks=XK_Q
@@ -98,7 +107,11 @@ int main(void){
                     .func=_input_state_func,
                     .arg=&(ms_cont_t){.ms=&menu_state,.v=MS_MouseCoords},
                     .ks=XK_T
-                }},5);
+                },{
+                    .func=_input_state_func,
+                    .arg=&(ms_cont_t){.ms=&menu_state,.v=MS_RpnEvaluatorStart},
+                    .ks=XK_E
+                }},6);
                 break;
             case MS_EditConfig:
                 config=read_config_file();
@@ -126,8 +139,7 @@ int main(void){
                 debug_print_type_valid:
                 if(write_to_config(config)) puts("Changes written to config.bin");
                 else puts("Didn't write. An error has occured when writing.");
-                printf("Press enter to continue.");
-                fgets(input_str,INPUT_BUFFER_LEN,stdin);
+                //while((clear_stdin=getchar())!='\n'&&clear_stdin!=EOF);
                 menu_state=MS_Start;
                 break;
             case MS_RunFile:
@@ -143,9 +155,7 @@ int main(void){
                     menu_state=MS_Start;
                     break;
                 }
-                if(input_str[0]!='\n'){
-                    if(fgets_change(input_str,INPUT_BUFFER_LEN)) printf("Warning: String has been truncated to %d characters.\n",INPUT_BUFFER_LEN);
-                }else{//Enter pressed.
+                if(input_str[0]=='\n'){//Enter pressed.
                     if(!file_name_str){
                         puts("Needs a filepath (None given).");
                         break;
@@ -167,7 +177,7 @@ int main(void){
                     case PS_ProgramError: puts("Macro script failed (Runtime program errors)."); break;
                     case PS_MacroError: puts("Macro script failed (Macro expansion errors or cancelled).");
                 }
-                puts("Type y to build/run again or q to return to menu.");
+                puts("Press y to build/run again or q to return to menu.");
                 keypress_loop(xdo_obj->xdpy,(callback_t[2]){{
                     .func=_input_state_func,
                     .arg=&(ms_cont_t){.ms=&menu_state,.v=MS_Start},
@@ -191,11 +201,135 @@ int main(void){
                 }},2);
                 menu_state=MS_Start;
                 break;
+            case MS_RpnEvaluatorStart://There's no enter/exit states. Initialize Variable Loader and set menu_state to below.
+                vl=VL_new(200);
+                menu_state=MS_RpnEvaluator;
+                rpn_see_stack=false;//fallthrough
+            case MS_RpnEvaluator:
+                do_rpn=false;
+                printf("--------------------\n"
+                "Press r to type equations in RPN notation.\n"
+                "Press a to add custom variables.\n"
+                "Press s to see the number stack when processing RPN notation. Currently set to %s.\n"
+                "Press l to see the list of variable/functions used.\n"
+                "Press q to quit.\n",rpn_see_stack?"on":"off");
+                keypress_loop(xdo_obj->xdpy,(callback_t[5]){{
+                    .func=_boolean_edit_func,
+                    .arg=&(_boolean_edit_t){.p=&do_rpn,.v=true},
+                    .ks=XK_R
+                },{
+                    .func=_boolean_edit_func,
+                    .arg=&(_boolean_edit_t){.p=&var_menu,.v=true},
+                    .ks=XK_A
+                },{
+                    .func=_boolean_edit_func,
+                    .arg=&(_boolean_edit_t){.p=&rpn_see_stack,.v=!rpn_see_stack},
+                    .ks=XK_S
+                },{
+                    .func=_input_state_func,
+                    .arg=&(ms_cont_t){.ms=&menu_state,.v=MS_Start},
+                    .ks=XK_Q
+                },{
+                    .func=_boolean_edit_func,
+                    .arg=&(_boolean_edit_t){.p=&list_var,.v=true},
+                    .ks=XK_L
+                }},5);
+                if(do_rpn){
+                    puts("Type RPN with values comma delimited starting and ending with parenthesis.");
+                    puts("Example: (1,2,+) is valid.");
+                    fgets(input_str,INPUT_BUFFER_LEN,stdin);
+                    rpnvs_e=RPNEvaluatorGetNumber(input_str,vl,&an_output,rpn_see_stack,RPN_EVAL_START_B,RPN_EVAL_END_B,RPN_EVAL_SEP);
+                    //while((clear_stdin=getchar())!='\n'&&clear_stdin!=EOF);
+                    printf("Status: %d Type: %s Result: ",rpnvs_e,VLNumberTypeStr(an_output.type));
+                    VLNumberPrintNumber(an_output);
+                    puts("");
+                }
+                while(var_menu){
+                    printf("--------------------\n"
+                    "Press a to add variable name with number.\n"
+                    "Press r to remove variable name.\n"
+                    "Press d to return go back.\n");
+                    keypress_loop(xdo_obj->xdpy,(callback_t[3]){{
+                        .func=_boolean_edit_func,
+                        .arg=&(_boolean_edit_t){.p=&add_var,.v=true},
+                        .ks=XK_A
+                    },{
+                        .func=_boolean_edit_func,
+                        .arg=&(_boolean_edit_t){.p=&remove_var,.v=true},
+                        .ks=XK_R
+                    },{
+                        .func=_boolean_edit_func,
+                        .arg=&(_boolean_edit_t){.p=&var_menu,.v=false},
+                        .ks=XK_D
+                    }},3);
+                    if(add_var){
+                        input_str_end=0;
+                        while(!input_str_end||input_str[0]=='\n'){
+                            puts("Variable name to add:");
+                            fgets(input_str,INPUT_BUFFER_LEN,stdin);
+                            input_str_end=strchr(input_str,'\n');
+                        }
+                        var_str=char_string_slice(input_str,input_str_end-1);
+                        input_str_end=0;
+                        while(!input_str_end||input_str[0]=='\n'){
+                            puts("Write value (Numbers can have (i)nt/(c)har/(l)ong/(d)ouble at the end to signify type. Default: (l)ong): ");
+                            fgets(input_str,INPUT_BUFFER_LEN,stdin);
+                            input_str_end=strchr(input_str,'\n');
+                        }
+                        num_str=char_string_slice(input_str,input_str_end-1);
+                        if((an_opt_output=String_to_as_number_t(num_str)).exists){
+                            switch(an_opt_output.v.type){
+                                case VLNT_Char: VL_add_as_char(vl,&var_str,an_opt_output.v.c); break;
+                                case VLNT_Int: VL_add_as_int(vl,&var_str,an_opt_output.v.i); break;
+                                case VLNT_Long: VL_add_as_long(vl,&var_str,an_opt_output.v.l); break;
+                                case VLNT_Double: VL_add_as_double(vl,&var_str,an_opt_output.v.d); break;
+                                default: break;//Should not exist.
+                            }
+                            printf("Added number ");
+                            VLNumberPrintNumber(an_opt_output.v);
+                            printf(" to variable '%s'.\n",var_str);
+                        }else{
+                            printf("Invalid number parse. Did not add variable '%s'.\n",var_str);
+                            free(var_str);
+                        }
+                        free(num_str);
+                        add_var=false;
+                    }
+                    if(remove_var){
+                        input_str_end=0;
+                        while(!input_str_end||input_str[0]=='\n'){
+                            puts("Variable name to remove:");
+                            fgets(input_str,INPUT_BUFFER_LEN,stdin);
+                            input_str_end=strchr(input_str,'\n');
+                        }
+                        var_str=char_string_slice(input_str,input_str_end-1);
+                        printf("Removing variable %s.\n",var_str);
+                        StringMap_as_number_erase_own(vl->sman,var_str);
+                        remove_var=false;
+                    }
+                }
+                if(list_var){
+                    printf("Functions used (Updated since 8/31/2022):\n"
+                    "abs,max,min,random_c,as_c,random_i,as_i,random_l,as_l,random_d,as_d\n"
+                    "exp,exp2,log,log2,log10,pow,sqrt,cbrt,hypot,sin,cos,tan,ceil,floor,round,trunc\n"
+                    "+,++,-,-m,--,*,/,%%,&,|,~,^,<<,>>,==,!=,>,<,>=,<=,!,&&,||\n"
+                    "Notes: Functions are nearly similar to c. Int/char/long are all signed.\n"
+                    "-m is unary minus sign, cos/sin/tan uses degrees,\n"
+                    "random_d inputs a number from 0 to 1. as_(c/i/l/d) is used to cast numbers.\n"
+                    "Dividing by 0 with / or %% doesn't abort the program but fails the program/macro/rpn.\n"
+                    "Variables currently set: ");
+                    for(size_t i=0;i<vl->sman->MaxSize;i++) if(vl->sman->keys[i]) printf("%s, ",vl->sman->keys[i]);
+                    puts("");
+                    list_var=false;
+                }
+                if(menu_state==MS_Start) VL_free(vl);
+                break;
             case MS_Done:
                 goto done;
         }
     }
     done:
+    RPNEvaluatorFree();
     xdo_free(xdo_obj);
     return 0;
 }
@@ -400,14 +534,6 @@ int custom_xdo_move_mouse_absolute(const xdo_t *xdo,int x,int y){
     XFlush(xdo->xdpy);
     return ret==0;
 }
-typedef struct _boolean_edit_s{
-    bool* p;
-    bool v;
-}_boolean_edit_t;
-bool _boolean_edit_func(void* b_v){
-    *(((_boolean_edit_t*)b_v)->p)=((_boolean_edit_t*)b_v)->v;
-    return false;
-}
 bool run_program(command_array_t* cmd_arr, const char* file_str, Config config, xdo_t* xdo_obj, VariableLoader_t* vl){
     puts("Press s to execute the macro. Press c to cancel.");
     {
@@ -457,6 +583,7 @@ bool run_program(command_array_t* cmd_arr, const char* file_str, Config config, 
     delay_ns_t adj_usleep;
     as_number_t an_output={0};
     XColor pc;
+    coords_within_t coords_within;
     int x_mouse,y_mouse,x_mouse_store=0,y_mouse_store=0;
     char LastKey[LAST_CMD_BUFFER_LEN+1]={0},LastJump[LAST_CMD_BUFFER_LEN+1]={0},LastRepeat[LAST_CMD_BUFFER_LEN+1]={0},LastQuery[LAST_CMD_BUFFER_LEN+1]={0};
     int LastKey_n=0,LastJump_n=0,LastRepeat_n=0,LastQuery_n=0;
@@ -482,7 +609,7 @@ bool run_program(command_array_t* cmd_arr, const char* file_str, Config config, 
             size_t line_n,column_n;
             get_line_column_positions_p1(file_str,cmd.start_cmd_p,&line_n,&column_n);
             printf(" Line: %lu Column: %lu\n",line_n,column_n);
-#define CMD_HIGHLIGHT "\x1B[47;30;1m"
+            #define CMD_HIGHLIGHT "\x1B[47;30;1m"
             char* str_high=print_string_highlight(file_str,file_str+cmd_off_b,file_str+cmd_off_e,CMD_HIGHLIGHT,"\x1B[0m");
             char* str_rv=string_read_view(str_high,str_high+cmd_off_b,4);
             printf("%s\x1B[H\x1B[%dB",str_rv,10);
@@ -515,8 +642,8 @@ bool run_program(command_array_t* cmd_arr, const char* file_str, Config config, 
             }
             puts("");
         }
-#define cmdprintf(...) if((config.debug_print_type==DBP_AllCommands||this_cmd.print_cmd)) printf(__VA_ARGS__)
-#define PrintLastCommand(ToArray) if(config.debug_print_type==DBP_CommandNumber){ToArray##_n=0;memset(ToArray,0,LAST_CMD_BUFFER_LEN);strncpy(ToArray,this_cmd.start_cmd_p,(this_cmd.end_cmd_p-this_cmd.start_cmd_p+1<LAST_CMD_BUFFER_LEN)?(this_cmd.end_cmd_p-this_cmd.start_cmd_p+1):LAST_CMD_BUFFER_LEN);}
+        #define cmdprintf(...) if((config.debug_print_type==DBP_AllCommands||this_cmd.print_cmd)) printf(__VA_ARGS__)
+        #define PrintLastCommand(ToArray) if(config.debug_print_type==DBP_CommandNumber){ToArray##_n=0;memset(ToArray,0,LAST_CMD_BUFFER_LEN);strncpy(ToArray,this_cmd.start_cmd_p,(this_cmd.end_cmd_p-this_cmd.start_cmd_p+1<LAST_CMD_BUFFER_LEN)?(this_cmd.end_cmd_p-this_cmd.start_cmd_p+1):LAST_CMD_BUFFER_LEN);}
         LastJump_n++;
         LastRepeat_n++;
         LastQuery_n++;
@@ -703,35 +830,20 @@ bool run_program(command_array_t* cmd_arr, const char* file_str, Config config, 
                 PrintLastCommand(LastQuery);
                 break;
             case CMD_QueryCoordsWithin:
-                {
-                    const coords_within_t coords_within=cmd_u.coords_within;
-                    cmdprintf("Don't skip next command if mouse is within Top Left x:%d y:%d Bottom Right x:%d y:%d. ",coords_within.xl,coords_within.yl,coords_within.xh,coords_within.yh);
-                    pthread_mutex_lock(&input_mutex);
-                    xdo_get_mouse_location(xdo_obj,&x_mouse,&y_mouse,0);
-                    pthread_mutex_unlock(&input_mutex);
-                    query_is_true=x_mouse>=coords_within.xl&&x_mouse<=coords_within.xh&&y_mouse>=coords_within.yl&&y_mouse<=coords_within.yh;
-                    cmdprintf("It is %s within the box.\n",query_is_true?"":"not");
-                    PrintLastCommand(LastQuery);
-                }
+                coords_within=cmd_u.coords_within;
+                cmdprintf("Don't skip next command if mouse is within Top Left x:%d y:%d Bottom Right x:%d y:%d. ",coords_within.xl,coords_within.yl,coords_within.xh,coords_within.yh);
+                pthread_mutex_lock(&input_mutex);
+                xdo_get_mouse_location(xdo_obj,&x_mouse,&y_mouse,0);
+                pthread_mutex_unlock(&input_mutex);
+                query_is_true=x_mouse>=coords_within.xl&&x_mouse<=coords_within.xh&&y_mouse>=coords_within.yl&&y_mouse<=coords_within.yh;
+                cmdprintf("It is %s within the box.\n",query_is_true?"":"not");
+                PrintLastCommand(LastQuery);
                 break;
             case CMD_InitVar:
-                {
-                    #if 0
-                    const vlcallback_t* vlc=VL_get_callback(vl,cmd_u.init_var.vlci);
-                    cmdprintf("Initializing variable string name '%s' of type %s of value ",vlc->args.variable,VLNumberTypeStr(vlc->number_type));
-                    if(config.debug_print_type==DBP_AllCommands||this_cmd.print_cmd){
-                        if(vlc->number_type==VLNT_Long) printf("%ld.\n",cmd_u.init_var.LorD.l);
-                        else printf("%lf.\n",cmd_u.init_var.LorD.d);
-                    }
-                    vlsuccess=ProcessVLCallback(vl,cmd_u.init_var.vlci,vlc->number_type==VLNT_Long?(void*)&cmd_u.init_var.LorD.l:(void*)&cmd_u.init_var.LorD.d);
-                    if(!vlsuccess){
-                        printf("Variable '%s' has already been initialized. Exiting program.\n",vlc->args.variable);
-                        pthread_mutex_lock(&input_mutex);
-                        srs.program_done=true;
-                        no_error=false;
-                        pthread_mutex_unlock(&input_mutex);
-                    }
-                    #endif
+                cmdprintf("Initialized variable string name '%s' of type %s of value ",cmd_u.init_var.variable,VLNumberTypeStr(cmd_u.init_var.as_number.type));
+                if((config.debug_print_type==DBP_AllCommands||this_cmd.print_cmd)){
+                    VLNumberPrintNumber(cmd_u.init_var.as_number);
+                    puts("'");
                 }
                 break;
         }

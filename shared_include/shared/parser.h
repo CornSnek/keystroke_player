@@ -7,8 +7,8 @@
 #include <stdlib.h>
 #include <stdbool.h>
 //Sringifying enums separately. Add e(number) and #e(number) for a new enum and string.
-#define __STR_READ_ENUMS(e1,e2,e3,e4,e5,e6,e7,e8,e9,e10,e11,e12,e13,e14,e15,e16,e17,e18,e19,e20,e21,e22,ecount)\
-#e1,#e2,#e3,#e4,#e5,#e6,#e7,#e8,#e9,#e10,#e11,#e12,#e13,#e14,#e15,#e16,#e17,#e18,#e19,#e20,#e21,#e22
+#define __STR_READ_ENUMS(e1,e2,e3,e4,e5,e6,e7,e8,e9,e10,e11,e12,e13,e14,e15,e16,e17,e18,e19,e20,e21,e22,e23,e24,ecount)\
+#e1,#e2,#e3,#e4,#e5,#e6,#e7,#e8,#e9,#e10,#e11,#e12,#e13,#e14,#e15,#e16,#e17,#e18,#e19,#e20,#e21,#e22,#e23,#e24
 //For .h file.
 #define __ReadStateWithStringDec(...) typedef enum _ReadState{__VA_ARGS__}ReadState;\
 extern const char* ReadStateStrings[RS_Count];
@@ -38,6 +38,8 @@ extern const char* ReadStateStrings[RS_Count];
     RS_InitVarType,\
     RS_InitVarName,\
     RS_InitVarValue,\
+    RS_EditVarName,\
+    RS_EditVarValue,\
     RS_Count
 __ReadStateWithStringDec(__ReadStateEnums)
 typedef enum _InputState{

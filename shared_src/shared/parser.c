@@ -66,6 +66,12 @@ bool macro_buffer_process_next(macro_buffer_t* this,bool print_debug){//Returns 
                     read_state=RS_InitVarType;
                     break;
                 }
+                if(!strncmp(current_char_p,"edit,",5)){
+                    read_i+=5;
+                    read_offset_i=-1;
+                    read_state=RS_EditVarName;
+                    break;
+                }
                 if(!strncmp(current_char_p,"exit;",5)){
                     command_array_add(this->cmd_arr,
                         (command_t){.type=CMD_Exit,.subtype=CMDST_Command,.print_cmd=print_cmd,
@@ -845,12 +851,10 @@ bool macro_buffer_process_next(macro_buffer_t* this,bool print_debug){//Returns 
                 break;
             case RS_InitVarType:
                 switch(current_char){
-                    #if 0
-                    case 'c': vct=VLCallback_VChar; goto valid_var_char;
-                    case 'i': vct=VLCallback_VInt; goto valid_var_char;
-                    case 'l': vct=VLCallback_VLong; goto valid_var_char;
-                    case 'd': vct=VLCallback_VDouble; goto valid_var_char;
-                    #endif
+                    case 'c': vct=VLCallback_Char; goto valid_var_char;
+                    case 'i': vct=VLCallback_Int; goto valid_var_char;
+                    case 'l': vct=VLCallback_Long; goto valid_var_char;
+                    case 'd': vct=VLCallback_Double; goto valid_var_char;
                     default: goto invalid_var_char;
                 }
                 valid_var_char:
@@ -892,10 +896,13 @@ bool macro_buffer_process_next(macro_buffer_t* this,bool print_debug){//Returns 
                     EXIT_IF_NULL(num_str,char*);
                     strncpy(num_str,this->contents+this->token_i+read_i,read_offset_i);
                     num_str[read_offset_i]='\0';
-                    #if 0
                     switch(vct){
-                        case VLCallback_VChar:
-                            VL_add_as_char(this->vl,str_name,strtol(num_str,0,10));
+                        case VLCallback_Char:
+                            if(VL_add_as_char(this->vl,&str_name,strtol(num_str,0,10))==VA_Rewritten){
+                                fprintf(stderr,"Variable name '%s' already assigned at line %lu char %lu state %s.\n",str_name,line_num,char_num,ReadStateStrings[read_state]);
+                                this->parse_error=true;
+                                break;
+                            }
                             command_array_add(this->cmd_arr,
                                 (command_t){.type=CMD_InitVar,.subtype=CMDST_Var,.print_cmd=print_cmd,
                                     .cmd_u.init_var=(init_var_t){
@@ -908,8 +915,12 @@ bool macro_buffer_process_next(macro_buffer_t* this,bool print_debug){//Returns 
                                 }
                             );
                             break;
-                        case VLCallback_VInt:
-                            VL_add_as_int(this->vl,str_name,strtol(num_str,0,10));
+                        case VLCallback_Int:
+                            if(VL_add_as_int(this->vl,&str_name,strtol(num_str,0,10))==VA_Rewritten){
+                                fprintf(stderr,"Variable name '%s' already assigned at line %lu char %lu state %s.\n",str_name,line_num,char_num,ReadStateStrings[read_state]);
+                                this->parse_error=true;
+                                break;
+                            }
                             command_array_add(this->cmd_arr,
                                 (command_t){.type=CMD_InitVar,.subtype=CMDST_Var,.print_cmd=print_cmd,
                                     .cmd_u.init_var=(init_var_t){
@@ -922,8 +933,12 @@ bool macro_buffer_process_next(macro_buffer_t* this,bool print_debug){//Returns 
                                 }
                             );
                             break;
-                        case VLCallback_VLong:
-                            VL_add_as_long(this->vl,str_name,strtol(num_str,0,10));
+                        case VLCallback_Long:
+                            if(VL_add_as_long(this->vl,&str_name,strtol(num_str,0,10))==VA_Rewritten){
+                                fprintf(stderr,"Variable name '%s' already assigned at line %lu char %lu state %s.\n",str_name,line_num,char_num,ReadStateStrings[read_state]);
+                                this->parse_error=true;
+                                break;
+                            }
                             command_array_add(this->cmd_arr,
                                 (command_t){.type=CMD_InitVar,.subtype=CMDST_Var,.print_cmd=print_cmd,
                                     .cmd_u.init_var=(init_var_t){
@@ -936,8 +951,12 @@ bool macro_buffer_process_next(macro_buffer_t* this,bool print_debug){//Returns 
                                 }
                             );
                             break;
-                        case VLCallback_VDouble:
-                            VL_add_as_double(this->vl,str_name,strtol(num_str,0,10));
+                        case VLCallback_Double:
+                            if(VL_add_as_double(this->vl,&str_name,strtol(num_str,0,10))==VA_Rewritten){
+                                fprintf(stderr,"Variable name '%s' already assigned at line %lu char %lu state %s.\n",str_name,line_num,char_num,ReadStateStrings[read_state]);
+                                this->parse_error=true;
+                                break;
+                            }
                             command_array_add(this->cmd_arr,
                                 (command_t){.type=CMD_InitVar,.subtype=CMDST_Var,.print_cmd=print_cmd,
                                     .cmd_u.init_var=(init_var_t){
@@ -952,14 +971,42 @@ bool macro_buffer_process_next(macro_buffer_t* this,bool print_debug){//Returns 
                             break;
                         default: break; //Code shouldn't be here.
                     }
-                    #endif
                     free(num_str);
-                    fprintf(stderr,"Disabled InitVarValue command.\n");
-                    this->parse_error=true;
                     key_processed=true;
                     break;
                 }
                 free(str_name);
+                fprintf(stderr,"Invalid variable character '%c' at line %lu char %lu state %s.\n",current_char,line_num,char_num,ReadStateStrings[read_state]);
+                print_where_error_is(this->contents,this->token_i,read_i+read_offset_i);
+                this->token_i+=error_move_offset(this->contents+this->token_i+read_i+read_offset_i);
+                this->parse_error=true;
+                key_processed=true;
+                break;
+            case RS_EditVarName:
+                if(char_is_key(current_char)) break;
+                if(current_char=='='){
+                    str_name=malloc(sizeof(char)*read_offset_i+1);
+                    EXIT_IF_NULL(str_name,char*);
+                    strncpy(str_name,this->contents+this->token_i+read_i,read_offset_i);
+                    str_name[read_offset_i]='\0';
+                    read_i+=read_offset_i+1;
+                    read_offset_i=-1;
+                    read_state=RS_InitVarValue;
+                    break;
+                }
+                fprintf(stderr,"Invalid variable character '%c' at line %lu char %lu state %s.\n",current_char,line_num,char_num,ReadStateStrings[read_state]);
+                print_where_error_is(this->contents,this->token_i,read_i+read_offset_i);
+                this->token_i+=error_move_offset(this->contents+this->token_i+read_i+read_offset_i);
+                this->parse_error=true;
+                key_processed=true;
+                break;
+            case RS_EditVarValue:
+                if(current_char=='('){
+                    const char* begin_p=current_char_p;
+                    (void)begin_p;
+                    //TODO
+                }
+
                 fprintf(stderr,"Invalid variable character '%c' at line %lu char %lu state %s.\n",current_char,line_num,char_num,ReadStateStrings[read_state]);
                 print_where_error_is(this->contents,this->token_i,read_i+read_offset_i);
                 this->token_i+=error_move_offset(this->contents+this->token_i+read_i+read_offset_i);
@@ -1213,18 +1260,20 @@ void command_array_print(const command_array_t* this,const VariableLoader_t* vl)
                 printf("QueryComparePixel r: %d g: %d b: %d threshold: %d\n",cmd.pixel_compare.r,cmd.pixel_compare.g,cmd.pixel_compare.b,cmd.pixel_compare.thr);
                 break;
             case CMD_QueryCompareCoords:
-                {
-                    const CompareCoords cc=cmd.compare_coords.cmp_flags;
-                    printf("QueryCompareCoords cmp_flags: '%c,%c%s' var:%d\n",(cc&CMP_Y)==CMP_Y?'y':'x',(cc&CMP_GT)==CMP_GT?'>':'<',(cc&CMP_W_EQ)==CMP_W_EQ?",=":"",cmd.compare_coords.var);
-                }
+                printf("QueryCompareCoords cmp_flags: '%c,%c%s' var:%d\n"
+                    ,(cmd.compare_coords.cmp_flags&CMP_Y)==CMP_Y?'y':'x'
+                    ,(cmd.compare_coords.cmp_flags&CMP_GT)==CMP_GT?'>':'<'
+                    ,(cmd.compare_coords.cmp_flags&CMP_W_EQ)==CMP_W_EQ?",=":""
+                    ,cmd.compare_coords.var
+                );
                 break;
             case CMD_QueryCoordsWithin:
                 printf("QueryCoordsWithin xl: %d yl: %d xh: %d yh: %d\n",cmd.coords_within.xl,cmd.coords_within.yl,cmd.coords_within.xh,cmd.coords_within.yh);
                 break;
             case CMD_InitVar:
-                {
-                    printf("InitVar Name: '%s' Type: '%s'\n","TODO","TODO");
-                }
+                printf("InitVar Name: '%s' Type: '%s'\n Value: '",cmd.init_var.variable,VLNumberTypeStr(cmd.init_var.as_number.type));
+                VLNumberPrintNumber(cmd.init_var.as_number);
+                puts("'");
                 break;
         }
     }

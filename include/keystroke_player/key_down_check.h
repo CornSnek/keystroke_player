@@ -33,4 +33,9 @@ void key_down_check_free(key_down_check_t* this);
 void wait_for_keypress(Display* xdpy,KeySym ks);
 void keypress_loop(Display* xdpy,const callback_t* cb_list,size_t cb_list_len);
 bool CallbackEndLoop(void* v);
+typedef struct _boolean_edit_s{
+    bool* p;
+    bool v;
+}_boolean_edit_t;
+bool _boolean_edit_func(void* b_v);
 #endif

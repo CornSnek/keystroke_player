@@ -41,6 +41,8 @@ static inline const char* VLNumberTypeStr(VLNumberType vlnt){
             vlnt==VLNT_Long?"long":
             vlnt==VLNT_Double?"double":"NaN";
 }
+as_number_opt_t String_to_as_number_t(const char* token);
+void VLNumberPrintNumber(as_number_t num);
 typedef bool(*vlcallback_double_f_t)(as_number_t*,double);
 typedef bool(*vlcallback_long_f_t)(as_number_t*,long);
 typedef bool(*vlcallback_int_f_t)(as_number_t*,int);
@@ -87,11 +89,10 @@ typedef struct VariableLoader_s{//Class that contains callbacks to load/save var
     shared_string_manager_t* ssm;
 }VariableLoader_t;
 VariableLoader_t* VL_new(size_t size);
-//Use these for parser.h instead.
-ValueAssignE VL_add_as_double(VariableLoader_t* this,char* variable,double value);
-ValueAssignE VL_add_as_long(VariableLoader_t* this,char* variable,long value);
-ValueAssignE VL_add_as_int(VariableLoader_t* this,char* variable,int value);
-ValueAssignE VL_add_as_char(VariableLoader_t* this,char* variable,char value);
+ValueAssignE VL_add_as_double(VariableLoader_t* this,char** variable,double value);
+ValueAssignE VL_add_as_long(VariableLoader_t* this,char** variable,long value);
+ValueAssignE VL_add_as_int(VariableLoader_t* this,char** variable,int value);
+ValueAssignE VL_add_as_char(VariableLoader_t* this,char** variable,char value);
 //Constant values (Doesn't use VariableLoader for callback.)
 vlcallback_info VL_new_callback_double(VariableLoader_t* this,double value);
 vlcallback_info VL_new_callback_long(VariableLoader_t* this,long value);
