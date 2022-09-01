@@ -312,11 +312,13 @@ int main(void){
                     printf("Functions used (Updated since 8/31/2022):\n"
                     "abs,max,min,random_c,as_c,random_i,as_i,random_l,as_l,random_d,as_d\n"
                     "exp,exp2,log,log2,log10,pow,sqrt,cbrt,hypot,sin,cos,tan,ceil,floor,round,trunc\n"
-                    "+,++,-,-m,--,*,/,%%,&,|,~,^,<<,>>,==,!=,>,<,>=,<=,!,&&,||\n"
+                    "+,++,-,-m,--,*,/,%%,&,|,~,^,<<,>>,==,==u,!=,!=u,>,>u,<,<u,>=,>=u,<=,<=u,!,&&,||\n"
                     "Notes: Functions are nearly similar to c. Int/char/long are all signed.\n"
-                    "-m is unary minus sign, cos/sin/tan uses degrees,\n"
-                    "random_d inputs a number from 0 to 1. as_(c/i/l/d) is used to cast numbers.\n"
-                    "Dividing by 0 with / or %% doesn't abort the program but fails the program/macro/rpn.\n"
+                    "For comparisons with unsigned integers, append u to ==,!-,>,<,>=, and <=\n"
+                    "(Note: Not implemented for double types). -m is unary minus sign, cos/sin/tan uses degrees,\n"
+                    "random_(c/i/l) for random numbers of their respective types.\n"
+                    "random_d just inputs a number from 0 to 1. Function as_(c/i/l/d) is used for type casting.\n"
+                    "Dividing by 0 with / or %% doesn't abort the program but fails any program/macro/rpn.\n"
                     "Variables currently set: ");
                     for(size_t i=0;i<vl->sman->MaxSize;i++) if(vl->sman->keys[i]) printf("%s, ",vl->sman->keys[i]);
                     puts("");

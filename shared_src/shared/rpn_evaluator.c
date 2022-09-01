@@ -73,7 +73,7 @@ BinOps(double,d,mul,*)
 BinOps(double,d,div,/)
 bool RPN_d_eq(double a,double b){ return fabs(a-b)<=DBL_EPSILON; }
 bool RPN_d_neq(double a,double b){ return fabs(a-b)>DBL_EPSILON; }
-BinCmp(double,d,lt,<) BinCmp(double,d,gt,>) BinCmp(double,d,lte,<=) BinCmp(double,d,gte,>=)//No unsigned double, but these will be used twice for number promotions.
+BinCmp(double,d,lt,<) BinCmp(double,d,gt,>) BinCmp(double,d,lte,<=) BinCmp(double,d,gte,>=)//No unsigned double comparisons. 
 #define __PI 3.141592653589793238
 static inline double deg_to_rad(double deg){
     return deg*__PI/180.;
