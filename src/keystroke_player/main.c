@@ -28,24 +28,16 @@ typedef struct{
 const Config InitConfig={
     .init_delay=2000000,.key_check_delay=100000,.debug_print_type=DBP_AllCommands
 };
-bool fgets_change(char* str,int buffer_len);
-bool write_to_config(const Config config);
-Config read_config_file(void);
-char* read_default_file(void);
-bool write_to_default_file(const char* path);
-void get_pixel_color(Display* d, int x, int y, XColor* color);
-ProgramStatus parse_file(const char* path, xdo_t* xdo_obj, Config config, bool and_run);
-void timespec_diff(const struct timespec* ts_begin,struct timespec* ts_end_clone,struct timespec* ts_diff);
-bool run_program(command_array_t* cmd_arr, const char* file_str, Config config, xdo_t* xdo_obj, VariableLoader_t* vl);
-bool test_mouse_func(void* xdo_v){
-    int x_mouse,y_mouse;
-    XColor pc;
-    xdo_get_mouse_location((xdo_t*)xdo_v,&x_mouse,&y_mouse,0);
-    printf("You clicked at x:%d y:%d",x_mouse,y_mouse);
-    get_pixel_color(((xdo_t*)xdo_v)->xdpy,x_mouse,y_mouse,&pc);
-    printf(" with r:%u g:%u b:%u\n",pc.red>>8,pc.green>>8,pc.blue>>8);//Truncate to byte instead.
-    return true;
-}
+inline static bool fgets_change(char* str,int buffer_len);
+inline static bool write_to_config(const Config config);
+inline static Config read_config_file(void);
+inline static char* read_default_file(void);
+inline static bool write_to_default_file(const char* path);
+inline static void get_pixel_color(Display* d, int x, int y, XColor* color);
+inline static ProgramStatus parse_file(const char* path, xdo_t* xdo_obj, Config config, bool and_run);
+inline static void timespec_diff(const struct timespec* ts_begin,struct timespec* ts_end_clone,struct timespec* ts_diff);
+inline static bool run_program(command_array_t* cmd_arr, const char* file_str, Config config, xdo_t* xdo_obj, VariableLoader_t* vl);
+inline static bool test_mouse_func(void* xdo_v);
 typedef enum _MenuState{
     MS_Start,MS_EditConfig,MS_BuildFile,MS_RunFile,MS_MouseCoords,MS_RpnEvaluatorStart,MS_RpnEvaluator,MS_Done
 }MenuState;
@@ -53,9 +45,18 @@ typedef struct ms_cont{
     MenuState* ms;
     MenuState v;
 }ms_cont_t;
-bool _input_state_func(void* MS_v){//Sets menu_state variable in main(void) to v.
+inline static bool _input_state_func(void* MS_v){//Sets menu_state variable in main(void) to v.
     *(((ms_cont_t*)MS_v)->ms)=((ms_cont_t*)MS_v)->v;
     return false;
+}
+inline static bool test_mouse_func(void* xdo_v){
+    int x_mouse,y_mouse;
+    XColor pc;
+    xdo_get_mouse_location((xdo_t*)xdo_v,&x_mouse,&y_mouse,0);
+    printf("You clicked at x:%d y:%d",x_mouse,y_mouse);
+    get_pixel_color(((xdo_t*)xdo_v)->xdpy,x_mouse,y_mouse,&pc);
+    printf(" with r:%u g:%u b:%u\n",pc.red>>8,pc.green>>8,pc.blue>>8);//Truncate to byte instead.
+    return true;
 }
 int main(void){
     if(access(CONFIG_FILE_F,F_OK)) if(!write_to_config(InitConfig)) return EXIT_FAILURE;
@@ -155,7 +156,9 @@ int main(void){
                     menu_state=MS_Start;
                     break;
                 }
-                if(input_str[0]=='\n'){//Enter pressed.
+                if(input_str[0]!='\n'){
+                    if(fgets_change(input_str,INPUT_BUFFER_LEN)) printf("Warning: String has been truncated to %d characters.\n",INPUT_BUFFER_LEN);
+                }else{//Enter pressed.
                     if(!file_name_str){
                         puts("Needs a filepath (None given).");
                         break;
@@ -235,10 +238,10 @@ int main(void){
                     .ks=XK_L
                 }},5);
                 if(do_rpn){
-                    puts("Type RPN with values comma delimited starting and ending with parenthesis.");
-                    puts("Example: (1,2,+) is valid.");
+                    puts("Type RPN with values comma delimited tokens enclosed with parenthesis.");
+                    puts("Example: (1,2,+,3,4,+,*) is valid.");
                     fgets(input_str,INPUT_BUFFER_LEN,stdin);
-                    rpnvs_e=RPNEvaluatorGetNumber(input_str,vl,&an_output,rpn_see_stack,RPN_EVAL_START_B,RPN_EVAL_END_B,RPN_EVAL_SEP);
+                    rpnvs_e=RPNEvaluatorEvaluate(input_str,vl,&an_output,rpn_see_stack,RPN_EVAL_START_B,RPN_EVAL_END_B,RPN_EVAL_SEP);
                     //while((clear_stdin=getchar())!='\n'&&clear_stdin!=EOF);
                     printf("Status: %d Type: %s Result: ",rpnvs_e,VLNumberTypeStr(an_output.type));
                     VLNumberPrintNumber(an_output);
@@ -311,15 +314,18 @@ int main(void){
                 if(list_var){
                     printf("Functions used (Updated since 8/31/2022):\n"
                     "abs,max,min,random_c,as_c,random_i,as_i,random_l,as_l,random_d,as_d\n"
-                    "exp,exp2,log,log2,log10,pow,sqrt,cbrt,hypot,sin,cos,tan,ceil,floor,round,trunc\n"
-                    "+,++,-,-m,--,*,/,%%,&,|,~,^,<<,>>,==,==u,!=,!=u,>,>u,<,<u,>=,>=u,<=,<=u,!,&&,||\n"
-                    "Notes: Functions are nearly similar to c. Int/char/long are all signed.\n"
-                    "For comparisons with unsigned integers, append u to ==,!-,>,<,>=, and <=\n"
-                    "(Note: Not implemented for double types). -m is unary minus sign, cos/sin/tan uses degrees,\n"
+                    "exp,exp2,log,log2,log10,pow,sqrt,cbrt,hypot,sin(d),cos(d),tan(d),asin(d),acos(d),atan(d),ceil,floor,round,trunc\n"
+                    "+,++,-,-m,--,*,/,/u,%%,%%u,&,|,~,^,<<,<<u,>>,>>u,==,==u,!=,!=u,>,>u,<,<u,>=,>=u,<=,<=u,!,&&,||\n"
+                    "Notes: Functions/operators are nearly similar to c. Int/char/long are all signed.\n"
+                    "For comparisons with unsigned integers, append u to ==,!-,>,<,>=,<=,/, and %%\n"
+                    "(Note: Not implemented for double types). -m is unary minus sign, trigonometric functions can use degrees\n"
+                    "if appended with d (Ex: sind,atand...)\n"
                     "random_(c/i/l) for random numbers of their respective types.\n"
-                    "random_d just inputs a number from 0 to 1. Function as_(c/i/l/d) is used for type casting.\n"
-                    "Dividing by 0 with / or %% doesn't abort the program but fails any program/macro/rpn.\n"
-                    "Variables currently set: ");
+                    "random_d just outputs a number from 0 to 1. Function as_(c/i/l/d) is used for type casting.\n"
+                    "Dividing by 0 with /(u) or %%(u) doesn't abort the program, but fails any program/macro/rpn.\n"
+                    "Using a negative signed number for the second operation in >>(u) and <<(u) also fails the program.\n"
+                    "Note that it does not abort the program in c, but mixed signedness is not implemented in this program.\n"
+                    "Custom variables currently set: ");
                     for(size_t i=0;i<vl->sman->MaxSize;i++) if(vl->sman->keys[i]) printf("%s, ",vl->sman->keys[i]);
                     puts("");
                     list_var=false;

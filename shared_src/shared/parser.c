@@ -1,6 +1,7 @@
 #include "parser.h"
 #include "macros.h"
 #include "variable_loader.h"
+#include "rpn_evaluator.h"
 #include <string.h>
 #include <ctype.h>
 __ReadStateWithStringDef(__ReadStateEnums)
@@ -1002,9 +1003,13 @@ bool macro_buffer_process_next(macro_buffer_t* this,bool print_debug){//Returns 
                 break;
             case RS_EditVarValue:
                 if(current_char=='('){
-                    const char* begin_p=current_char_p;
-                    (void)begin_p;
-                    //TODO
+                    const char* begin_p=current_char_p,* end_p;
+                    char* rpn_str=0;
+                    as_number_t an;
+                    while(*(end_p=++current_char_p)!=')'||*end_p!=';'||*end_p){}
+                    rpn_str=char_string_slice(begin_p,end_p);
+                    RPNEvaluatorEvaluate(rpn_str,this->vl,&an,false,RPN_EVAL_START_B,RPN_EVAL_END_B,RPN_EVAL_SEP);
+                    free(rpn_str);
                 }
 
                 fprintf(stderr,"Invalid variable character '%c' at line %lu char %lu state %s.\n",current_char,line_num,char_num,ReadStateStrings[read_state]);

@@ -16,8 +16,9 @@ typedef void (*rpn_null)(void);
 typedef long (*rpn_long_f_noarg)();
 typedef long (*rpn_long_f_1long)(long);
 typedef long (*rpn_long_f_2long)(long,long);
-typedef bool (*rpn_long_f_ucmp)(unsigned long,unsigned long);//For comparison with unsigned comparison.
+typedef long (*rpn_long_f_2ulong)(unsigned long,unsigned long);
 typedef bool (*rpn_long_f_cmp)(long,long);
+typedef bool (*rpn_long_f_ucmp)(unsigned long,unsigned long);//For comparison with unsigned comparison.
 typedef long (*rpn_long_f_ternary)(bool,long,long);
 typedef double (*rpn_double_f_noarg)();
 typedef double (*rpn_double_f_1double)(double);
@@ -27,15 +28,17 @@ typedef double (*rpn_double_f_ternary)(bool,double,double);
 typedef int (*rpn_int_f_noarg)();
 typedef int (*rpn_int_f_1int)(int);
 typedef int (*rpn_int_f_2int)(int,int);
+typedef int (*rpn_int_f_2uint)(unsigned int,unsigned int);
 typedef bool (*rpn_int_f_cmp)(int,int);
 typedef bool (*rpn_int_f_ucmp)(unsigned int,unsigned int);
 typedef int (*rpn_int_f_ternary)(bool,int,int);
 typedef char (*rpn_char_f_noarg)();
 typedef char (*rpn_char_f_1char)(char);
 typedef char (*rpn_char_f_2char)(char,char);
+typedef char (*rpn_char_f_2uchar)(unsigned char,unsigned char);
 typedef bool (*rpn_char_f_cmp)(char,char);
-typedef char (*rpn_char_f_ternary)(bool,char,char);
 typedef bool (*rpn_char_f_ucmp)(unsigned char,unsigned char);
+typedef char (*rpn_char_f_ternary)(bool,char,char);
 typedef bool (*rpn_invert)(bool);
 typedef bool (*rpn_f_2_bools)(bool,bool);
 typedef enum _RPNFuncType{
@@ -43,6 +46,7 @@ typedef enum _RPNFuncType{
     RPNFT_Long_F_NoArg,
     RPNFT_Long_F_1Long,
     RPNFT_Long_F_2Long,
+    RPNFT_Long_F_2ULong,
     RPNFT_Long_F_Cmp,
     RPNFT_Long_F_UCmp,
     RPNFT_Long_F_Ternary,
@@ -54,12 +58,14 @@ typedef enum _RPNFuncType{
     RPNFT_Int_F_NoArg,
     RPNFT_Int_F_1Int,
     RPNFT_Int_F_2Int,
+    RPNFT_Int_F_2UInt,
     RPNFT_Int_F_Cmp,
     RPNFT_Int_F_UCmp,
     RPNFT_Int_F_Ternary,
     RPNFT_Char_F_NoArg,
     RPNFT_Char_F_1Char,
     RPNFT_Char_F_2Char,
+    RPNFT_Char_F_2UChar,
     RPNFT_Char_F_Cmp,
     RPNFT_Char_F_UCmp,
     RPNFT_Char_F_Ternary,
@@ -71,6 +77,7 @@ typedef union _rpn_function_u{
     rpn_long_f_noarg rpn_long_f_noarg;
     rpn_long_f_1long rpn_long_f_1long;
     rpn_long_f_2long rpn_long_f_2long;
+    rpn_long_f_2ulong rpn_long_f_2ulong;
     rpn_long_f_cmp rpn_long_f_cmp;
     rpn_long_f_ucmp rpn_long_f_ucmp;
     rpn_long_f_ternary rpn_long_f_ternary;
@@ -82,12 +89,14 @@ typedef union _rpn_function_u{
     rpn_int_f_noarg rpn_int_f_noarg;
     rpn_int_f_1int rpn_int_f_1int;
     rpn_int_f_2int rpn_int_f_2int;
+    rpn_int_f_2uint rpn_int_f_2uint;
     rpn_int_f_cmp rpn_int_f_cmp;
     rpn_int_f_ucmp rpn_int_f_ucmp;
     rpn_int_f_ternary rpn_int_f_ternary;
     rpn_char_f_noarg rpn_char_f_noarg;
     rpn_char_f_1char rpn_char_f_1char;
     rpn_char_f_2char rpn_char_f_2char;
+    rpn_char_f_2uchar rpn_char_f_2uchar;
     rpn_char_f_cmp rpn_char_f_cmp;
     rpn_char_f_ucmp rpn_char_f_ucmp;
     rpn_char_f_ternary rpn_char_f_ternary;
@@ -115,10 +124,11 @@ typedef enum _RPNValidStringE{
     RPNVS_NameUndefined,
     RPNVS_IsFunction,
     RPNVS_IsVLName,
-    RPNVS_OutOfNumbers,
+    RPNVS_NotEnoughNumbers,
     RPNVS_TooManyNumbers,
-    RPNVS_DivideByZero
+    RPNVS_DivisionByZero,
+    RPNVS_NegativeBitShift
 }RPNValidStringE;
-RPNValidStringE RPNEvaluatorGetNumber(const char* rpn_str,const VariableLoader_t* vl,as_number_t* get_value,bool see_stack,const char* rpn_start_b,const char* rpn_end_b,char rpn_sep);
+RPNValidStringE RPNEvaluatorEvaluate(const char* rpn_str,const VariableLoader_t* vl,as_number_t* get_value,bool see_stack,const char* rpn_start_b,const char* rpn_end_b,char rpn_sep);
 void RPNEvaluatorFree();
 #endif
