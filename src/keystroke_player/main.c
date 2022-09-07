@@ -691,6 +691,7 @@ bool run_program(command_array_t* cmd_arr, const char* file_str, Config config, 
                 if(!vlsuccess){
                     //TODO
                 }
+                an_output=VLNumberCast(an_output,VLNT_Long);//If double.
                 timespec_diff(&ts_usleep_before,&ts_usleep_before_adj,&ts_diff);
                 time_after_last_usleep=ts_diff.tv_sec*NSEC_TO_SEC+ts_diff.tv_nsec;
                 real_delay+=an_output.l*cmd_u.delay.delay_mult*1000-time_after_last_usleep;

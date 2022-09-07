@@ -45,6 +45,7 @@ static inline const char* VLNumberTypeStr(VLNumberType vlnt){
 }
 as_number_opt_t String_to_as_number_t(const char* token);
 void VLNumberPrintNumber(as_number_t num,unsigned decimals);
+as_number_t VLNumberCast(as_number_t num,VLNumberType type);
 typedef bool(*vlcallback_double_f_t)(as_number_t*,double);
 typedef bool(*vlcallback_long_f_t)(as_number_t*,long);
 typedef bool(*vlcallback_int_f_t)(as_number_t*,int);

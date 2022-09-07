@@ -48,6 +48,20 @@ void VLNumberPrintNumber(as_number_t num,unsigned decimals){
         case VLNT_Double: printf("%.*lfd",decimals,num.d); break;
     }
 }
+as_number_t VLNumberCast(as_number_t num,VLNumberType type){
+    #define GET_NUM ((num.type==VLNT_Double)?num.d:\
+    (num.type==VLNT_Long)?num.l:\
+    (num.type==VLNT_Int)?num.i:\
+    (num.type==VLNT_Char)?num.c:0)
+    switch(type){
+        case VLNT_Double: return (as_number_t){.d=(double)GET_NUM,.type=type};
+        case VLNT_Long: return (as_number_t){.l=(long)GET_NUM,.type=type};
+        case VLNT_Int: return (as_number_t){.i=(int)GET_NUM,.type=type};
+        case VLNT_Char: return (as_number_t){.c=(char)GET_NUM,.type=type};
+        default: return (as_number_t){0};//Shouldn't reach here.
+    }
+    #undef GET_NUM
+}
 //Can return false for variable types if the variable string did not exist yet.
 bool ProcessVLCallback(VariableLoader_t* vl,vlcallback_info vlc_info,as_number_t* number_io){
     const vlcallback_t* callback=VL_get_callback(vl,vlc_info);
