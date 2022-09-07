@@ -129,6 +129,6 @@ typedef enum _RPNValidStringE{
     RPNVS_DivisionByZero,
     RPNVS_NegativeBitShift
 }RPNValidStringE;
-RPNValidStringE RPNEvaluatorEvaluate(const char* rpn_str,const VariableLoader_t* vl,as_number_t* get_value,bool see_stack,const char* rpn_start_b,const char* rpn_end_b,char rpn_sep);
+RPNValidStringE RPNEvaluatorEvaluate(const char* rpn_str,const VariableLoader_t* vl,as_number_t* get_value,bool see_stack,bool process_num,const char* rpn_start_b,const char* rpn_end_b,char rpn_sep);
 void RPNEvaluatorFree();
 #endif

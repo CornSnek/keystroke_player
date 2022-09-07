@@ -47,6 +47,11 @@ bool macro_buffer_process_next(macro_buffer_t* this,bool print_debug){//Returns 
     VLCallbackType vct;
     bool mouse_absolute;
     char* start_p=this->contents+this->token_i;
+    #define DO_ERROR()\
+    print_where_error_is(this->contents,this->token_i,read_i+read_offset_i);\
+    this->token_i+=error_move_offset(this->contents+this->token_i+read_i+read_offset_i);\
+    this->parse_error=true;\
+    key_processed=true; (void)0
     do{
         size_t line_num,char_num;
         const char current_char=this->contents[this->token_i+read_i+read_offset_i];
@@ -221,10 +226,7 @@ bool macro_buffer_process_next(macro_buffer_t* this,bool print_debug){//Returns 
                         break;
                     default:
                         fprintf(stderr,"Unexpected character '%c' at line %lu char %lu state %s.\n",current_char,line_num,char_num,ReadStateStrings[read_state]);
-                        print_where_error_is(this->contents,this->token_i,read_i+read_offset_i);
-                        this->token_i+=error_move_offset(this->contents+this->token_i+read_i+read_offset_i);
-                        this->parse_error=true;
-                        key_processed=true;
+                        DO_ERROR();
                         break;
                 }
                 break;
@@ -260,10 +262,7 @@ bool macro_buffer_process_next(macro_buffer_t* this,bool print_debug){//Returns 
                     break;
                 }
                 fprintf(stderr,"Unexpected character '%c' at line %lu char %lu state %s.\n",current_char,line_num,char_num,ReadStateStrings[read_state]);
-                print_where_error_is(this->contents,this->token_i,read_i+read_offset_i);
-                this->token_i+=error_move_offset(this->contents+this->token_i+read_i+read_offset_i);
-                this->parse_error=true;
-                key_processed=true;
+                DO_ERROR();
                 break;
             case RS_RepeatEnd:
                 if(char_is_key(current_char)) break;
@@ -279,10 +278,7 @@ bool macro_buffer_process_next(macro_buffer_t* this,bool print_debug){//Returns 
                         break;
                     }
                     fprintf(stderr,"String '%s' was not initially defined from a Loop Start at line %lu char %lu.\n",str_name,line_num,char_num);
-                    print_where_error_is(this->contents,this->token_i,read_i+read_offset_i);
-                    this->token_i+=error_move_offset(this->contents+this->token_i+read_i+read_offset_i);
-                    this->parse_error=true;
-                    key_processed=true;
+                   DO_ERROR();
                     break;
                 }
                 if(current_char==';'){
@@ -304,17 +300,11 @@ bool macro_buffer_process_next(macro_buffer_t* this,bool print_debug){//Returns 
                         break;
                     }
                     fprintf(stderr,"String '%s' was not initially defined from a Loop Start at line %lu char %lu.\n",str_name,line_num,char_num);
-                    print_where_error_is(this->contents,this->token_i,read_i+read_offset_i);
-                    this->token_i+=error_move_offset(this->contents+this->token_i+read_i+read_offset_i);
-                    this->parse_error=true;
-                    key_processed=true;
+                   DO_ERROR();
                     break;
                 }
                 fprintf(stderr,"Unexpected character '%c' at line %lu char %lu state %s.\n",current_char,line_num,char_num,ReadStateStrings[read_state]);
-                print_where_error_is(this->contents,this->token_i,read_i+read_offset_i);
-                this->token_i+=error_move_offset(this->contents+this->token_i+read_i+read_offset_i);
-                this->parse_error=true;
-                key_processed=true;
+                DO_ERROR();
                 break;
             case RS_RepeatEndNumber:
                 if(isdigit(current_char)) break;
@@ -337,10 +327,7 @@ bool macro_buffer_process_next(macro_buffer_t* this,bool print_debug){//Returns 
                     break;
                 }
                 fprintf(stderr,"Unexpected character '%c' at line %lu char %lu state %s.\n",current_char,line_num,char_num,ReadStateStrings[read_state]);
-                print_where_error_is(this->contents,this->token_i,read_i+read_offset_i);
-                this->token_i+=error_move_offset(this->contents+this->token_i+read_i+read_offset_i);
-                this->parse_error=true;
-                key_processed=true;
+                DO_ERROR();
                 break;
             case RS_Keys:
                 if(char_is_x11_key(current_char)) break;
@@ -350,19 +337,13 @@ bool macro_buffer_process_next(macro_buffer_t* this,bool print_debug){//Returns 
                     break;
                 }
                 fprintf(stderr,"Unexpected character '%c' at line %lu char %lu state %s.\n",current_char,line_num,char_num,ReadStateStrings[read_state]);
-                print_where_error_is(this->contents,this->token_i,read_i+read_offset_i);
-                this->token_i+=error_move_offset(this->contents+this->token_i+read_i+read_offset_i);
-                this->parse_error=true;
-                key_processed=true;
+                DO_ERROR();
                 break;
             case RS_KeyState:
                 if(char_is_keystate(current_char)){
                     if(added_keystate){
                         fprintf(stderr,"Cannot add more than 1 keystate at line %lu char %lu.\n",line_num,char_num);
-                        print_where_error_is(this->contents,this->token_i,read_i+read_offset_i);
-                        this->token_i+=error_move_offset(this->contents+this->token_i+read_i+read_offset_i);
-                        this->parse_error=true;
-                        key_processed=true;
+                        DO_ERROR();
                         break;
                     }
                     switch(current_char){
@@ -389,10 +370,7 @@ bool macro_buffer_process_next(macro_buffer_t* this,bool print_debug){//Returns 
                     break;
                 }
                 fprintf(stderr,"Unexpected character '%c' at line %lu char %lu state %s.\n",current_char,line_num,char_num,ReadStateStrings[read_state]);
-                print_where_error_is(this->contents,this->token_i,read_i+read_offset_i);
-                this->token_i+=error_move_offset(this->contents+this->token_i+read_i+read_offset_i);
-                this->parse_error=true;
-                key_processed=true;
+                DO_ERROR();
                 break;
             case RS_Delay:
                 if(char_is_delay(current_char)){
@@ -403,18 +381,42 @@ bool macro_buffer_process_next(macro_buffer_t* this,bool print_debug){//Returns 
                     }
                     read_i++;
                     read_offset_i=-1;
-                    read_state=RS_DelayNum;
+                    read_state=RS_DelayRPN;
                     break;
                 }else if(isdigit(current_char)){
                     delay_mult=1;//Default microseconds.
-                    read_state=RS_DelayNum;
+                    read_state=RS_DelayRPN;
                     break;
                 }
                 fprintf(stderr,"Unexpected character '%c' at line %lu char %lu state %s.\n",current_char,line_num,char_num,ReadStateStrings[read_state]);
-                print_where_error_is(this->contents,this->token_i,read_i+read_offset_i);
-                this->token_i+=error_move_offset(this->contents+this->token_i+read_i+read_offset_i);
-                this->parse_error=true;
-                key_processed=true;
+                DO_ERROR();
+                break;
+            case RS_DelayRPN:
+                if(isdigit(current_char)){
+                    read_state=RS_DelayNum;
+                    break;
+                }
+                if(current_char=='('){
+                    const char* begin_p=current_char_p,* end_p;
+                    char* rpn_str;
+                    while(*(end_p=++current_char_p)!=')'&&*end_p!=';'&&*end_p){}
+                    if(*end_p!=')'){
+                        fprintf(stderr,"RPN string doesn't terminate with ')' at line %lu char %lu state %s.\n",line_num,char_num,ReadStateStrings[read_state]);
+                        DO_ERROR();
+                        break;   
+                    }
+                    rpn_str=char_string_slice(begin_p,end_p);
+                    command_array_add(this->cmd_arr,
+                        (command_t){.type=CMD_Delay,.subtype=CMDST_Command,.print_cmd=print_cmd,
+                            .cmd_u.delay=VL_new_callback_number_rpn(this->vl,rpn_str,print_debug)
+                        }
+                    );
+                    read_offset_i+=end_p-begin_p+1;
+                    key_processed=true;
+                    break;
+                }
+                fprintf(stderr,"TODO: at line %lu char %lu state %s.\n",line_num,char_num,ReadStateStrings[read_state]);
+                DO_ERROR();
                 break;
             case RS_DelayNum:
                 if(isdigit(current_char)) break;
@@ -433,10 +435,7 @@ bool macro_buffer_process_next(macro_buffer_t* this,bool print_debug){//Returns 
                     break;
                 }
                 fprintf(stderr,"Unexpected character '%c' at line %lu char %lu state %s.\n",current_char,line_num,char_num,ReadStateStrings[read_state]);
-                print_where_error_is(this->contents,this->token_i,read_i+read_offset_i);
-                this->token_i+=error_move_offset(this->contents+this->token_i+read_i+read_offset_i);
-                this->parse_error=true;
-                key_processed=true;
+                DO_ERROR();
                 break;
             case RS_MouseClickType:
                 if(isdigit(current_char)&&!first_number){
@@ -454,19 +453,13 @@ bool macro_buffer_process_next(macro_buffer_t* this,bool print_debug){//Returns 
                     break;
                 }
                 fprintf(stderr,"Unexpected character '%c' at line %lu char %lu state %s.\n",current_char,line_num,char_num,ReadStateStrings[read_state]);
-                print_where_error_is(this->contents,this->token_i,read_i+read_offset_i);
-                this->token_i+=error_move_offset(this->contents+this->token_i+read_i+read_offset_i);
-                this->parse_error=true;
-                key_processed=true;
+                DO_ERROR();
                 break;
             case RS_MouseClickState:
                 if(char_is_keystate(current_char)){
                     if(added_keystate){
                         fprintf(stderr,"Cannot add more than 1 keystate at line %lu char %lu.\n",line_num,char_num);
-                        print_where_error_is(this->contents,this->token_i,read_i+read_offset_i);
-                        this->token_i+=error_move_offset(this->contents+this->token_i+read_i+read_offset_i);
-                        this->parse_error=true;
-                        key_processed=true;
+                        DO_ERROR();
                         break;
                     }
                     switch(current_char){
@@ -488,10 +481,7 @@ bool macro_buffer_process_next(macro_buffer_t* this,bool print_debug){//Returns 
                     break;
                 }
                 fprintf(stderr,"Unexpected character '%c' at line %lu char %lu state %s.\n",current_char,line_num,char_num,ReadStateStrings[read_state]);
-                print_where_error_is(this->contents,this->token_i,read_i+read_offset_i);
-                this->token_i+=error_move_offset(this->contents+this->token_i+read_i+read_offset_i);
-                this->parse_error=true;
-                key_processed=true;
+                DO_ERROR();
                 break;
             case RS_MoveMouse:
                 if(isdigit(current_char)||current_char=='-') break;
@@ -525,17 +515,11 @@ bool macro_buffer_process_next(macro_buffer_t* this,bool print_debug){//Returns 
                         break;
                     }
                     fprintf(stderr,"2 numbers are needed (separated by comma) at line %lu char %lu.\n",line_num,char_num);
-                    print_where_error_is(this->contents,this->token_i,read_i+read_offset_i);
-                    this->token_i+=error_move_offset(this->contents+this->token_i+read_i+read_offset_i);
-                    this->parse_error=true;
-                    key_processed=true;
+                   DO_ERROR();
                     break;
                 }
                 fprintf(stderr,"Unexpected character '%c' at line %lu char %lu state %s.\n",current_char,line_num,char_num,ReadStateStrings[read_state]);
-                print_where_error_is(this->contents,this->token_i,read_i+read_offset_i);
-                this->token_i+=error_move_offset(this->contents+this->token_i+read_i+read_offset_i);
-                this->parse_error=true;
-                key_processed=true;
+                DO_ERROR();
                 break;
             case RS_JumpTo:
                 if(char_is_key(current_char)) break;
@@ -573,17 +557,11 @@ bool macro_buffer_process_next(macro_buffer_t* this,bool print_debug){//Returns 
                         break;
                     }
                     fprintf(stderr,"Unexpected character '%c' at line %lu char %lu state %s.\n",current_char,line_num,char_num,ReadStateStrings[read_state]);
-                    print_where_error_is(this->contents,this->token_i,read_i+read_offset_i);
-                    this->token_i+=error_move_offset(this->contents+this->token_i+read_i+read_offset_i);
-                    this->parse_error=true;
-                    key_processed=true;
+                   DO_ERROR();
                     break;
                 }
                 fprintf(stderr,"Unexpected character '%c' at line %lu char %lu state %s.\n",current_char,line_num,char_num,ReadStateStrings[read_state]);
-                print_where_error_is(this->contents,this->token_i,read_i+read_offset_i);
-                this->token_i+=error_move_offset(this->contents+this->token_i+read_i+read_offset_i);
-                this->parse_error=true;
-                key_processed=true;
+                DO_ERROR();
                 break;
             case RS_JumpFrom:
                 if(char_is_key(current_char)) break;
@@ -629,18 +607,12 @@ bool macro_buffer_process_next(macro_buffer_t* this,bool print_debug){//Returns 
                         }
                         fprintf(stderr,"Cannot add a second JumpFrom with string '%s' at line %lu char %lu state %s.\n",str_name,line_num,char_num,ReadStateStrings[read_state]);
                         free(str_name);
-                        print_where_error_is(this->contents,this->token_i,read_i+read_offset_i);
-                        this->token_i+=error_move_offset(this->contents+this->token_i+read_i+read_offset_i);
-                        this->parse_error=true;
-                        key_processed=true;
+                        DO_ERROR();
                         break;
                     }
                 }
                 fprintf(stderr,"Unexpected character '%c' at line %lu char %lu state %s.\n",current_char,line_num,char_num,ReadStateStrings[read_state]);
-                print_where_error_is(this->contents,this->token_i,read_i+read_offset_i);
-                this->token_i+=error_move_offset(this->contents+this->token_i+read_i+read_offset_i);
-                this->parse_error=true;
-                key_processed=true;
+                DO_ERROR();
                 break;
             case RS_Query:
                 if(!strncmp(current_char_p,"pxc=",4)){
@@ -671,10 +643,7 @@ bool macro_buffer_process_next(macro_buffer_t* this,bool print_debug){//Returns 
                     break;
                 }
                 fprintf(stderr,"Unexpected character '%c' at line %lu char %lu state %s.\n",current_char,line_num,char_num,ReadStateStrings[read_state]);
-                print_where_error_is(this->contents,this->token_i,read_i+read_offset_i);
-                this->token_i+=error_move_offset(this->contents+this->token_i+read_i+read_offset_i);
-                this->parse_error=true;
-                key_processed=true;
+                DO_ERROR();
                 break;
             case RS_QueryComparePixel:
                 if(isdigit(current_char)) break;
@@ -688,10 +657,7 @@ bool macro_buffer_process_next(macro_buffer_t* this,bool print_debug){//Returns 
                         free(num_str);
                         if(parsed_num[parsed_num_i]>255){
                             fprintf(stderr,"Number should be between 0 and 255 at line %lu char %lu state %s.\n",line_num,char_num,ReadStateStrings[read_state]);
-                            print_where_error_is(this->contents,this->token_i,read_i+read_offset_i);
-                            this->token_i+=error_move_offset(this->contents+this->token_i+read_i+read_offset_i);
-                            this->parse_error=true;
-                            key_processed=true;
+                            DO_ERROR();
                             break;
                         }
                         parsed_num_i++;
@@ -700,10 +666,7 @@ bool macro_buffer_process_next(macro_buffer_t* this,bool print_debug){//Returns 
                         break;
                     }
                     fprintf(stderr,"There should only be 4 numbers separated by 3 ',' at line %lu char %lu state %s.\n",line_num,char_num,ReadStateStrings[read_state]);
-                    print_where_error_is(this->contents,this->token_i,read_i+read_offset_i);
-                    this->token_i+=error_move_offset(this->contents+this->token_i+read_i+read_offset_i);
-                    this->parse_error=true;
-                    key_processed=true;
+                    DO_ERROR();
                     break;
                 }
                 if(current_char=='?'){
@@ -716,10 +679,7 @@ bool macro_buffer_process_next(macro_buffer_t* this,bool print_debug){//Returns 
                         free(num_str);
                         if(parsed_num[parsed_num_i]>255){
                             fprintf(stderr,"Number should be between 0 and 255 at line %lu char %lu state %s.\n",line_num,char_num,ReadStateStrings[read_state]);
-                            print_where_error_is(this->contents,this->token_i,read_i+read_offset_i);
-                            this->token_i+=error_move_offset(this->contents+this->token_i+read_i+read_offset_i);
-                            this->parse_error=true;
-                            key_processed=true;
+                            DO_ERROR();
                             break;
                         }
                         command_array_add(this->cmd_arr,
@@ -733,17 +693,11 @@ bool macro_buffer_process_next(macro_buffer_t* this,bool print_debug){//Returns 
                         break;
                     }
                     fprintf(stderr,"There should only be 4 numbers separated by 3 ',' at line %lu char %lu state %s.\n",line_num,char_num,ReadStateStrings[read_state]);
-                    print_where_error_is(this->contents,this->token_i,read_i+read_offset_i);
-                    this->token_i+=error_move_offset(this->contents+this->token_i+read_i+read_offset_i);
-                    this->parse_error=true;
-                    key_processed=true;
+                   DO_ERROR();
                     break;
                 }
                 fprintf(stderr,"Unexpected character '%c' at line %lu char %lu state %s.\n",current_char,line_num,char_num,ReadStateStrings[read_state]);
-                print_where_error_is(this->contents,this->token_i,read_i+read_offset_i);
-                this->token_i+=error_move_offset(this->contents+this->token_i+read_i+read_offset_i);
-                this->parse_error=true;
-                key_processed=true;
+                DO_ERROR();
                 break;
             case RS_QueryCoordsType:
                 if(current_char=='>'){
@@ -767,10 +721,7 @@ bool macro_buffer_process_next(macro_buffer_t* this,bool print_debug){//Returns 
                     break;
                 }
                 fprintf(stderr,"Unexpected character '%c' at line %lu char %lu state %s.\n",current_char,line_num,char_num,ReadStateStrings[read_state]);
-                print_where_error_is(this->contents,this->token_i,read_i+read_offset_i);
-                this->token_i+=error_move_offset(this->contents+this->token_i+read_i+read_offset_i);
-                this->parse_error=true;
-                key_processed=true;
+                DO_ERROR();
                 break;
             case RS_QueryCoordsVar:
                 if(isdigit(current_char)) break;
@@ -792,10 +743,7 @@ bool macro_buffer_process_next(macro_buffer_t* this,bool print_debug){//Returns 
                     break;
                 }
                 fprintf(stderr,"Unexpected character '%c' at line %lu char %lu state %s.\n",current_char,line_num,char_num,ReadStateStrings[read_state]);
-                print_where_error_is(this->contents,this->token_i,read_i+read_offset_i);
-                this->token_i+=error_move_offset(this->contents+this->token_i+read_i+read_offset_i);
-                this->parse_error=true;
-                key_processed=true;
+                DO_ERROR();
                 break;
             case RS_QueryCoordsWithin:
                 if(isdigit(current_char)) break;
@@ -813,10 +761,7 @@ bool macro_buffer_process_next(macro_buffer_t* this,bool print_debug){//Returns 
                         break;
                     }
                     fprintf(stderr,"There should only be 4 numbers separated by 3 ',' at line %lu char %lu state %s.\n",line_num,char_num,ReadStateStrings[read_state]);
-                    print_where_error_is(this->contents,this->token_i,read_i+read_offset_i);
-                    this->token_i+=error_move_offset(this->contents+this->token_i+read_i+read_offset_i);
-                    this->parse_error=true;
-                    key_processed=true;
+                   DO_ERROR();
                     break;
                 }
                 if(current_char=='?'){
@@ -838,17 +783,11 @@ bool macro_buffer_process_next(macro_buffer_t* this,bool print_debug){//Returns 
                         break;
                     }
                     fprintf(stderr,"There should only be 4 numbers separated by 3 ',' at line %lu char %lu state %s.\n",line_num,char_num,ReadStateStrings[read_state]);
-                    print_where_error_is(this->contents,this->token_i,read_i+read_offset_i);
-                    this->token_i+=error_move_offset(this->contents+this->token_i+read_i+read_offset_i);
-                    this->parse_error=true;
-                    key_processed=true;
+                   DO_ERROR();
                     break;
                 }
                 fprintf(stderr,"Unexpected character '%c' at line %lu char %lu state %s.\n",current_char,line_num,char_num,ReadStateStrings[read_state]);
-                print_where_error_is(this->contents,this->token_i,read_i+read_offset_i);
-                this->token_i+=error_move_offset(this->contents+this->token_i+read_i+read_offset_i);
-                this->parse_error=true;
-                key_processed=true;
+                DO_ERROR();
                 break;
             case RS_InitVarType:
                 switch(current_char){
@@ -867,10 +806,7 @@ bool macro_buffer_process_next(macro_buffer_t* this,bool print_debug){//Returns 
                 }
                 invalid_var_char:
                 fprintf(stderr,"Invalid characters (Should be 'l' or 'd' with ',' at end) at line %lu char %lu state %s.\n",line_num,char_num,ReadStateStrings[read_state]);
-                print_where_error_is(this->contents,this->token_i,read_i+read_offset_i);
-                this->token_i+=error_move_offset(this->contents+this->token_i+read_i+read_offset_i);
-                this->parse_error=true;
-                key_processed=true;
+                DO_ERROR();
                 break;
             case RS_InitVarName:
                 if(char_is_key(current_char)) break;
@@ -885,10 +821,7 @@ bool macro_buffer_process_next(macro_buffer_t* this,bool print_debug){//Returns 
                     break;
                 }
                 fprintf(stderr,"Invalid variable character '%c' at line %lu char %lu state %s.\n",current_char,line_num,char_num,ReadStateStrings[read_state]);
-                print_where_error_is(this->contents,this->token_i,read_i+read_offset_i);
-                this->token_i+=error_move_offset(this->contents+this->token_i+read_i+read_offset_i);
-                this->parse_error=true;
-                key_processed=true;
+                DO_ERROR();
                 break;
             case RS_InitVarValue:
                 if(isdigit(current_char)||current_char=='.'||current_char=='-') break;
@@ -978,10 +911,7 @@ bool macro_buffer_process_next(macro_buffer_t* this,bool print_debug){//Returns 
                 }
                 free(str_name);
                 fprintf(stderr,"Invalid variable character '%c' at line %lu char %lu state %s.\n",current_char,line_num,char_num,ReadStateStrings[read_state]);
-                print_where_error_is(this->contents,this->token_i,read_i+read_offset_i);
-                this->token_i+=error_move_offset(this->contents+this->token_i+read_i+read_offset_i);
-                this->parse_error=true;
-                key_processed=true;
+                DO_ERROR();
                 break;
             case RS_EditVarName:
                 if(char_is_key(current_char)) break;
@@ -990,33 +920,43 @@ bool macro_buffer_process_next(macro_buffer_t* this,bool print_debug){//Returns 
                     EXIT_IF_NULL(str_name,char*);
                     strncpy(str_name,this->contents+this->token_i+read_i,read_offset_i);
                     str_name[read_offset_i]='\0';
+                    if(!VL_get_as_number(this->vl,str_name).exists){
+                        fprintf(stderr,"Unitialized variable '%s' at line %lu char %lu state %s.\n",str_name,line_num,char_num,ReadStateStrings[read_state]);
+                        free(str_name);
+                        DO_ERROR();
+                        break;
+                    }
                     read_i+=read_offset_i+1;
                     read_offset_i=-1;
-                    read_state=RS_InitVarValue;
+                    read_state=RS_EditVarValue;
                     break;
                 }
                 fprintf(stderr,"Invalid variable character '%c' at line %lu char %lu state %s.\n",current_char,line_num,char_num,ReadStateStrings[read_state]);
-                print_where_error_is(this->contents,this->token_i,read_i+read_offset_i);
-                this->token_i+=error_move_offset(this->contents+this->token_i+read_i+read_offset_i);
-                this->parse_error=true;
-                key_processed=true;
+                DO_ERROR();
                 break;
             case RS_EditVarValue:
                 if(current_char=='('){
                     const char* begin_p=current_char_p,* end_p;
-                    char* rpn_str=0;
-                    as_number_t an;
-                    while(*(end_p=++current_char_p)!=')'||*end_p!=';'||*end_p){}
+                    char* rpn_str;
+                    while(*(end_p=++current_char_p)!=')'&&*end_p!=';'&&*end_p){}
+                    if(*end_p!=')'){
+                        fprintf(stderr,"RPN string doesn't terminate with ')' at line %lu char %lu state %s.\n",line_num,char_num,ReadStateStrings[read_state]);
+                        DO_ERROR();
+                        break;   
+                    }
                     rpn_str=char_string_slice(begin_p,end_p);
-                    RPNEvaluatorEvaluate(rpn_str,this->vl,&an,false,RPN_EVAL_START_B,RPN_EVAL_END_B,RPN_EVAL_SEP);
-                    free(rpn_str);
+                    command_array_add(this->cmd_arr,
+                        (command_t){.type=CMD_EditVar,.subtype=CMDST_Var,.print_cmd=print_cmd,
+                            .cmd_u.edit_var=VL_new_callback_rewrite_variable_rpn(this->vl,rpn_str,str_name)
+                        }
+                    );
+                    read_offset_i+=end_p-begin_p+1;
+                    key_processed=true;
+                    break;
                 }
-
+                free(str_name);
                 fprintf(stderr,"Invalid variable character '%c' at line %lu char %lu state %s.\n",current_char,line_num,char_num,ReadStateStrings[read_state]);
-                print_where_error_is(this->contents,this->token_i,read_i+read_offset_i);
-                this->token_i+=error_move_offset(this->contents+this->token_i+read_i+read_offset_i);
-                this->parse_error=true;
-                key_processed=true;
+                DO_ERROR();
                 break;
             case RS_Count://Nothing (Shouldn't be used).
                 break;
@@ -1031,7 +971,8 @@ bool macro_buffer_process_next(macro_buffer_t* this,bool print_debug){//Returns 
     }
     return !this->parse_error;
 }
-void macro_buffer_str_id_check(macro_buffer_t* this){//Check if RepeatStart doesn't have a respective RepeatEnd, or if there are no JumpFroms.
+#undef DO_ERROR
+void macro_buffer_str_id_check(macro_buffer_t* this,const VariableLoader_t* vl){
     bool* id_check=calloc(this->rim->size,sizeof(bool));
     EXIT_IF_NULL(id_check,bool*);
     for(int i=0;i<this->rim->size;i++){
@@ -1078,6 +1019,14 @@ void macro_buffer_str_id_check(macro_buffer_t* this){//Check if RepeatStart does
     }else if(check_i>0&&this->cmd_arr->cmds[check_i].subtype==CMDST_Query){
         fprintf(stderr,"Queries should have at least 2 commands next to it. Error command found at end of file.\n");
         this->parse_error=true;
+    }
+    for(int rpn_i=0;rpn_i<vl->ssm->count;rpn_i++){
+        const char* rpn_str;
+        if(*(rpn_str=vl->ssm->c_strs[rpn_i])=='('){//Exclude variables without '()'.
+            printf("Checking RPN string '%s'. ",rpn_str);
+            RPNValidStringE status=RPNEvaluatorEvaluate(rpn_str,vl,&(as_number_t){0},false,false,RPN_EVAL_START_B,RPN_EVAL_END_B,RPN_EVAL_SEP);
+            if(status!=RPNVS_Ok&&!(this->parse_error)){ this->parse_error=true;}else{ puts("Valid string.");}
+        }
     }
 }
 void macro_buffer_free(macro_buffer_t* this){
@@ -1211,7 +1160,7 @@ void command_array_add(command_array_t* this, command_t cmd){
 int command_array_count(const command_array_t* this){
     return this->size;
 }
-void command_array_print(const command_array_t* this,const VariableLoader_t* vl){
+void command_array_print(const command_array_t* this,const VariableLoader_t* vl,unsigned char decimals){
     for(int i=0;i<this->size;i++){
         const command_union_t cmd=this->cmds[i].cmd_u;
         printf("Command Index: %d ",i);
@@ -1276,9 +1225,12 @@ void command_array_print(const command_array_t* this,const VariableLoader_t* vl)
                 printf("QueryCoordsWithin xl: %d yl: %d xh: %d yh: %d\n",cmd.coords_within.xl,cmd.coords_within.yl,cmd.coords_within.xh,cmd.coords_within.yh);
                 break;
             case CMD_InitVar:
-                printf("InitVar Name: '%s' Type: '%s'\n Value: '",cmd.init_var.variable,VLNumberTypeStr(cmd.init_var.as_number.type));
-                VLNumberPrintNumber(cmd.init_var.as_number);
+                printf("InitVar Name: '%s' Type: '%s' Value: '",cmd.init_var.variable,VLNumberTypeStr(cmd.init_var.as_number.type));
+                VLNumberPrintNumber(cmd.init_var.as_number,decimals);
                 puts("'");
+                break;
+            case CMD_EditVar:
+                printf("EditVar Name: '%s' RPN String: '%s'\n",VL_get_callback(vl,cmd.edit_var)->args.rpn.variable,VL_get_callback(vl,cmd.edit_var)->args.rpn.rpn_str);
                 break;
         }
     }

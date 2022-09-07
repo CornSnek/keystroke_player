@@ -586,7 +586,7 @@ void replace_str_at(char** strptr_owner, const char* replace, const char* with,c
 }
 _Pragma("GCC diagnostic pop")
 //Reverse lexicographical order so that longer words that overlap other words get replaced first.
-//Ex: For strings ["abcde","abcd","abc"], it will replace "abcde" first.
+//Ex: For unsorted strings ["abc","abcd","abcde"], qsort will change it to ["abcde","abcd","abc"] so that it will replace "abcde" first.
 int replace_node_biggest_first(const void* lhs,const void* rhs){
     return strcmp(((const replace_node_t*)rhs)->r,((const replace_node_t*)lhs)->r);
 }

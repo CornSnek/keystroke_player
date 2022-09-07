@@ -302,15 +302,15 @@ if(!DefaultRPNFunctionMap){\
 #define RPNEvaluatorInitCalledFirst() (void)0
 #endif
 as_number_opt_t String_to_as_number_t(const char* token);
-RPNValidStringE _RPNEvaluatorIsVarNameOk(const char* token,const VariableLoader_t* vl,Stack_as_number_t* stack_an);
-bool _ProcessRPNFunctionCall(Stack_as_number_t* stack_an,const rpn_func_call_t* rpn_f_c);
+RPNValidStringE _RPNEvaluatorIsVarNameOk(const char* token,const VariableLoader_t* vl,Stack_as_number_t* stack_an,bool process_num);
+bool _ProcessRPNFunctionCall(Stack_as_number_t* stack_an,const rpn_func_call_t* rpn_f_c,bool process_num);
 VLNumberType _Stack_get_highest_number_type(const Stack_as_number_t* this,int num_args);
 void _Stack_as_number_print(const Stack_as_number_t* this);
-RPNValidStringE RPNEvaluatorEvaluate(const char* rpn_str,const VariableLoader_t* vl,as_number_t* get_value,bool see_stack,const char* rpn_start_b,const char* rpn_end_b,char rpn_sep){
+RPNValidStringE RPNEvaluatorEvaluate(const char* rpn_str,const VariableLoader_t* vl,as_number_t* get_value,bool see_stack,bool process_num,const char* rpn_start_b,const char* rpn_end_b,char rpn_sep){
     RPNEvaluatorInitCalledFirst();
     _DividedByZero=false;
     _BitShiftNegative=false;
-    *get_value=(as_number_t){0};
+    if(process_num) *get_value=(as_number_t){0};
     const char* start_p,* end_p;
     int depth=first_outermost_bracket(rpn_str,rpn_start_b,rpn_end_b,&start_p,&end_p);
     if(!start_p||depth){
@@ -332,35 +332,34 @@ RPNValidStringE RPNEvaluatorEvaluate(const char* rpn_str,const VariableLoader_t*
         if(see_stack) _Stack_as_number_print(stack_an);
         if(token_e_p){
             current_token=char_string_slice(token_b_p,token_e_p-1);
-            #define DOPARSETOKENROUTINE()\
-            if(see_stack) puts(current_token);\
-            if((an_opt=String_to_as_number_t(current_token)).exists) Stack_as_number_push(stack_an,an_opt.v);\
-            else if((status=_RPNEvaluatorIsVarNameOk(current_token,vl,stack_an))!=RPNVS_IsVLName&&status!=RPNVS_IsFunction){\
-                switch(status){\
-                    case RPNVS_NameCollision:\
-                        fprintf(stderr,"Name Collision Error: Token '%s' within the program is already a name for an existing function.\n",current_token);\
-                        break;\
-                    case RPNVS_NameUndefined:\
-                        fprintf(stderr,"Name Undefined Error: Token '%s' within the program is neither a number, varible, or function within the program.\n"\
-                        "It may also not be supported for double numbers.\n",current_token);\
-                        break;\
-                    case RPNVS_NotEnoughNumbers:\
-                        fprintf(stderr,"Not Enough Numbers Error: Token '%s' (function) doesn't have enough numbers to pop. Stack is empty.\n",current_token);\
-                        break;\
-                    case RPNVS_DivisionByZero:\
-                        fprintf(stderr,"Illegal Operation Error: Division by Zero with a non-double number has occured.\n");\
-                        break;\
-                    case RPNVS_NegativeBitShift:\
-                        fprintf(stderr,"Illegal Operation Error: Bit-shifting using a negative number on the second argument is not supported.\n");\
-                        break;\
-                    default: break;/*Shouldn't be here.*/\
-                }\
-                free(current_token);\
-                free(rpn_str_no_b);\
-                Stack_as_number_free(stack_an);\
-                return status;\
-            }else if(status==RPNVS_IsVLName) Stack_as_number_push(stack_an,VL_get_as_number(vl,current_token).value);\
-            free(current_token)
+#define DOPARSETOKENROUTINE()\
+if(see_stack) puts(current_token);\
+if((an_opt=String_to_as_number_t(current_token)).exists) Stack_as_number_push(stack_an,an_opt.v);\
+else if((status=_RPNEvaluatorIsVarNameOk(current_token,vl,stack_an,process_num))!=RPNVS_IsVLName&&status!=RPNVS_IsFunction){\
+    switch(status){\
+        case RPNVS_NameCollision:\
+            fprintf(stderr,"Name Collision Error: Token '%s' within the program is already a name for an existing function.\n",current_token);\
+            break;\
+        case RPNVS_NameUndefined:\
+            fprintf(stderr,"Name Undefined Error: Token '%s' within the program is neither a number, varible, nor function (or function with double support).\n",current_token);\
+            break;\
+        case RPNVS_NotEnoughNumbers:\
+            fprintf(stderr,"Not Enough Numbers Error: Token '%s' (function) doesn't have enough numbers to pop. Stack is empty.\n",current_token);\
+            break;\
+        case RPNVS_DivisionByZero:\
+            fprintf(stderr,"Illegal Operation Error: Division by Zero with a non-double number has occured.\n");\
+            break;\
+        case RPNVS_NegativeBitShift:\
+            fprintf(stderr,"Illegal Operation Error: Bit-shifting using a negative number on the second argument is not supported.\n");\
+            break;\
+        default: break;/*Shouldn't be here.*/\
+    }\
+    free(current_token);\
+    free(rpn_str_no_b);\
+    Stack_as_number_free(stack_an);\
+    return status;\
+}else if(status==RPNVS_IsVLName) Stack_as_number_push(stack_an,VL_get_as_number(vl,current_token).value);\
+free(current_token)
             DOPARSETOKENROUTINE();
             token_b_p=token_e_p+1;//Next token in strchr.
             continue;
@@ -373,19 +372,19 @@ RPNValidStringE RPNEvaluatorEvaluate(const char* rpn_str,const VariableLoader_t*
         break;
     }
     if(see_stack) _Stack_as_number_print(stack_an);
-    int stack_size_now=stack_an->size;
-    if(stack_size_now==1) *get_value=stack_an->stack[0];
+    bool stack_is_one=(stack_an->size==1);
+    if(stack_is_one){if(process_num) *get_value=stack_an->stack[0];}
     else fprintf(stderr,"Too Many Numbers Error: RPN String has more than 1 number in the stack. Not a valid RPN string.\n");
     Stack_as_number_free(stack_an);
     free(rpn_str_no_b);
-    return (stack_size_now==1)?RPNVS_Ok:RPNVS_TooManyNumbers;
+    return stack_is_one?RPNVS_Ok:RPNVS_TooManyNumbers;
 }
 void RPNEvaluatorFree(void){
     StringMap_rpn_func_call_free(DefaultRPNFunctionMap);
     DefaultRPNFunctionMap=0;
 }
 //Check if VariableLoader names doesn't share any names in DefaultRPNFunctionMap.
-RPNValidStringE _RPNEvaluatorIsVarNameOk(const char* token,const VariableLoader_t* vl,Stack_as_number_t* stack_an){
+RPNValidStringE _RPNEvaluatorIsVarNameOk(const char* token,const VariableLoader_t* vl,Stack_as_number_t* stack_an,bool process_num){
     static const char NumberTypePrefixes[5]={'\0','c','i','l','d'};//Arranged based on the VLNumberType enums.
     bool token_is_var=VL_get_as_number(vl,token).exists;
     //Keep continuing code as if it were a valid string (pop numbers) until an RPNVS_NameCollision.
@@ -414,11 +413,11 @@ RPNValidStringE _RPNEvaluatorIsVarNameOk(const char* token,const VariableLoader_
     free(token_with_prefix);
     if(rpn_f_num_args) smorfc_wprf=rpn_f_c_array[_Stack_get_highest_number_type(stack_an,rpn_f_num_args)];
     if(smorfc_noprf.exists&&smorfc_noprf.value.type!=RPNFT_Null){//Don't process if RPNFT_Null for any name collisions.
-        if(!_ProcessRPNFunctionCall(stack_an,&smorfc_noprf.value)) return RPNVS_NotEnoughNumbers;
+        if(!_ProcessRPNFunctionCall(stack_an,&smorfc_noprf.value,process_num)) return RPNVS_NotEnoughNumbers;
         if(_DividedByZero) return RPNVS_DivisionByZero;
         if(_BitShiftNegative) return RPNVS_NegativeBitShift;
     }else if(smorfc_wprf.exists){
-        if(!_ProcessRPNFunctionCall(stack_an,&smorfc_wprf.value)) return RPNVS_NotEnoughNumbers;
+        if(!_ProcessRPNFunctionCall(stack_an,&smorfc_wprf.value,process_num)) return RPNVS_NotEnoughNumbers;
         if(_DividedByZero) return RPNVS_DivisionByZero;
         if(_BitShiftNegative) return RPNVS_NegativeBitShift;
     }else{
@@ -427,7 +426,7 @@ RPNValidStringE _RPNEvaluatorIsVarNameOk(const char* token,const VariableLoader_
     return token_is_var?RPNVS_IsVLName:RPNVS_IsFunction;
 }
 //Bool if out of numbers. TODO: Process possible functions.
-bool _ProcessRPNFunctionCall(Stack_as_number_t* stack_an,const rpn_func_call_t* rpn_f_c){
+bool _ProcessRPNFunctionCall(Stack_as_number_t* stack_an,const rpn_func_call_t* rpn_f_c,bool process_num){
     StackOpt_as_number_t* args=malloc(sizeof(StackOpt_as_number_t)*rpn_f_c->num_args);
     as_number_t result;
     EXIT_IF_NULL(args,StackOpt_as_number_t*);
@@ -439,6 +438,10 @@ bool _ProcessRPNFunctionCall(Stack_as_number_t* stack_an,const rpn_func_call_t* 
     }
     const rpn_function_u rpn_fu=rpn_f_c->func;
     result.type=rpn_f_c->return_type;
+    if(!process_num){//To do compilation errors and not runtime errors (Checking if dividing by 0 or bit-shifting using a negative number)
+        result.l=0;
+        goto skip_process_num;
+    }
     #define ARGS_CAST(I) ((args[I].v.type==VLNT_Double)?args[I].v.d:\
     (args[I].v.type==VLNT_Long)?args[I].v.l:\
     (args[I].v.type==VLNT_Int)?args[I].v.i:\
@@ -474,6 +477,7 @@ bool _ProcessRPNFunctionCall(Stack_as_number_t* stack_an,const rpn_func_call_t* 
         case RPNFT_2_Bools: result.i=rpn_fu.rpn_f_2_bools(ARGS_CAST(0),ARGS_CAST(1)); break;
         case RPNFT_Null: free(args); return true; break; //Shouldn't be accessed.
     }
+    skip_process_num:
     Stack_as_number_push(stack_an,result);
     free(args);
     return true;
@@ -494,7 +498,7 @@ VLNumberType _Stack_get_highest_number_type(const Stack_as_number_t* this,int nu
 void _Stack_as_number_print(const Stack_as_number_t* this){
     printf("[");
     for(int i=0;i<this->size;i++){
-        VLNumberPrintNumber(this->stack[i]);
+        VLNumberPrintNumber(this->stack[i],10);
         fputs(i!=this->size-1?", ":"",stdout);
     }
     printf("]\n");

@@ -17,7 +17,7 @@ START_TEST(parse_from_string){
         if(mb->token_i>mb->str_size) break;
     }
     printf("%d\n",mb->parse_error);
-    command_array_print(cmd_arr,mb->vl);
+    command_array_print(cmd_arr,mb->vl,10);
     macro_buffer_free(mb);
     command_array_free(cmd_arr);
 }
@@ -409,9 +409,9 @@ START_TEST(rpn_evaluator_test){
     RPNEvaluatorInit();
     VariableLoader_t* vl=VL_new(20);
     as_number_t num;
-    RPNValidStringE status=RPNEvaluatorEvaluate("(-1,!,!,69c,420d,b?t:f,as_l,0,%)",vl,&num,true,RPN_EVAL_START_B,RPN_EVAL_END_B,RPN_EVAL_SEP);
+    RPNValidStringE status=RPNEvaluatorEvaluate("(-1,!,!,69c,420d,b?t:f,as_l,0,%)",vl,&num,true,true,RPN_EVAL_START_B,RPN_EVAL_END_B,RPN_EVAL_SEP);
     printf("Status %d-%s\n",status,VLNumberTypeStr(num.type));
-    status=RPNEvaluatorEvaluate("(3,4,+)",vl,&num,true,RPN_EVAL_START_B,RPN_EVAL_END_B,RPN_EVAL_SEP);
+    status=RPNEvaluatorEvaluate("(3,4,+)",vl,&num,true,true,RPN_EVAL_START_B,RPN_EVAL_END_B,RPN_EVAL_SEP);
     printf("Status %d-%ld-%s\n",status,num.l,VLNumberTypeStr(num.type));
     VL_free(vl);
     RPNEvaluatorFree();

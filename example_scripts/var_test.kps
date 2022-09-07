@@ -1,1 +1,5 @@
-init,d,asvcd=-69.420;
+init,l,wait_s=1;
+(A;
+edit,wait_s=(wait_s,++);
+.m(wait_s,10,*);
+)A;

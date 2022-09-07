@@ -24,9 +24,10 @@ typedef struct{
     delay_ns_t init_delay;
     delay_ns_t key_check_delay;
     DebugPrintType debug_print_type;
+    unsigned char decimals;
 }Config;
 const Config InitConfig={
-    .init_delay=2000000,.key_check_delay=100000,.debug_print_type=DBP_AllCommands
+    .init_delay=2000000,.key_check_delay=100000,.debug_print_type=DBP_AllCommands,.decimals=10
 };
 inline static bool fgets_change(char* str,int buffer_len);
 inline static bool write_to_config(const Config config);
@@ -124,6 +125,11 @@ int main(void){
                 printf("Value right now is %lu (Enter nothing to skip): ",config.key_check_delay);
                 fgets(input_str,INPUT_BUFFER_LEN,stdin);
                 if(input_str[0]!='\n') config.key_check_delay=strtol(input_str,NULL,10);
+                puts("Set value for decimals (0 to 255 number of decimals to show for a double)");
+                printf("Value right now is %u (Enter nothing to skip):",config.decimals);
+                fgets(input_str,INPUT_BUFFER_LEN,stdin);
+                if(input_str[0]!='\n') config.decimals=strtol(input_str,NULL,10);
+                printf("The output is %u.\n",config.decimals);
                 while(true){
                     puts("Set value for debug_commands (Prints debug commands when playing macro)");
                     printf("0 for no debug printing, 1 to print all commands (parsing and running program), 2 to print some command numbers and strings (clears terminal)\n");
@@ -205,6 +211,7 @@ int main(void){
                 menu_state=MS_Start;
                 break;
             case MS_RpnEvaluatorStart://There's no enter/exit states. Initialize Variable Loader and set menu_state to below.
+                config=read_config_file();
                 vl=VL_new(200);
                 menu_state=MS_RpnEvaluator;
                 rpn_see_stack=false;//fallthrough
@@ -241,10 +248,10 @@ int main(void){
                     puts("Type RPN with values comma delimited tokens enclosed with parenthesis.");
                     puts("Example: (1,2,+,3,4,+,*) is valid.");
                     fgets(input_str,INPUT_BUFFER_LEN,stdin);
-                    rpnvs_e=RPNEvaluatorEvaluate(input_str,vl,&an_output,rpn_see_stack,RPN_EVAL_START_B,RPN_EVAL_END_B,RPN_EVAL_SEP);
+                    rpnvs_e=RPNEvaluatorEvaluate(input_str,vl,&an_output,rpn_see_stack,true,RPN_EVAL_START_B,RPN_EVAL_END_B,RPN_EVAL_SEP);
                     //while((clear_stdin=getchar())!='\n'&&clear_stdin!=EOF);
                     printf("Status: %d Type: %s Result: ",rpnvs_e,VLNumberTypeStr(an_output.type));
-                    VLNumberPrintNumber(an_output);
+                    VLNumberPrintNumber(an_output,config.decimals);
                     puts("");
                 }
                 while(var_menu){
@@ -289,7 +296,7 @@ int main(void){
                                 default: break;//Should not exist.
                             }
                             printf("Added number ");
-                            VLNumberPrintNumber(an_opt_output.v);
+                            VLNumberPrintNumber(an_opt_output.v,config.decimals);
                             printf(" to variable '%s'.\n",var_str);
                         }else{
                             printf("Invalid number parse. Did not add variable '%s'.\n",var_str);
@@ -442,8 +449,8 @@ ProgramStatus parse_file(const char* path, xdo_t* xdo_obj, Config config, bool a
         if(mb->token_i>mb->str_size) break;
     }
     if(!mb->parse_error){
-        if(config.debug_print_type==DBP_AllCommands) command_array_print(cmd_arr,mb->vl); //Always print if no read errors after processing all commands.
-        macro_buffer_str_id_check(mb);
+        if(config.debug_print_type==DBP_AllCommands) command_array_print(cmd_arr,mb->vl,config.decimals); //Always print if no read errors after processing all commands.
+        macro_buffer_str_id_check(mb,mb->vl);
     }
     if(!mb->parse_error&&and_run){
         bool run_success=run_program(cmd_arr,cmd_output,config,xdo_obj,mb->vl);
@@ -848,9 +855,20 @@ bool run_program(command_array_t* cmd_arr, const char* file_str, Config config, 
                 PrintLastCommand(LastQuery);
                 break;
             case CMD_InitVar:
-                cmdprintf("Initialized variable string name '%s' of type %s of value ",cmd_u.init_var.variable,VLNumberTypeStr(cmd_u.init_var.as_number.type));
+                cmdprintf("Initialized variable string name '%s' of type %s of value '",cmd_u.init_var.variable,VLNumberTypeStr(cmd_u.init_var.as_number.type));
                 if((config.debug_print_type==DBP_AllCommands||this_cmd.print_cmd)){
-                    VLNumberPrintNumber(cmd_u.init_var.as_number);
+                    VLNumberPrintNumber(cmd_u.init_var.as_number,config.decimals);
+                    puts("'");
+                }
+                break;
+            case CMD_EditVar:
+                cmdprintf("Editing variable string name '%s' with RPN string '%s'\n",VL_get_callback(vl,cmd_u.edit_var)->args.rpn.variable,VL_get_callback(vl,cmd_u.edit_var)->args.rpn.rpn_str);
+                ProcessVLCallback(vl,cmd_u.edit_var,0);
+                if((config.debug_print_type==DBP_AllCommands||this_cmd.print_cmd)){
+                    const char* var=VL_get_callback(vl,cmd_u.edit_var)->args.rpn.variable;
+                    StringMapOpt_as_number_t an=StringMap_as_number_read(vl->sman,var);
+                    printf("Value of '%s' is now: '",var);
+                    VLNumberPrintNumber(an.value,config.decimals);
                     puts("'");
                 }
                 break;

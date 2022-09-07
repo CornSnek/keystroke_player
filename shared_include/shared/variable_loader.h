@@ -32,8 +32,10 @@ typedef enum _VLCallbackType{
     VLCallback_Long,
     VLCallback_Int,
     VLCallback_Char,
+    VLCallback_NumberRPN,
     VLCallback_LoadVariable,
-    VLCallback_RewriteVariable
+    VLCallback_RewriteVariable,
+    VLCallback_RewriteVariableRPN
 }VLCallbackType;
 static inline const char* VLNumberTypeStr(VLNumberType vlnt){
     return  vlnt==VLNT_Char?"char":
@@ -42,13 +44,15 @@ static inline const char* VLNumberTypeStr(VLNumberType vlnt){
             vlnt==VLNT_Double?"double":"NaN";
 }
 as_number_opt_t String_to_as_number_t(const char* token);
-void VLNumberPrintNumber(as_number_t num);
+void VLNumberPrintNumber(as_number_t num,unsigned decimals);
 typedef bool(*vlcallback_double_f_t)(as_number_t*,double);
 typedef bool(*vlcallback_long_f_t)(as_number_t*,long);
 typedef bool(*vlcallback_int_f_t)(as_number_t*,int);
 typedef bool(*vlcallback_char_f_t)(as_number_t*,char);
+typedef bool(*vlcallback_number_rpn_f_t)(const VariableLoader_t*,as_number_t*,const char*,bool);
 typedef bool(*vlcallback_load_variable_f_t)(const VariableLoader_t*,as_number_t*,const char*);
 typedef bool(*vlcallback_rewrite_variable_f_t)(VariableLoader_t*,as_number_t*,const char*);
+typedef bool(*vlcallback_rewrite_variable_rpn_f_t)(VariableLoader_t*,const char*,const char*);
 typedef union vlfunction_union{
     vlcallback_double_f_t as_double;
     vlcallback_long_f_t as_long;
@@ -56,11 +60,23 @@ typedef union vlfunction_union{
     vlcallback_char_f_t as_char;
     vlcallback_load_variable_f_t as_load_variable;
     vlcallback_rewrite_variable_f_t as_rewrite_variable;
+    vlcallback_rewrite_variable_rpn_f_t as_rewrite_variable_rpn;
+    vlcallback_number_rpn_f_t as_number_rpn;
 }vlfunction_union_t;
+typedef struct vlargs_rpn_s{
+    const char* variable;
+    const char* rpn_str;
+}vlargs_rpn_t;
+typedef struct vlargs_an_rpn_s{
+    const char* rpn_str;
+    bool see_stack;
+}vlargs_an_rpn_t;
 typedef union vlargs_union{
     long number;
     double dnumber;
     const char* variable;
+    vlargs_an_rpn_t an_rpn;
+    vlargs_rpn_t rpn;
 }vlargs_union_t;
 typedef struct vlcallback_s{
     VLCallbackType callback_type;
@@ -101,6 +117,9 @@ vlcallback_info VL_new_callback_char(VariableLoader_t* this,char value);
 //Variables (Uses VaribleLoader)
 vlcallback_info VL_new_callback_load_variable(VariableLoader_t* this,char* variable);
 vlcallback_info VL_new_callback_rewrite_variable(VariableLoader_t* this,char* variable);
+vlcallback_info VL_new_callback_rewrite_variable_rpn(VariableLoader_t* this,char* rpn_str,char* variable);
+//Uses VariableLoader and RPN.
+vlcallback_info VL_new_callback_number_rpn(VariableLoader_t* this,char* rpn_str,bool see_stack);
 //For RPNEvaluator
 StringMapOpt_as_number_t VL_get_as_number(const VariableLoader_t* this,const char* variable);
 void VL_free(VariableLoader_t* this);

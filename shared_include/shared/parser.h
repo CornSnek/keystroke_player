@@ -7,8 +7,8 @@
 #include <stdlib.h>
 #include <stdbool.h>
 //Sringifying enums separately. Add e(number) and #e(number) for a new enum and string.
-#define __STR_READ_ENUMS(e1,e2,e3,e4,e5,e6,e7,e8,e9,e10,e11,e12,e13,e14,e15,e16,e17,e18,e19,e20,e21,e22,e23,e24,ecount)\
-#e1,#e2,#e3,#e4,#e5,#e6,#e7,#e8,#e9,#e10,#e11,#e12,#e13,#e14,#e15,#e16,#e17,#e18,#e19,#e20,#e21,#e22,#e23,#e24
+#define __STR_READ_ENUMS(e1,e2,e3,e4,e5,e6,e7,e8,e9,e10,e11,e12,e13,e14,e15,e16,e17,e18,e19,e20,e21,e22,e23,e24,e25,ecount)\
+#e1,#e2,#e3,#e4,#e5,#e6,#e7,#e8,#e9,#e10,#e11,#e12,#e13,#e14,#e15,#e16,#e17,#e18,#e19,#e20,#e21,#e22,#e23,#e24,#e25
 //For .h file.
 #define __ReadStateWithStringDec(...) typedef enum _ReadState{__VA_ARGS__}ReadState;\
 extern const char* ReadStateStrings[RS_Count];
@@ -25,6 +25,7 @@ extern const char* ReadStateStrings[RS_Count];
     RS_KeyState,\
     RS_Delay,\
     RS_DelayNum,\
+    RS_DelayRPN,\
     RS_MouseClickType,\
     RS_MouseClickState,\
     RS_MoveMouse,\
@@ -131,6 +132,7 @@ typedef union command_union{
     keystroke_t ks;
     vlcallback_info delay;
     init_var_t init_var;
+    vlcallback_info edit_var;
     repeat_start_t repeat_start;
     repeat_end_t repeat_end;
     mouse_click_t mouse_click;
@@ -159,7 +161,8 @@ typedef enum _CommandType{
     CMD_QueryComparePixel,
     CMD_QueryCompareCoords,
     CMD_QueryCoordsWithin,
-    CMD_InitVar
+    CMD_InitVar,
+    CMD_EditVar
 }CommandType;
 typedef enum _CommandSubType{
     CMDST_Command,
@@ -182,7 +185,7 @@ typedef struct command_array_s{
 }command_array_t;
 macro_buffer_t* macro_buffer_new(char* str_owned, command_array_t* cmd_arr);
 bool macro_buffer_process_next(macro_buffer_t* this,bool print_debug);
-void macro_buffer_str_id_check(macro_buffer_t* this);
+void macro_buffer_str_id_check(macro_buffer_t* this,const VariableLoader_t* vl);
 void macro_buffer_free(macro_buffer_t* this);
 repeat_id_manager_t* repeat_id_manager_new(void);
 void repeat_id_manager_add_name(repeat_id_manager_t* this, char* str_owned, int index);
@@ -198,6 +201,6 @@ void jump_id_manager_free(jump_id_manager_t* this);
 command_array_t* command_array_new(void);
 void command_array_add(command_array_t* this, command_t cmd);
 int command_array_count(const command_array_t* this);
-void command_array_print(const command_array_t* this,const VariableLoader_t* vl);
+void command_array_print(const command_array_t* this,const VariableLoader_t* vl,unsigned char decimals);
 void command_array_free(command_array_t* this);
 #endif
