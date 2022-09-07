@@ -128,9 +128,13 @@ typedef struct init_var_s{
     as_number_t as_number;
     const char* variable;
 }init_var_t;
+typedef struct delay_s{
+    vlcallback_info callback;
+    long delay_mult;
+}delay_t;
 typedef union command_union{
     keystroke_t ks;
-    vlcallback_info delay;
+    delay_t delay;
     init_var_t init_var;
     vlcallback_info edit_var;
     repeat_start_t repeat_start;

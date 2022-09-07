@@ -1,5 +1,6 @@
 # keystroke_player
-Linux X11 Keyboard/Mouse Macro program with script support. This is inspired by click4ever from https://github.com/daniel-araujo/click4ever. I just added keyboard support and scripting support for personal scripting uses.
+Linux X11 Keyboard/Mouse Macro program script player. This is inspired by click4ever from https://github.com/daniel-araujo/click4ever. I just added keyboard support and scripting support for personal scripting uses.
+Note: Still developing things for this program. TODO: Adding variables to the script.
 # Usage
 Run the program. It is a command line program where you can edit configs, and compile/run scripts.
 Uses X11 Keygrabs as keybinds to go through menus. Press the escape key to toggle disabling keybind functionality.
@@ -178,6 +179,3 @@ Requires X11 library.
 (Optional) Testing requires [Check library](https://github.com/libcheck/check).
 
 Note: This has been built using Visual Studio Code under Arch Linux. Repositories for these libraries are in Arch Linux. It may also be readily available in other distributions of Linux.
-
-# TODO
-Adding more macro expansion capabilities.

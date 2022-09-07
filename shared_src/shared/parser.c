@@ -408,7 +408,10 @@ bool macro_buffer_process_next(macro_buffer_t* this,bool print_debug){//Returns 
                     rpn_str=char_string_slice(begin_p,end_p);
                     command_array_add(this->cmd_arr,
                         (command_t){.type=CMD_Delay,.subtype=CMDST_Command,.print_cmd=print_cmd,
-                            .cmd_u.delay=VL_new_callback_number_rpn(this->vl,rpn_str,print_debug)
+                            .cmd_u.delay=(delay_t){
+                                .callback=VL_new_callback_number_rpn(this->vl,rpn_str,print_debug),
+                                .delay_mult=delay_mult
+                            }
                         }
                     );
                     read_offset_i+=end_p-begin_p+1;
@@ -427,7 +430,10 @@ bool macro_buffer_process_next(macro_buffer_t* this,bool print_debug){//Returns 
                     num_str[read_offset_i]='\0';
                     command_array_add(this->cmd_arr,
                         (command_t){.type=CMD_Delay,.subtype=CMDST_Command,.print_cmd=print_cmd,
-                            .cmd_u.delay=VL_new_callback_long(this->vl,strtol(num_str,NULL,10)*delay_mult)
+                            .cmd_u.delay=(delay_t){
+                                .callback=VL_new_callback_long(this->vl,strtol(num_str,NULL,10)),
+                                .delay_mult=delay_mult
+                            }
                         }
                     );
                     free(num_str);
@@ -1161,6 +1167,7 @@ int command_array_count(const command_array_t* this){
     return this->size;
 }
 void command_array_print(const command_array_t* this,const VariableLoader_t* vl,unsigned char decimals){
+    vlcallback_t* vlct;
     for(int i=0;i<this->size;i++){
         const command_union_t cmd=this->cmds[i].cmd_u;
         printf("Command Index: %d ",i);
@@ -1172,7 +1179,18 @@ void command_array_print(const command_array_t* this,const VariableLoader_t* vl,
                 printf("Key %s KeyState: %u\n",cmd.ks.key,cmd.ks.key_state);
                 break;
             case CMD_Delay:
-                printf("Delay %lu\n",VL_get_callback(vl,cmd.delay)->args.number);
+                vlct=VL_get_callback(vl,cmd.delay.callback);
+                printf("Delay ");//TODO
+                switch(vlct->callback_type){
+                    case VLCallback_Long:
+                        printf("using value %lu ",vlct->args.number);
+                        break;
+                    case VLCallback_NumberRPN:
+                        printf("using RPN '%s' ",vlct->args.an_rpn.rpn_str);
+                        break;
+                    default: break;//Shouldn't be here.
+                }
+                printf("with multiplier of %ld\n",cmd.delay.delay_mult);
                 break;
             case CMD_RepeatStart:
                 printf("RepeatStart Counter: %d str_i: %d\n",cmd.repeat_start.counter,cmd.repeat_start.str_index);

@@ -25,6 +25,8 @@ BinCmp(char,c,eq,==) BinCmp(char,c,neq,!=) BinCmp(char,c,lt,<) BinCmp(char,c,gt,
 BinCmp(unsigned char,uc,eq,==) BinCmp(unsigned char,uc,neq,!=) BinCmp(unsigned char,uc,lt,<) BinCmp(unsigned char,uc,gt,>) BinCmp(unsigned char,uc,lte,<=) BinCmp(unsigned char,uc,gte,>=)
 char RPN_c_max(char a,char b){return a>b?a:b;}
 char RPN_c_min(char a,char b){return a<b?a:b;}
+char RPN_uc_max(unsigned char a,unsigned char b){return a>b?a:b;}
+char RPN_uc_min(unsigned char a,unsigned char b){return a<b?a:b;}
 char _cabs(char a){return abs(a);}
 char castas_c(char num){return num;}
 char random_c(void){
@@ -48,6 +50,8 @@ BinCmp(int,i,eq,==) BinCmp(int,i,neq,!=) BinCmp(int,i,lt,<) BinCmp(int,i,gt,>) B
 BinCmp(unsigned int,ui,eq,==) BinCmp(unsigned int,ui,neq,!=) BinCmp(unsigned int,ui,lt,<) BinCmp(unsigned int,ui,gt,>) BinCmp(unsigned int,ui,lte,<=) BinCmp(unsigned int,ui,gte,>=)
 int RPN_i_max(int a,int b){return a>b?a:b;}
 int RPN_i_min(int a,int b){return a<b?a:b;}
+int RPN_ui_max(unsigned int a,unsigned int b){return a>b?a:b;}
+int RPN_ui_min(unsigned int a,unsigned int b){return a<b?a:b;}
 int castas_i(int num){return num;}
 int random_i(void){
     int rand_st=0;
@@ -70,6 +74,8 @@ BinCmp(long,l,eq,==) BinCmp(long,l,neq,!=) BinCmp(long,l,lt,<) BinCmp(long,l,gt,
 BinCmp(unsigned long,ul,eq,==) BinCmp(unsigned long,ul,neq,!=) BinCmp(unsigned long,ul,lt,<) BinCmp(unsigned long,ul,gt,>) BinCmp(unsigned long,ul,lte,<=) BinCmp(unsigned long,ul,gte,>=)
 long RPN_l_max(long a,long b){return a>b?a:b;}
 long RPN_l_min(long a,long b){return a<b?a:b;}
+long RPN_ul_max(unsigned long a,unsigned long b){return a>b?a:b;}
+long RPN_ul_min(unsigned long a,unsigned long b){return a<b?a:b;}
 long castas_l(long num){return num;}
 long random_l(void){
     long rand_st=0;
@@ -112,13 +118,15 @@ void rpn_f_null(void){}
 void RPNEvaluatorInit(void){
     if(!DefaultRPNFunctionMap){
         DefaultRPNFunctionMap=StringMap_rpn_func_call_new(228);
-        //202 is [[0]=45,[1]=46,[2]=27,[3]=26,[4]=13,[5]=2] with djb hash
-        //210 is [[0]=69,[1]=58,[2]=19,[3]=9,[4]=4]
-        //228 is [[0]=92,[1]=52,[2]=10,[3]=2,[4]=2,[5]=1]
+        //Current size: 167
+        //228 is [[0]=87,[1]=62,[2]=13,[3]=2,[4]=2,[5]=1] with djb hash
+        //210 is [[0]=68,[1]=59,[2]=26,[3]=8,[4]=5,[5]=1]
 #define SMA(Str,RFT,RFT_u,F,NumArgs,ReturnType) assert(StringMap_rpn_func_call_assign(DefaultRPNFunctionMap,Str,(rpn_func_call_t){.type=RFT,.func.RFT_u=F,.num_args=NumArgs,.return_type=ReturnType})==VA_Written)
         SMA("abs",RPNFT_Null,rpn_null,rpn_f_null,0,VLNT_Invalid);//To check for "Existence" for any name collisions for char/int/long/double. Will not be calculated.
         SMA("max",RPNFT_Null,rpn_null,rpn_f_null,0,VLNT_Invalid);
         SMA("min",RPNFT_Null,rpn_null,rpn_f_null,0,VLNT_Invalid);
+        SMA("maxu",RPNFT_Null,rpn_null,rpn_f_null,0,VLNT_Invalid);
+        SMA("minu",RPNFT_Null,rpn_null,rpn_f_null,0,VLNT_Invalid);
 
         SMA("__c+",RPNFT_Char_F_2Char,rpn_char_f_2char,RPN_c_add,2,VLNT_Char);
         SMA("__c++",RPNFT_Char_F_1Char,rpn_char_f_1char,RPN_c_inc,1,VLNT_Char);
@@ -153,6 +161,8 @@ void RPNEvaluatorInit(void){
         SMA("__cabs",RPNFT_Char_F_1Char,rpn_char_f_1char,_cabs,1,VLNT_Char);
         SMA("__cmax",RPNFT_Char_F_2Char,rpn_char_f_2char,RPN_c_max,2,VLNT_Char);
         SMA("__cmin",RPNFT_Char_F_2Char,rpn_char_f_2char,RPN_c_min,2,VLNT_Char);
+        SMA("__cmaxu",RPNFT_Char_F_2UChar,rpn_char_f_2uchar,RPN_uc_max,2,VLNT_Char);
+        SMA("__cminu",RPNFT_Char_F_2UChar,rpn_char_f_2uchar,RPN_uc_min,2,VLNT_Char);
         SMA("random_c",RPNFT_Char_F_NoArg,rpn_char_f_noarg,random_c,0,VLNT_Char);
         SMA("as_c",RPNFT_Char_F_1Char,rpn_char_f_1char,castas_c,1,VLNT_Char);
         SMA("__cb?t:f",RPNFT_Char_F_Ternary,rpn_char_f_ternary,ternary_c,3,VLNT_Char);
@@ -190,6 +200,8 @@ void RPNEvaluatorInit(void){
         SMA("__iabs",RPNFT_Int_F_1Int,rpn_int_f_1int,abs,1,VLNT_Int);
         SMA("__imax",RPNFT_Int_F_2Int,rpn_int_f_2int,RPN_i_max,2,VLNT_Int);
         SMA("__imin",RPNFT_Int_F_2Int,rpn_int_f_2int,RPN_i_min,2,VLNT_Int);
+        SMA("__imaxu",RPNFT_Int_F_2UInt,rpn_int_f_2uint,RPN_ui_max,2,VLNT_Int);
+        SMA("__iminu",RPNFT_Int_F_2UInt,rpn_int_f_2uint,RPN_ui_min,2,VLNT_Int);
         SMA("random_i",RPNFT_Int_F_NoArg,rpn_int_f_noarg,random_i,0,VLNT_Int);
         SMA("as_i",RPNFT_Int_F_1Int,rpn_int_f_1int,castas_i,1,VLNT_Int);
         SMA("__ib?t:f",RPNFT_Int_F_Ternary,rpn_int_f_ternary,ternary_i,3,VLNT_Int);
@@ -227,6 +239,8 @@ void RPNEvaluatorInit(void){
         SMA("__labs",RPNFT_Long_F_1Long,rpn_long_f_1long,labs,1,VLNT_Long);
         SMA("__lmax",RPNFT_Long_F_2Long,rpn_long_f_2long,RPN_l_max,2,VLNT_Long);
         SMA("__lmin",RPNFT_Long_F_2Long,rpn_long_f_2long,RPN_l_min,2,VLNT_Long);
+        SMA("__lmaxu",RPNFT_Long_F_2ULong,rpn_long_f_2ulong,RPN_ul_max,2,VLNT_Long);
+        SMA("__lminu",RPNFT_Long_F_2ULong,rpn_long_f_2ulong,RPN_ul_min,2,VLNT_Long);
         SMA("random_l",RPNFT_Long_F_NoArg,rpn_long_f_noarg,random_l,0,VLNT_Long);
         SMA("as_l",RPNFT_Long_F_1Long,rpn_long_f_1long,castas_l,1,VLNT_Long);
         SMA("__lb?t:f",RPNFT_Long_F_Ternary,rpn_long_f_ternary,ternary_l,3,VLNT_Long);

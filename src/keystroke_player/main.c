@@ -687,15 +687,15 @@ bool run_program(command_array_t* cmd_arr, const char* file_str, Config config, 
                 PrintLastCommand(LastKey);
                 break;
             case CMD_Delay://Using timespec_get and timespec_diff (custom function) to try to get "precise delays"
-                timespec_diff(&ts_usleep_before,&ts_usleep_before_adj,&ts_diff);
-                time_after_last_usleep=ts_diff.tv_sec*NSEC_TO_SEC+ts_diff.tv_nsec;
-                vlsuccess=ProcessVLCallback(vl,cmd_u.delay,&an_output);
+                vlsuccess=ProcessVLCallback(vl,cmd_u.delay.callback,&an_output);
                 if(!vlsuccess){
                     //TODO
                 }
-                real_delay+=an_output.l*1000-time_after_last_usleep;
+                timespec_diff(&ts_usleep_before,&ts_usleep_before_adj,&ts_diff);
+                time_after_last_usleep=ts_diff.tv_sec*NSEC_TO_SEC+ts_diff.tv_nsec;
+                real_delay+=an_output.l*cmd_u.delay.delay_mult*1000-time_after_last_usleep;
                 adj_usleep=real_delay>0?((delay_ns_t)(real_delay/1000+(real_delay%1000>499?1:0))):0u;//0 and rounded nanoseconds.
-                cmdprintf("Sleeping for %ld microseconds (Adjusted to %ld due to commands) \n",an_output.l,adj_usleep);
+                cmdprintf("Sleeping for %ld microseconds (Adjusted to %ld due to commands) \n",an_output.l*cmd_u.delay.delay_mult,adj_usleep);
                 {
                     int seconds=adj_usleep/MICSEC_TO_SEC;//Split into seconds so that it doesn't sleep when mouse moved over large seconds.
                     int left_over=adj_usleep%MICSEC_TO_SEC;
