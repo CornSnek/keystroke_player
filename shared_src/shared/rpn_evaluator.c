@@ -309,7 +309,7 @@ void RPNEvaluatorInit(void){
 #ifndef NDEBUG
 #define RPNEvaluatorInitCalledFirst() \
 if(!DefaultRPNFunctionMap){\
-    fprintf(stderr,"RPNEvaluatorInit should be called first.\n");\
+    fprintf(stderr,ERR("RPNEvaluatorInit should be called first.\n"));\
     exit(EXIT_FAILURE);\
 } (void)0
 #else
@@ -328,11 +328,11 @@ RPNValidStringE RPNEvaluatorEvaluate(const char* rpn_str,const VariableLoader_t*
     const char* start_p,* end_p;
     int depth=first_outermost_bracket(rpn_str,rpn_start_b,rpn_end_b,&start_p,&end_p);
     if(!start_p||depth){
-        fprintf(stderr,"RPN needs to be enclosed in brackets '%s' and '%s'.\n",rpn_start_b,rpn_end_b);
+        fprintf(stderr,ERR("RPN needs to be enclosed in brackets '%s' and '%s'.\n"),rpn_start_b,rpn_end_b);
         return RPNVS_ImproperBrackets;
     }
     if(start_p+1==end_p){
-        fprintf(stderr,"RPN needs to have at least one variable.\n");
+        fprintf(stderr,ERR("RPN needs to have at least one variable.\n"));
         return RPNVS_NotEnoughNumbers;//Only just "()"
     }
     char* rpn_str_no_b=char_string_slice_no_brackets(start_p,end_p,rpn_start_b);
@@ -352,19 +352,19 @@ if((an_opt=String_to_as_number_t(current_token)).exists) Stack_as_number_push(st
 else if((status=_RPNEvaluatorIsVarNameOk(current_token,vl,stack_an,process_num))!=RPNVS_IsVLName&&status!=RPNVS_IsFunction){\
     switch(status){\
         case RPNVS_NameCollision:\
-            fprintf(stderr,"Name Collision Error: Token '%s' within the program is already a name for an existing function.\n",current_token);\
+            fprintf(stderr,ERR("Name Collision Error: Token '%s' within the program is already a name for an existing function.\n"),current_token);\
             break;\
         case RPNVS_NameUndefined:\
-            fprintf(stderr,"Name Undefined Error: Token '%s' within the program is neither a number, varible, nor function (or function with double support).\n",current_token);\
+            fprintf(stderr,ERR("Name Undefined Error: Token '%s' within the program is neither a number, varible, nor function (or function with double support).\n"),current_token);\
             break;\
         case RPNVS_NotEnoughNumbers:\
-            fprintf(stderr,"Not Enough Numbers Error: Token '%s' (function) doesn't have enough numbers to pop. Stack is empty.\n",current_token);\
+            fprintf(stderr,ERR("Not Enough Numbers Error: Token '%s' (function) doesn't have enough numbers to pop. Stack is empty.\n"),current_token);\
             break;\
         case RPNVS_DivisionByZero:\
-            fprintf(stderr,"Illegal Operation Error: Division by Zero with a non-double number has occured.\n");\
+            fprintf(stderr,ERR("Illegal Operation Error: Division by Zero with non-double numbers has occured.\n"));\
             break;\
         case RPNVS_NegativeBitShift:\
-            fprintf(stderr,"Illegal Operation Error: Bit-shifting using a negative number on the second argument is not supported.\n");\
+            fprintf(stderr,ERR("Illegal Operation Error: Bit-shifting using a negative number on the second argument is not supported.\n"));\
             break;\
         default: break;/*Shouldn't be here.*/\
     }\
@@ -388,7 +388,7 @@ free(current_token)
     if(see_stack) _Stack_as_number_print(stack_an);
     bool stack_is_one=(stack_an->size==1);
     if(stack_is_one){if(process_num) *get_value=stack_an->stack[0];}
-    else fprintf(stderr,"Too Many Numbers Error: RPN String has more than 1 number in the stack. Not a valid RPN string.\n");
+    else fprintf(stderr,ERR("Too Many Numbers Error: RPN String has more than 1 number in the stack. Not a valid RPN string.\n"));
     Stack_as_number_free(stack_an);
     free(rpn_str_no_b);
     return stack_is_one?RPNVS_Ok:RPNVS_TooManyNumbers;

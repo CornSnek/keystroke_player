@@ -68,7 +68,7 @@ void SSManager_free_string(shared_string_manager_t* this, const char* str_del){
             return;
         }
     }
-    fprintf(stderr,"String '%s' doesn't exist in SSManager. Program shouldn't execute here.",str_del);
+    fprintf(stderr,ERR("String '%s' doesn't exist in SSManager. Program shouldn't execute here."),str_del);
     exit(EXIT_FAILURE);
 }
 void SSManager_free(shared_string_manager_t* this){
@@ -84,12 +84,12 @@ macro_paster_t* macro_paster_new(void){
 }
 bool macro_paster_add_name(macro_paster_t* this,const char* str_name){
     if(!str_name[0]){
-        fprintf(stderr,"Macro name shouldn't be empty.\n");
+        fprintf(stderr,ERR("Macro name shouldn't be empty.\n"));
         return false;
     }
     for(size_t i=0;i<this->count;i++){
         if(!strcmp(this->str_names[i],str_name)){
-            fprintf(stderr,"In macro_paster, string '%s' already exists as a macro name.\n",str_name);
+            fprintf(stderr,ERR("In macro_paster, string '%s' already exists as a macro name.\n"),str_name);
             return false;
         }
     }
@@ -134,17 +134,17 @@ bool _macro_paster_valid_name(const macro_paster_t* this,const char* str_name,si
 }
 bool macro_paster_add_var(macro_paster_t* this,const char* str_name,const char* var_name){
     if(!var_name[0]){
-        fprintf(stderr,"One of the variable names in a macro shouldn't be empty.\n");
+        fprintf(stderr,ERR("One of the variable names in a macro shouldn't be empty.\n"));
         return false;
     }
     size_t str_name_i;
     if(!_macro_paster_valid_name(this,str_name,&str_name_i)){
-        fprintf(stderr,"In macro_paster, string '%s' does not exist. Did not add variable string '%s'.\n",str_name,var_name);
+        fprintf(stderr,ERR("In macro_paster, string '%s' does not exist. Did not add variable string '%s'.\n"),str_name,var_name);
         return false;
     }
     for(int i=0;i<this->str_var_count[str_name_i];i++){
         if(!strcmp(this->str_vars[str_name_i][i],var_name)){
-            fprintf(stderr,"In macro_paster, variable '%s' already exists for string '%s'. Did not add variable.\n",var_name,str_name);
+            fprintf(stderr,ERR("In macro_paster, variable '%s' already exists for string '%s'. Did not add variable.\n"),var_name,str_name);
             return false;
         }
     }
@@ -171,7 +171,7 @@ bool macro_paster_add_var(macro_paster_t* this,const char* str_name,const char* 
 bool macro_paster_write_macro_def(macro_paster_t* this,const char* str_name,const char* str_value){
     size_t str_name_i;
     if(!_macro_paster_valid_name(this,str_name,&str_name_i)){
-        fprintf(stderr,"In macro_paster, string '%s' does not exist. Did not write macro string value '%s'.\n",str_name,str_value);
+        fprintf(stderr,ERR("In macro_paster, string '%s' does not exist. Did not write macro string value '%s'.\n"),str_name,str_value);
         return false;
     }
     this->macro_definition[str_name_i]=realloc(this->macro_definition[str_name_i],sizeof(char)*(strlen(str_value)+1));
@@ -188,7 +188,7 @@ bool macro_paster_write_var_by_str(macro_paster_t* this,const char* str_name,con
     size_t str_name_i;
     int var_name_i;
     if(!_macro_paster_valid_name(this,str_name,&str_name_i)){
-        fprintf(stderr,"In macro_paster, string '%s' does not exist. Did not change variable string '%s'.\n",str_name,var_name);
+        fprintf(stderr,ERR("In macro_paster, string '%s' does not exist. Did not change variable string '%s'.\n"),str_name,var_name);
         return false;
     }
     for(int i=0;i<this->str_var_count[str_name_i];i++){
@@ -197,7 +197,7 @@ bool macro_paster_write_var_by_str(macro_paster_t* this,const char* str_name,con
             goto variable_exists;
         }
     }
-    fprintf(stderr,"In macro_paster, variable '%s' does not exist for string '%s'.\n",var_name,str_name);
+    fprintf(stderr,ERR("In macro_paster, variable '%s' does not exist for string '%s'.\n"),var_name,str_name);
     return false;
     variable_exists:
     _macro_paster_write_var_value(this,str_name_i,var_name_i,var_value);
@@ -207,14 +207,14 @@ bool macro_paster_write_var_by_str(macro_paster_t* this,const char* str_name,con
 bool macro_paster_write_var_by_ind(macro_paster_t* this,const char* str_name,int var_i,const char* var_value){
     size_t str_name_i;
     if(!_macro_paster_valid_name(this,str_name,&str_name_i)){
-        fprintf(stderr,"In macro_paster, string '%s' does not exist. Did not change variable index #%d.\n",str_name,var_i);
+        fprintf(stderr,ERR("In macro_paster, string '%s' does not exist. Did not change variable index #%d.\n"),str_name,var_i);
         return false;
     }
     if(var_i>=0&&var_i<this->str_var_count[str_name_i]){
         _macro_paster_write_var_value(this,str_name_i,var_i,var_value);
         return true;
     }else{
-        fprintf(stderr,"In macro_paster, variable index #%d is out of range for string '%s'. Variables may not exist.\n",var_i,str_name);
+        fprintf(stderr,ERR("In macro_paster, variable index #%d is out of range for string '%s'. Variables may not exist.\n"),var_i,str_name);
         return false;
     }
 }
@@ -239,12 +239,12 @@ MacroProcessStatus file_contains_macro_definitions(const char* file_str,const ch
         }
     }
     if(!has_end_bracket){
-        fprintf(stderr,"Macro definitions processing error: End bracket '%s' missing.\n",end_m);
+        fprintf(stderr,ERR("Macro definitions processing error: End bracket '%s' missing.\n"),end_m);
         return MPS_ImproperBrackets;
     }
     while((file_str_p=strchr(file_str_p,start_m[0]))){
         if(!strncmp(file_str_p++,start_m,strlen(start_m))){
-            fprintf(stderr,"Macro definitions processing error: There should only be one set of '%s' and '%s' to contain the macro definitions.\n",start_m,end_m);
+            fprintf(stderr,ERR("Macro definitions processing error: There should only be one set of '%s' and '%s' to contain the macro definitions.\n"),start_m,end_m);
             return MPS_ImproperBrackets;
         }
     }
@@ -255,7 +255,7 @@ bool macro_paster_process_macros(macro_paster_t* this,const char* file_str,const
     const char* s_p,* e_p;
     int depth=first_outermost_bracket(file_str,start_m,end_m,&s_p,&e_p);
     if(depth){
-        fprintf(stderr,"Macro definitions need to be separated by %s and %s at the beginning of the file.\n",start_m,end_m);
+        fprintf(stderr,ERR("Macro definitions need to be separated by %s and %s at the beginning of the file.\n"),start_m,end_m);
         return false;
     }
     char* macros_def=char_string_slice_no_brackets(s_p,e_p,start_m);
@@ -263,7 +263,7 @@ bool macro_paster_process_macros(macro_paster_t* this,const char* file_str,const
     while(true){
         depth=first_outermost_bracket(macros_p,start_b,end_b,&s_p,&e_p);
         if(depth){
-            fprintf(stderr,"One of the Macros have misplaced start brackets '%s' and end brackets '%s'.\n",start_b,end_b);
+            fprintf(stderr,ERR("One of the Macros have misplaced start brackets '%s' and end brackets '%s'.\n"),start_b,end_b);
             free(macros_def);
             return false;
         }
@@ -273,7 +273,7 @@ bool macro_paster_process_macros(macro_paster_t* this,const char* file_str,const
         int macro_name_len, def_len;
         split_at_sep(full_macro_str,def_sep,&def_p,&macro_name_len,&def_len);
         if(!def_p){
-            fprintf(stderr,"Separator %s not found.\n",def_sep);
+            fprintf(stderr,ERR("Separator %s not found.\n"),def_sep);
             free(full_macro_str);
             free(macros_def);
             return false;
@@ -315,7 +315,7 @@ bool macro_paster_process_macros(macro_paster_t* this,const char* file_str,const
             }
             str_len++;
             if(!char_is_key(macro_vars_str[i])){
-                fprintf(stderr,"Invalid character '%c' for macro name/variable.\n",macro_vars_str[i]);
+                fprintf(stderr,ERR("Invalid character '%c' for macro name/variable.\n"),macro_vars_str[i]);
                 free(macro_vars_str); free(macro_name_str); free(def_str); free(macros_def);
                 return false;
             }
@@ -343,7 +343,7 @@ bool macro_paster_expand_macros(macro_paster_t* this,const char* file_str,const 
     int m_i,cmd_len;
     split_at_sep(file_str,end_m,&begin_cmd_p,&m_i,&cmd_len);
     if(!begin_cmd_p){
-        fprintf(stderr,"Error: Couldn't find macro end bracket '%s'.\n",end_m);
+        fprintf(stderr,ERR("Error: Couldn't find macro end bracket '%s'.\n"),end_m);
         return false;
     }
     char* cmd_str=malloc(sizeof(char)*(cmd_len+1));
@@ -352,7 +352,7 @@ bool macro_paster_expand_macros(macro_paster_t* this,const char* file_str,const 
     size_t expansion_count=0;
     do{
         if(expansion_count>5000){
-            fprintf(stderr,"Error: Possibly recursive macro in code. Ended recursion.\n");
+            fprintf(stderr,ERR("Error: Possibly recursive macro in code. Ended recursion.\n"));
             _write_to_macro_output(cmd_str);
             free(cmd_str);
             return false;
@@ -360,7 +360,7 @@ bool macro_paster_expand_macros(macro_paster_t* this,const char* file_str,const 
         const char* begin_m_p,*end_m_p;
         int depth=first_innermost_bracket(cmd_str,start_b,end_b,&begin_m_p,&end_m_p);
         if(depth){
-            fprintf(stderr,"Mismatched macro brackets in code.\n");
+            fprintf(stderr,ERR("Mismatched macro brackets in code.\n"));
             _write_to_macro_output(cmd_str);
             free(cmd_str);
             return false;
@@ -388,7 +388,7 @@ bool macro_paster_expand_macros(macro_paster_t* this,const char* file_str,const 
                     var_i++;
                 }else{
                     if(!_macro_paster_valid_name(this,str,&macro_name_i)){
-                        fprintf(stderr,"Macro name '%s' is not a built-in macro or defined yet.\n",str);
+                        fprintf(stderr,ERR("Macro name '%s' is not a built-in macro or defined yet.\n"),str);
                         _write_to_macro_output(cmd_str);
                         free(str); free(macro_w_br); free(macro_n_br); free(cmd_str);
                         return false;
@@ -402,7 +402,7 @@ bool macro_paster_expand_macros(macro_paster_t* this,const char* file_str,const 
             }
             str_len++;
             if(!macro_name_set&&!char_is_key(macro_n_br[parse_i])){
-                fprintf(stderr,"Invalid character '%c' for macro name.\n",macro_n_br[parse_i]);
+                fprintf(stderr,ERR("Invalid character '%c' for macro name.\n"),macro_n_br[parse_i]);
                 _write_to_macro_output(cmd_str);
                 free(macro_w_br); free(macro_n_br); free(cmd_str);
                 return false;
@@ -425,7 +425,7 @@ bool macro_paster_get_val_string(const macro_paster_t* this,const char* str_name
     size_t str_name_i;
     char* string_output;
     if(!_macro_paster_valid_name(this,str_name,&str_name_i)){
-        fprintf(stderr,"In macro_paster, string '%s' does not exist. Did not write output.\n",str_name);
+        fprintf(stderr,ERR("In macro_paster, string '%s' does not exist. Did not write output.\n"),str_name);
         return false;
     }
     string_output=malloc(sizeof(char)*(strlen(this->macro_definition[str_name_i])+1));

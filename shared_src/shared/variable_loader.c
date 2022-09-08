@@ -75,7 +75,7 @@ bool ProcessVLCallback(VariableLoader_t* vl,vlcallback_info vlc_info,as_number_t
         case VLCallback_RewriteVariableRPN: return callback->func.as_rewrite_variable_rpn(vl,callback->args.rpn.rpn_str,callback->args.rpn.variable);
         case VLCallback_NumberRPN: return callback->func.as_number_rpn(vl,number_io,callback->args.an_rpn.rpn_str,callback->args.an_rpn.see_stack);
     }
-    fprintf(stderr,"Bad callback type. Code shouldn't reach here.\n"); exit(EXIT_FAILURE); return false;
+    fprintf(stderr,ERR("Bad callback type. Code shouldn't reach here.\n")); exit(EXIT_FAILURE); return false;
 }
 VariableLoader_t* VL_new(size_t size){
     VariableLoader_t* this=malloc(sizeof(VariableLoader_t));

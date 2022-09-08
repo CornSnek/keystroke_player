@@ -576,14 +576,14 @@ bool run_program(command_array_t* cmd_arr, const char* file_str, Config config, 
     pthread_t keyboard_input_t;
     int ret=pthread_mutex_init(&input_mutex,PTHREAD_MUTEX_TIMED_NP);
     if(ret){
-        fprintf(stderr,"Unable to create thread. Exiting program.\n");
+        fprintf(stderr,ERR("Unable to create thread. Exiting program.\n"));
         key_down_check_free(kdc);
         xdo_free(xdo_obj);
         return false;
     }
     ret=pthread_create(&keyboard_input_t,NULL,keyboard_check_listener,&srs);
     if(ret){
-        fprintf(stderr,"Unable to create thread. Exiting program.\n");
+        fprintf(stderr,ERR("Unable to create thread. Exiting program.\n"));
         key_down_check_free(kdc);
         xdo_free(xdo_obj);
         return false;
@@ -591,7 +591,7 @@ bool run_program(command_array_t* cmd_arr, const char* file_str, Config config, 
     struct timespec ts_begin,ts_diff,ts_usleep_before,ts_usleep_before_adj;
     timespec_get(&ts_begin,TIME_UTC);
     pthread_mutex_lock(&input_mutex);
-    bool query_is_true,not_empty,vlsuccess,no_error=true;
+    bool query_is_true,not_empty,no_error=true;
     typedef long nano_sec;
     nano_sec time_after_last_usleep;
     nano_sec real_delay=0;//Adjust delay depending on time after commands and after sleeping.
@@ -687,9 +687,12 @@ bool run_program(command_array_t* cmd_arr, const char* file_str, Config config, 
                 PrintLastCommand(LastKey);
                 break;
             case CMD_Delay://Using timespec_get and timespec_diff (custom function) to try to get "precise delays"
-                vlsuccess=ProcessVLCallback(vl,cmd_u.delay.callback,&an_output);
-                if(!vlsuccess){
-                    //TODO
+                if(!ProcessVLCallback(vl,cmd_u.delay.callback,&an_output)){
+                    pthread_mutex_lock(&input_mutex);
+                    srs.program_done=true;
+                    no_error=false;
+                    pthread_mutex_unlock(&input_mutex);
+                    break;
                 }
                 an_output=VLNumberCast(an_output,VLNT_Long);//If double.
                 timespec_diff(&ts_usleep_before,&ts_usleep_before_adj,&ts_diff);
@@ -703,7 +706,7 @@ bool run_program(command_array_t* cmd_arr, const char* file_str, Config config, 
                     pthread_mutex_lock(&input_mutex);
                     while(seconds--&&!srs.program_done){
                         pthread_mutex_unlock(&input_mutex);
-                        usleep(MICSEC_TO_SEC);
+                        sleep(1);
                         pthread_mutex_lock(&input_mutex);
                     }
                     pthread_mutex_unlock(&input_mutex);
@@ -769,7 +772,7 @@ bool run_program(command_array_t* cmd_arr, const char* file_str, Config config, 
                 PrintLastCommand(LastKey);
                 break;
             case CMD_Exit:
-                cmdprintf("Exit command issued. Exiting program now.\n");
+                cmdprintf("Exit command issued. Exiting program.\n");
                 pthread_mutex_lock(&input_mutex);
                 srs.program_done=true;
                 pthread_mutex_unlock(&input_mutex);
@@ -797,7 +800,7 @@ bool run_program(command_array_t* cmd_arr, const char* file_str, Config config, 
                     if(not_empty) printf("Jumping back to command index #%d\n",stack_cmd_i+2);
                 }
                 if(!not_empty){
-                    puts("Stack is empty! Aborting program.");
+                    fprintf(stderr,ERR("Stack is empty! Aborting program."));
                     pthread_mutex_lock(&input_mutex);
                     srs.program_done=true;
                     no_error=false;

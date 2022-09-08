@@ -1,4 +1,4 @@
-init,d,wait_s=1;
+init,l,wait_s=1;
 (A;
 edit,wait_s=(wait_s,++);
 .m(wait_s,100,*);
