@@ -9,14 +9,13 @@ shared_string_manager_t* SSManager_new(void){
     EXIT_IF_NULL(this,shared_string_manager_t*);
     return this;
 }
-char* SSManager_add_string(shared_string_manager_t* this, char** str_p_owned){//Returns freed pointer while it modifies into shared string pointer.
+bool SSManager_add_string(shared_string_manager_t* this, char** str_p_owned){//Bool if string added is unique.
     for(int i=0;i<this->count;i++){
         if(!strcmp(*str_p_owned,this->c_strs[i])){
-            char* freed_pointer=*str_p_owned;
             if(*str_p_owned!=this->c_strs[i]) free(*str_p_owned);//Remove duplicate char* contents from strcmp==0.
             *str_p_owned=this->c_strs[i];
             this->c_str_rc[i]++;
-            return freed_pointer;//To check for uniqueness (Ex: bool is_unique=(str==SSManager_add_string(this->ssm,&str)));
+            return false;
         }
     }
     this->count++;
@@ -31,7 +30,7 @@ char* SSManager_add_string(shared_string_manager_t* this, char** str_p_owned){//
     EXIT_IF_NULL(this->c_str_rc,int*);
     this->c_strs[this->count-1]=*str_p_owned;
     this->c_str_rc[this->count-1]=1;
-    return *str_p_owned;
+    return true;
 }
 int SSManager_count_string(const shared_string_manager_t* this, const char* str_cmp){
     for(int i=0;i<this->count;i++){

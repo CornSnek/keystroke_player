@@ -106,7 +106,7 @@ static inline double rad_to_deg(double rad){
 #define ArcTrigDegWrap(name) double name##d(double v){return rad_to_deg(name(v));}
 TrigDegWrap(sin) TrigDegWrap(cos) TrigDegWrap(tan)
 ArcTrigDegWrap(asin) ArcTrigDegWrap(acos) ArcTrigDegWrap(atan)
-double random_d(void){return (double)(size_t)random_l()/ULONG_MAX;}
+double random_d(void){return (double)((size_t)random_l()/ULONG_MAX);}
 double castas_d(double num){return num;}
 double ternary_d(bool b,double x,double y){return b?x:y;}
 

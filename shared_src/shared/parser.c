@@ -270,8 +270,7 @@ bool macro_buffer_process_next(macro_buffer_t* this,bool print_debug){//Returns 
                     str_name=calloc(read_offset_i+1,sizeof(char));
                     EXIT_IF_NULL(str_name,char);
                     strncpy(str_name,this->contents+this->token_i+read_i,read_offset_i);
-                    const bool str_exists=(str_name!=SSManager_add_string(this->rim->ssm,&str_name));
-                    if(str_exists){
+                    if(!SSManager_add_string(this->rim->ssm,&str_name)){//String exists.
                         read_i+=read_offset_i+1;
                         read_offset_i=-1;
                         read_state=RS_RepeatEndValue;
@@ -285,8 +284,7 @@ bool macro_buffer_process_next(macro_buffer_t* this,bool print_debug){//Returns 
                     str_name=calloc(read_offset_i+1,sizeof(char));
                     EXIT_IF_NULL(str_name,char);
                     strncpy(str_name,this->contents+this->token_i+read_i,read_offset_i);
-                    const bool str_exists=(str_name!=SSManager_add_string(this->rim->ssm,&str_name));
-                    if(str_exists){
+                    if(!SSManager_add_string(this->rim->ssm,&str_name)){//String exists.
                         command_array_add(this->cmd_arr,
                             (command_t){.type=CMD_RepeatEnd,.subtype=CMDST_Jump,.print_cmd=print_cmd,
                                 .cmd_u.repeat_end=(repeat_end_t){
@@ -1109,8 +1107,7 @@ void repeat_id_manager_add_name(repeat_id_manager_t* this, char* str_owned, int 
     }
     EXIT_IF_NULL(this->names,char**);
     EXIT_IF_NULL(this->index,int*);
-    bool is_unique=(str_owned==SSManager_add_string(this->ssm,&str_owned));
-    if(is_unique){
+    if(SSManager_add_string(this->ssm,&str_owned)){//Is unique
         this->names[this->size-1]=str_owned;
         this->index[this->size-1]=index;
         return;
@@ -1160,8 +1157,7 @@ void jump_id_manager_add_name(jump_id_manager_t* this, char* str_owned, int inde
     EXIT_IF_NULL(this->names,char**);
     EXIT_IF_NULL(this->index,int*);
     EXIT_IF_NULL(this->jump_from_added,bool*);
-    bool is_unique=(str_owned==SSManager_add_string(this->ssm,&str_owned));
-    if(is_unique){
+    if(SSManager_add_string(this->ssm,&str_owned)){//Is unique.
         this->names[this->size-1]=str_owned;
         this->index[this->size-1]=index;
         this->jump_from_added[this->size-1]=is_jump_from;

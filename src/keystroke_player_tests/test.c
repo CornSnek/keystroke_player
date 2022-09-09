@@ -54,8 +54,7 @@ START_TEST(shared_string_test){
     ck_assert_ptr_eq(string_heaps[0],string_heaps[2]);
     ck_assert_int_eq(SSManager_count_string(ssm,"AAA"),2);
     ck_assert_int_eq(SSManager_count_string(ssm,"BBB"),1);
-    char* is_same_p=SSManager_add_string(ssm,&string_heaps[1]);
-    ck_assert_ptr_eq(string_heaps[1],is_same_p);//Same string.
+    ck_assert_int_eq(SSManager_add_string(ssm,&string_heaps[1]),0);//Same string.
     SSManager_print_strings(ssm);
     ck_assert_int_eq(SSManager_count_string(ssm,"BBB"),2);
     ck_assert_int_eq(SSManager_count_string(ssm,"CCC"),0);

@@ -39,3 +39,4 @@ typedef struct _boolean_edit_s{
 }_boolean_edit_t;
 bool _boolean_edit_func(void* b_v);
 #endif
+

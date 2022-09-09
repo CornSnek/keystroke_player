@@ -22,7 +22,7 @@ typedef struct replace_node_s{//To sort and replace words from r to w.
     const char* w;
 }replace_node_t;
 shared_string_manager_t* SSManager_new(void);
-char* SSManager_add_string(shared_string_manager_t* this, char** str_p_owned);
+bool SSManager_add_string(shared_string_manager_t* this, char** str_p_owned);
 int SSManager_count_string(const shared_string_manager_t* this, const char* str_cmp);
 void SSManager_print_strings(const shared_string_manager_t* this);
 void SSManager_free_string(shared_string_manager_t* this, const char* str_del);
