@@ -1,6 +1,6 @@
 init,l,a_var=0;
 (A;
-edit,a_var=(a_var,++);
-.m(a_var,sind,1,+,10,*);
+edit,a_var=(a_var,++,360,%);
+.m10;#(a_var,sind,1,+,10,*);
 mmr=(a_var,cosd,5,*),(a_var,sind,5,*);
 )A;

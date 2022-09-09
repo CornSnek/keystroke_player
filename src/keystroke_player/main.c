@@ -67,7 +67,7 @@ int main(void){
     char input_str[INPUT_BUFFER_LEN+1];
     MenuState menu_state=MS_Start;
     bool also_run=false,do_rpn=false,rpn_see_stack=false,var_menu=false,add_var=false,remove_var=false,list_var=false;
-    VariableLoader_t* vl;
+    VariableLoader_t* vl=0;
     char* input_str_end=0,* var_str,* num_str;
     as_number_t an_output;
     as_number_opt_t an_opt_output;
@@ -879,7 +879,7 @@ bool run_program(command_array_t* cmd_arr, const char* file_str, Config config, 
                 break;
             case CMD_EditVar:
                 cmdprintf("Editing variable string name '%s' with RPN string '%s'\n",VL_get_callback(vl,cmd_u.edit_var)->args.rpn.variable,VL_get_callback(vl,cmd_u.edit_var)->args.rpn.rpn_str);
-                ProcessVLCallback(vl,cmd_u.edit_var,0);
+                ExitIfProcessVLFalse(ProcessVLCallback(vl,cmd_u.edit_var,0));
                 if((config.debug_print_type==DBP_AllCommands||this_cmd.print_cmd)){
                     const char* var=VL_get_callback(vl,cmd_u.edit_var)->args.rpn.variable;
                     StringMapOpt_as_number_t an=StringMap_as_number_read(vl->sman,var);

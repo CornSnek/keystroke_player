@@ -93,7 +93,7 @@ StringMap_##VName##_t* StringMap_##VName##_new(size_t size){\
 /*To do robin hood hashing backwards shift*/\
 void _StringMap_##VName##_erase(StringMap_##VName##_t* this,hash_t delete_offset_i){\
     free(this->keys[delete_offset_i]);\
-    char** null_this;\
+    char** null_this=0;\
     for(size_t offset_i=1;offset_i<=this->MaxSize;offset_i++){/*<= sign to get the last key if it somehow needs to shift.*/\
         const hash_t this_i=StringMap_##VName##_Mod(this,delete_offset_i+offset_i-1),next_i=StringMap_##VName##_Mod(this,delete_offset_i+offset_i);\
         null_this=this->keys+this_i;\

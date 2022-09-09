@@ -278,7 +278,7 @@ bool macro_buffer_process_next(macro_buffer_t* this,bool print_debug){//Returns 
                         break;
                     }
                     fprintf(stderr,ERR("String '%s' was not initially defined from a Loop Start at line %lu char %lu.\n"),str_name,line_num,char_num);
-                   DO_ERROR();
+                    DO_ERROR();
                     break;
                 }
                 if(current_char==';'){
@@ -511,77 +511,49 @@ bool macro_buffer_process_next(macro_buffer_t* this,bool print_debug){//Returns 
                 DO_ERROR();
                 break;
             case RS_MoveMouse:
-                if(!first_number_parse){
-                    if(isdigit(current_char)||current_char=='-'){
-                        begin_p=current_char_p;
-                        while(*(end_p=++current_char_p)!=','&&isdigit(*end_p)&&*end_p){}
-                        if(*end_p!=','){
-                            fprintf(stderr,ERR("Comma not found or non-number found at line %lu char %lu state %s.\n"),line_num,char_num,ReadStateStrings[read_state]);
-                            DO_ERROR();
-                            break;
-                        }
-                        num_str_arr[0]=char_string_slice(begin_p,end_p-1);
-                        read_i+=end_p-begin_p+1;
-                        read_offset_i=-1;
-                    }else if(current_char=='('){
-                        begin_p=current_char_p;
-                        while(*(end_p=++current_char_p)!=')'&&*end_p!=';'&&*end_p){}
-                        if(*end_p!=')'){
-                            fprintf(stderr,ERR("RPN string doesn't terminate with ')' at line %lu char %lu state %s.\n"),line_num,char_num,ReadStateStrings[read_state]);
-                            DO_ERROR();
-                            break;   
-                        }
-                        rpn_str_arr[0]=char_string_slice(begin_p,end_p);
-                        read_i+=end_p-begin_p+2;//+2 for ')' and ','.
-                        read_offset_i=-1;
-                    }else goto rs_mm_invalid_char;
-                    if(num_str_arr[0]){
-                        vlci[0]=VL_new_callback_int(this->vl,strtol(num_str_arr[0],NULL,10));
-                        free(num_str_arr[0]);
-                    }else vlci[0]=VL_new_callback_number_rpn(this->vl,rpn_str_arr[0],print_debug);
-                    first_number_parse=true;
-                    break;
+                if(isdigit(current_char)||current_char=='-'){
+                    begin_p=current_char_p;
+                    while(*(end_p=++current_char_p)!=','&&isdigit(*end_p)&&*end_p){}
+                    if(*end_p!=','){
+                        fprintf(stderr,ERR("Comma not found or non-number found at line %lu char %lu state %s.\n"),line_num,char_num,ReadStateStrings[read_state]);
+                        DO_ERROR();
+                        break;
+                    }
+                    num_str_arr[first_number_parse]=char_string_slice(begin_p,end_p-1);
+                    read_i+=end_p-begin_p+1;
+                    read_offset_i=-1;
+                }else if(current_char=='('){
+                    begin_p=current_char_p;
+                    while(*(end_p=++current_char_p)!=')'&&*end_p!=';'&&*end_p){}
+                    if(*end_p!=')'){
+                        fprintf(stderr,ERR("RPN string doesn't terminate with ')' at line %lu char %lu state %s.\n"),line_num,char_num,ReadStateStrings[read_state]);
+                        DO_ERROR();
+                        break;   
+                    }
+                    rpn_str_arr[first_number_parse]=char_string_slice(begin_p,end_p);
+                    read_i+=end_p-begin_p+2;//+2 for ')' and ','.
+                    read_offset_i=-1;
                 }else{
-                    if(isdigit(current_char)||current_char=='-'){
-                        begin_p=current_char_p;
-                        while(*(end_p=++current_char_p)!=';'&&isdigit(*end_p)&&*end_p){}
-                        if(*end_p!=';'){
-                            fprintf(stderr,ERR("Semicolon not found or non-number found at line %lu char %lu state %s.\n"),line_num,char_num,ReadStateStrings[read_state]);
-                            DO_ERROR();
-                            break;
-                        }
-                        num_str_arr[1]=char_string_slice(begin_p,end_p-1);
-                        read_i+=end_p-begin_p+1;
-                        read_offset_i=-1;
-                    }else if(current_char=='('){
-                        begin_p=current_char_p;
-                        while(*(end_p=++current_char_p)!=')'&&*end_p!=';'&&*end_p){}
-                        if(*end_p!=')'){
-                            fprintf(stderr,ERR("RPN string doesn't terminate with ')' at line %lu char %lu state %s.\n"),line_num,char_num,ReadStateStrings[read_state]);
-                            DO_ERROR();
-                            break;   
-                        }
-                        rpn_str_arr[1]=char_string_slice(begin_p,end_p);
-                        read_i+=end_p-begin_p+2;
-                        read_offset_i=-1;
-                    }else goto rs_mm_invalid_char;
-                    if(num_str_arr[1]){
-                        vlci[1]=VL_new_callback_int(this->vl,strtol(num_str_arr[1],NULL,10));
-                        free(num_str_arr[1]);
-                    }else vlci[1]=VL_new_callback_number_rpn(this->vl,rpn_str_arr[1],print_debug);
-                    command_array_add(this->cmd_arr,
-                    (command_t){.type=CMD_MoveMouse,.subtype=CMDST_Command,.print_cmd=print_cmd,
-                            .cmd_u.mouse_move=(mouse_move_t){
-                                .x_cb=vlci[0],.y_cb=vlci[1],.is_absolute=mouse_absolute
-                            }
-                        }
-                    );
-                    key_processed=true;
+                    fprintf(stderr,ERR("Unexpected character '%c' at line %lu char %lu state %s.\n"),current_char,line_num,char_num,ReadStateStrings[read_state]);
+                    DO_ERROR();
                     break;
                 }
-                rs_mm_invalid_char:
-                fprintf(stderr,ERR("Unexpected character '%c' at line %lu char %lu state %s.\n"),current_char,line_num,char_num,ReadStateStrings[read_state]);
-                DO_ERROR();
+                if(num_str_arr[first_number_parse]){
+                    vlci[first_number_parse]=VL_new_callback_int(this->vl,strtol(num_str_arr[first_number_parse],NULL,10));
+                    free(num_str_arr[first_number_parse]);
+                }else vlci[first_number_parse]=VL_new_callback_number_rpn(this->vl,rpn_str_arr[first_number_parse],print_debug);
+                if(!first_number_parse){
+                    first_number_parse=true;
+                    break;
+                }
+                command_array_add(this->cmd_arr,
+                (command_t){.type=CMD_MoveMouse,.subtype=CMDST_Command,.print_cmd=print_cmd,
+                        .cmd_u.mouse_move=(mouse_move_t){
+                            .x_cb=vlci[0],.y_cb=vlci[1],.is_absolute=mouse_absolute
+                        }
+                    }
+                );
+                key_processed=true;
                 break;
             case RS_JumpTo:
                 if(char_is_key(current_char)) break;
