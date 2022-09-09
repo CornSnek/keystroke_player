@@ -36,7 +36,7 @@ as_number_opt_t String_to_as_number_t(const char* token){
         case VLNT_Int: return (as_number_opt_t){.exists=true,.v=(as_number_t){.type=vlnt,.i=strtol(token,0,10)}};
         case VLNT_Long: return (as_number_opt_t){.exists=true,.v=(as_number_t){.type=vlnt,.l=strtol(token,0,10)}};
         case VLNT_Double: return (as_number_opt_t){.exists=true,.v=(as_number_t){.type=vlnt,.d=strtod(token,0)}};
-        default: return (as_number_opt_t){0};//Should be unreachable.
+        default: exit(EXIT_FAILURE); return (as_number_opt_t){0};//Should be unreachable.
     }
 }
 void VLNumberPrintNumber(as_number_t num,unsigned decimals){
@@ -58,7 +58,7 @@ as_number_t VLNumberCast(as_number_t num,VLNumberType type){
         case VLNT_Long: return (as_number_t){.l=(long)GET_NUM,.type=type};
         case VLNT_Int: return (as_number_t){.i=(int)GET_NUM,.type=type};
         case VLNT_Char: return (as_number_t){.c=(char)GET_NUM,.type=type};
-        default: return (as_number_t){0};//Shouldn't reach here.
+        default: exit(EXIT_FAILURE); return (as_number_t){0};//Shouldn't reach here.
     }
     #undef GET_NUM
 }
@@ -215,7 +215,7 @@ bool _VL_callback_rewrite_variable(VariableLoader_t* this,as_number_t* new_value
             case VLNT_Int: StringMap_as_number_assign(this->sman,variable,(as_number_t){.i=NEW_VALUE_CAST(new_value,->,int),.type=old_v.value.type}); break;
             case VLNT_Long: StringMap_as_number_assign(this->sman,variable,(as_number_t){.l=NEW_VALUE_CAST(new_value,->,long),.type=old_v.value.type}); break;
             case VLNT_Double: StringMap_as_number_assign(this->sman,variable,(as_number_t){.d=NEW_VALUE_CAST(new_value,->,double),.type=old_v.value.type}); break;
-            default: return false;//Invalid variables.
+            default: exit(EXIT_FAILURE); //Invalid variables.
         };
         return true;
     }
@@ -233,7 +233,7 @@ bool _VL_callback_rewrite_variable_rpn(VariableLoader_t* this,const char* rpn_st
         case VLNT_Int: StringMap_as_number_assign(this->sman,variable,(as_number_t){.i=NEW_VALUE_CAST(an,.,int),.type=old_v.value.type}); break;
         case VLNT_Long: StringMap_as_number_assign(this->sman,variable,(as_number_t){.l=NEW_VALUE_CAST(an,.,long),.type=old_v.value.type}); break;
         case VLNT_Double: StringMap_as_number_assign(this->sman,variable,(as_number_t){.d=NEW_VALUE_CAST(an,.,double),.type=old_v.value.type}); break;
-        default: return false;//Invalid variables.
+        default: exit(EXIT_FAILURE); //Invalid variables.
     }
     return true;
     #undef NEW_VALUE_CAST
@@ -266,7 +266,7 @@ bool _VL_callback_load_variable_func(const VariableLoader_t* this,as_number_t* a
             case VLNT_Int: *at_address=(as_number_t){.i=v.value.i,.type=VLNT_Int}; break;
             case VLNT_Long: *at_address=(as_number_t){.l=v.value.l,.type=VLNT_Long}; break;
             case VLNT_Double: *at_address=(as_number_t){.d=v.value.d,.type=VLNT_Double}; break;
-            default: return false;//Invalid variables.
+            default: exit(EXIT_FAILURE); //Invalid variables.
         }
         return true;
     }

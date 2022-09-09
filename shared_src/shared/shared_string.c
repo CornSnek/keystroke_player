@@ -627,7 +627,7 @@ void replace_str_list(char** strptr_owner,replace_node_t* rep_list,size_t rep_li
 char* char_string_slice(const char* start_p,const char* end_p){
     assert(start_p<=end_p);
     char* char_p=malloc(sizeof(char)*(end_p-start_p+2));//+1 to count characters and +1 for '\0'
-    EXIT_IF_NULL(char_p,char);
+    EXIT_IF_NULL(char_p,char*);
     strncpy(char_p,start_p,end_p-start_p+1);
     char_p[end_p-start_p+1]='\0';
     return char_p;

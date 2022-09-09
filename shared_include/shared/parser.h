@@ -20,12 +20,11 @@ extern const char* ReadStateStrings[RS_Count];
     RS_Comments,\
     RS_RepeatStart,\
     RS_RepeatEnd,\
-    RS_RepeatEndNumber,\
+    RS_RepeatEndValue,\
     RS_Keys,\
     RS_KeyState,\
     RS_Delay,\
-    RS_DelayNum,\
-    RS_DelayRPN,\
+    RS_DelayValue,\
     RS_MouseClickType,\
     RS_MouseClickState,\
     RS_MoveMouse,\
@@ -34,6 +33,7 @@ extern const char* ReadStateStrings[RS_Count];
     RS_Query,\
     RS_QueryComparePixel,\
     RS_QueryCoordsType,\
+    RS_QueryCoordsVarRPN,\
     RS_QueryCoordsVar,\
     RS_QueryCoordsWithin,\
     RS_InitVarType,\
@@ -84,7 +84,7 @@ typedef struct repeat_start_s{
 typedef struct repeat_end_s{
     int cmd_index;//Index refers to repeat_start_t's index.
     int str_index;
-    int counter_max;//0 means infinite loop.
+    vlcallback_info counter;
 }repeat_end_t;
 typedef struct mouse_move_s{
     int x;

@@ -32,9 +32,9 @@ bool macro_buffer_process_next(macro_buffer_t* this,bool print_debug){//Returns 
     ReadState read_state=RS_Start;
     bool key_processed=false;
     InputState input_state=IS_Down;
-    char* str_name=0;
+    char* str_name=0,* num_str=0,* rpn_str=0,* parse_start_p=this->contents+this->token_i;
+    const char* begin_p,* end_p;
     long delay_mult=0;
-    char* num_str=0;
     long parsed_num[4]={0};
     int parsed_num_i=0;
     bool added_keystate=false;
@@ -46,7 +46,6 @@ bool macro_buffer_process_next(macro_buffer_t* this,bool print_debug){//Returns 
     CompareCoords cmp_flags=CMP_NULL;
     VLCallbackType vct;
     bool mouse_absolute;
-    char* start_p=this->contents+this->token_i;
     #define DO_ERROR()\
     print_where_error_is(this->contents,this->token_i,read_i+read_offset_i);\
     this->token_i+=error_move_offset(this->contents+this->token_i+read_i+read_offset_i);\
@@ -203,19 +202,19 @@ bool macro_buffer_process_next(macro_buffer_t* this,bool print_debug){//Returns 
                         return !this->parse_error;
                         break;
                     case '\n':
-                        start_p++;
+                        parse_start_p++;
                         read_i++;
                         read_offset_i=-1;
                         line_num++;
                         char_num=0;//1 after loop repeats.
                         break;
                     case '#':
-                        start_p++;
+                        parse_start_p++;
                         read_state=RS_Comments;
                         break;
                     case ' '://Fallthrough
                     case '\t'://Allow tabs and spaces before making comments.
-                        start_p++;
+                        parse_start_p++;
                         read_i++;
                         read_offset_i=-1;
                         break;
@@ -231,7 +230,7 @@ bool macro_buffer_process_next(macro_buffer_t* this,bool print_debug){//Returns 
                 }
                 break;
             case RS_Comments:
-                start_p++;
+                parse_start_p++;
                 if(current_char=='\n'){
                     read_i+=read_offset_i+1;
                     read_offset_i=-1;
@@ -274,7 +273,7 @@ bool macro_buffer_process_next(macro_buffer_t* this,bool print_debug){//Returns 
                     if(str_exists){
                         read_i+=read_offset_i+1;
                         read_offset_i=-1;
-                        read_state=RS_RepeatEndNumber;
+                        read_state=RS_RepeatEndValue;
                         break;
                     }
                     fprintf(stderr,ERR("String '%s' was not initially defined from a Loop Start at line %lu char %lu.\n"),str_name,line_num,char_num);
@@ -292,7 +291,7 @@ bool macro_buffer_process_next(macro_buffer_t* this,bool print_debug){//Returns 
                                 .cmd_u.repeat_end=(repeat_end_t){
                                     .cmd_index=repeat_id_manager_search_command_index(this->rim,str_name),
                                     .str_index=repeat_id_manager_search_string_index(this->rim,str_name),
-                                    .counter_max=0
+                                    .counter=VL_new_callback_int(this->vl,0)
                                 }
                             }
                         );
@@ -306,23 +305,49 @@ bool macro_buffer_process_next(macro_buffer_t* this,bool print_debug){//Returns 
                 fprintf(stderr,ERR("Unexpected character '%c' at line %lu char %lu state %s.\n"),current_char,line_num,char_num,ReadStateStrings[read_state]);
                 DO_ERROR();
                 break;
-            case RS_RepeatEndNumber:
-                if(isdigit(current_char)) break;
-                else if(current_char==';'){
-                    num_str=malloc(sizeof(char)*(read_offset_i+1));
-                    EXIT_IF_NULL(num_str,char*);
-                    strncpy(num_str,this->contents+this->token_i+read_i,read_offset_i);
-                    num_str[read_offset_i]='\0';
+            case RS_RepeatEndValue:
+                if(isdigit(current_char)){
+                    begin_p=current_char_p;
+                    while(*(end_p=++current_char_p)!=';'&&*end_p&&isdigit(*end_p)){}
+                    if(*end_p!=';'){
+                        fprintf(stderr,ERR("Semicolon or non-number found at line %lu char %lu state %s.\n"),line_num,char_num,ReadStateStrings[read_state]);
+                        DO_ERROR();
+                        break;
+                    }
+                    num_str=char_string_slice(begin_p,end_p-1);//-1 to exclude ;
                     command_array_add(this->cmd_arr,
                         (command_t){.type=CMD_RepeatEnd,.subtype=CMDST_Jump,.print_cmd=print_cmd,
                             .cmd_u.repeat_end=(repeat_end_t){
                                 .cmd_index=repeat_id_manager_search_command_index(this->rim,str_name),
                                 .str_index=repeat_id_manager_search_string_index(this->rim,str_name),
-                                .counter_max=strtol(num_str,NULL,10)
+                                .counter=VL_new_callback_int(this->vl,strtol(num_str,NULL,10))
                             }
                         }
                     );
                     free(num_str);
+                    read_offset_i+=end_p-begin_p;
+                    key_processed=true;
+                    break;
+                }
+                if(current_char=='('){
+                    begin_p=current_char_p;
+                    while(*(end_p=++current_char_p)!=')'&&*end_p!=';'&&*end_p){}
+                    if(*end_p!=')'){
+                        fprintf(stderr,ERR("RPN string doesn't terminate with ')' at line %lu char %lu state %s.\n"),line_num,char_num,ReadStateStrings[read_state]);
+                        DO_ERROR();
+                        break;   
+                    }
+                    rpn_str=char_string_slice(begin_p,end_p);
+                    command_array_add(this->cmd_arr,
+                        (command_t){.type=CMD_RepeatEnd,.subtype=CMDST_Jump,.print_cmd=print_cmd,
+                            .cmd_u.repeat_end=(repeat_end_t){
+                                .cmd_index=repeat_id_manager_search_command_index(this->rim,str_name),
+                                .str_index=repeat_id_manager_search_string_index(this->rim,str_name),
+                                .counter=VL_new_callback_number_rpn(this->vl,rpn_str,print_debug)
+                            }
+                        }
+                    );
+                    read_offset_i+=end_p-begin_p+1;//+1 to read past semicolon.
                     key_processed=true;
                     break;
                 }
@@ -381,24 +406,41 @@ bool macro_buffer_process_next(macro_buffer_t* this,bool print_debug){//Returns 
                     }
                     read_i++;
                     read_offset_i=-1;
-                    read_state=RS_DelayRPN;
+                    read_state=RS_DelayValue;
                     break;
                 }else if(isdigit(current_char)){
                     delay_mult=1;//Default microseconds.
-                    read_state=RS_DelayRPN;
+                    read_state=RS_DelayValue;
                     break;
                 }
                 fprintf(stderr,ERR("Unexpected character '%c' at line %lu char %lu state %s.\n"),current_char,line_num,char_num,ReadStateStrings[read_state]);
                 DO_ERROR();
                 break;
-            case RS_DelayRPN:
+            case RS_DelayValue:
                 if(isdigit(current_char)){
-                    read_state=RS_DelayNum;
+                    begin_p=current_char_p;
+                    while(*(end_p=++current_char_p)!=';'&&*end_p&&isdigit(*end_p)){}
+                    if(*end_p!=';'){
+                        fprintf(stderr,ERR("Semicolon or non-number found at line %lu char %lu state %s.\n"),line_num,char_num,ReadStateStrings[read_state]);
+                        DO_ERROR();
+                        break;
+                    }
+                    num_str=char_string_slice(begin_p,end_p-1);
+                    command_array_add(this->cmd_arr,
+                        (command_t){.type=CMD_Delay,.subtype=CMDST_Command,.print_cmd=print_cmd,
+                            .cmd_u.delay=(delay_t){
+                                .callback=VL_new_callback_long(this->vl,strtol(num_str,NULL,10)),
+                                .delay_mult=delay_mult
+                            }
+                        }
+                    );
+                    free(num_str);
+                    read_offset_i+=end_p-begin_p;
+                    key_processed=true;
                     break;
                 }
                 if(current_char=='('){
-                    const char* begin_p=current_char_p,* end_p;
-                    char* rpn_str;
+                    begin_p=current_char_p;
                     while(*(end_p=++current_char_p)!=')'&&*end_p!=';'&&*end_p){}
                     if(*end_p!=')'){
                         fprintf(stderr,ERR("RPN string doesn't terminate with ')' at line %lu char %lu state %s.\n"),line_num,char_num,ReadStateStrings[read_state]);
@@ -419,28 +461,6 @@ bool macro_buffer_process_next(macro_buffer_t* this,bool print_debug){//Returns 
                     break;
                 }
                 fprintf(stderr,ERR("TODO: at line %lu char %lu state %s.\n"),line_num,char_num,ReadStateStrings[read_state]);
-                DO_ERROR();
-                break;
-            case RS_DelayNum:
-                if(isdigit(current_char)) break;
-                else if(current_char==';'){
-                    num_str=malloc(sizeof(char)*(read_offset_i+1));
-                    EXIT_IF_NULL(num_str,char*);
-                    strncpy(num_str,this->contents+this->token_i+read_i,read_offset_i);
-                    num_str[read_offset_i]='\0';
-                    command_array_add(this->cmd_arr,
-                        (command_t){.type=CMD_Delay,.subtype=CMDST_Command,.print_cmd=print_cmd,
-                            .cmd_u.delay=(delay_t){
-                                .callback=VL_new_callback_long(this->vl,strtol(num_str,NULL,10)),
-                                .delay_mult=delay_mult
-                            }
-                        }
-                    );
-                    free(num_str);
-                    key_processed=true;
-                    break;
-                }
-                fprintf(stderr,ERR("Unexpected character '%c' at line %lu char %lu state %s.\n"),current_char,line_num,char_num,ReadStateStrings[read_state]);
                 DO_ERROR();
                 break;
             case RS_MouseClickType:
@@ -713,7 +733,7 @@ bool macro_buffer_process_next(macro_buffer_t* this,bool print_debug){//Returns 
                     }
                     read_i++;
                     read_offset_i=-1;
-                    read_state=RS_QueryCoordsVar;
+                    read_state=RS_QueryCoordsVarRPN;
                     break;
                 }
                 if(current_char=='<'){
@@ -723,7 +743,33 @@ bool macro_buffer_process_next(macro_buffer_t* this,bool print_debug){//Returns 
                     }
                     read_i++;
                     read_offset_i=-1;
+                    read_state=RS_QueryCoordsVarRPN;
+                    break;
+                }
+                fprintf(stderr,ERR("Unexpected character '%c' at line %lu char %lu state %s.\n"),current_char,line_num,char_num,ReadStateStrings[read_state]);
+                DO_ERROR();
+                break;
+            case RS_QueryCoordsVarRPN:
+                if(isdigit(current_char)){
                     read_state=RS_QueryCoordsVar;
+                    break;
+                }
+                if(current_char=='('){//TODO
+                    begin_p=current_char_p;
+                    while(*(end_p=++current_char_p)!=')'&&*end_p!=';'&&*end_p){}
+                    if(*end_p!=')'){
+                        fprintf(stderr,ERR("RPN string doesn't terminate with ')' at line %lu char %lu state %s.\n"),line_num,char_num,ReadStateStrings[read_state]);
+                        DO_ERROR();
+                        break;   
+                    }
+                    rpn_str=char_string_slice(begin_p,end_p);
+                    command_array_add(this->cmd_arr,
+                        (command_t){.type=CMD_EditVar,.subtype=CMDST_Var,.print_cmd=print_cmd,
+                            .cmd_u.edit_var=VL_new_callback_rewrite_variable_rpn(this->vl,rpn_str,str_name)
+                        }
+                    );
+                    read_offset_i+=end_p-begin_p+1;
+                    key_processed=true;
                     break;
                 }
                 fprintf(stderr,ERR("Unexpected character '%c' at line %lu char %lu state %s.\n"),current_char,line_num,char_num,ReadStateStrings[read_state]);
@@ -909,7 +955,7 @@ bool macro_buffer_process_next(macro_buffer_t* this,bool print_debug){//Returns 
                                 }
                             );
                             break;
-                        default: break; //Code shouldn't be here.
+                        default: exit(EXIT_FAILURE); break; //Code shouldn't be here.
                     }
                     free(num_str);
                     key_processed=true;
@@ -942,8 +988,7 @@ bool macro_buffer_process_next(macro_buffer_t* this,bool print_debug){//Returns 
                 break;
             case RS_EditVarValue:
                 if(current_char=='('){
-                    const char* begin_p=current_char_p,* end_p;
-                    char* rpn_str;
+                    begin_p=current_char_p;
                     while(*(end_p=++current_char_p)!=')'&&*end_p!=';'&&*end_p){}
                     if(*end_p!=')'){
                         fprintf(stderr,ERR("RPN string doesn't terminate with ')' at line %lu char %lu state %s.\n"),line_num,char_num,ReadStateStrings[read_state]);
@@ -970,10 +1015,10 @@ bool macro_buffer_process_next(macro_buffer_t* this,bool print_debug){//Returns 
         read_offset_i++;
     }while(!key_processed);
     this->token_i+=read_i+read_offset_i;
-    char* end_p=this->contents+this->token_i-1;
+    char* parse_end_p=this->contents+this->token_i-1;
     if(!this->parse_error){
-        this->cmd_arr->cmds[this->cmd_arr->size-1].start_cmd_p=start_p;
-        this->cmd_arr->cmds[this->cmd_arr->size-1].end_cmd_p=end_p;
+        this->cmd_arr->cmds[this->cmd_arr->size-1].start_cmd_p=parse_start_p;
+        this->cmd_arr->cmds[this->cmd_arr->size-1].end_cmd_p=parse_end_p;
     }
     return !this->parse_error;
 }
@@ -1180,7 +1225,7 @@ void command_array_print(const command_array_t* this,const VariableLoader_t* vl,
                 break;
             case CMD_Delay:
                 vlct=VL_get_callback(vl,cmd.delay.callback);
-                printf("Delay ");//TODO
+                printf("Delay ");
                 switch(vlct->callback_type){
                     case VLCallback_Long:
                         printf("using value %lu ",vlct->args.number);
@@ -1188,7 +1233,7 @@ void command_array_print(const command_array_t* this,const VariableLoader_t* vl,
                     case VLCallback_NumberRPN:
                         printf("using RPN '%s' ",vlct->args.an_rpn.rpn_str);
                         break;
-                    default: break;//Shouldn't be here.
+                    default: exit(EXIT_FAILURE); break; //Shouldn't be here.
                 }
                 printf("with multiplier of %ld\n",cmd.delay.delay_mult);
                 break;
@@ -1196,7 +1241,17 @@ void command_array_print(const command_array_t* this,const VariableLoader_t* vl,
                 printf("RepeatStart Counter: %d str_i: %d\n",cmd.repeat_start.counter,cmd.repeat_start.str_index);
                 break;
             case CMD_RepeatEnd:
-                printf("RepeatEnd RepeatAtIndex: %d MaxCounter: %d str_i: %d\n",cmd.repeat_end.cmd_index,cmd.repeat_end.counter_max,cmd.repeat_start.str_index);
+                printf("RepeatEnd RepeatAtIndex: %d str_i: %d ",cmd.repeat_end.cmd_index,cmd.repeat_start.str_index);
+                vlct=VL_get_callback(vl,cmd.repeat_end.counter);
+                switch(vlct->callback_type){
+                    case VLCallback_Int:
+                        printf("MaxCounter: %lu\n",vlct->args.number);
+                        break;
+                    case VLCallback_NumberRPN:
+                        printf("MaxCounter(RPN): '%s'\n",vlct->args.an_rpn.rpn_str);
+                        break;
+                    default: exit(EXIT_FAILURE); break; //Shouldn't be here.
+                }
                 break;
             case CMD_RepeatResetCounters:
                 puts("RepeatResetCounters");

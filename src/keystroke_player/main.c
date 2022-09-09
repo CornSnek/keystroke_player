@@ -614,7 +614,7 @@ bool run_program(command_array_t* cmd_arr, const char* file_str, Config config, 
         int* rst_counter=0;
         if(config.debug_print_type>DBP_None||this_cmd.print_cmd){
             timespec_diff(&ts_begin,NULL,&ts_diff);
-            printf("%s[%ld.%09ld] Command #%d/%d%s",config.debug_print_type==DBP_CommandNumber?CLEAR_TERM:"",ts_diff.tv_sec,ts_diff.tv_nsec,cmd_arr_i+1,cmd_arr->size,config.debug_print_type==DBP_CommandNumber?"":" ");
+            printf("%s[%ld.%09ld] Command #%d/%d%s",config.debug_print_type==DBP_CommandNumber?CLEAR_TERM:"",ts_diff.tv_sec,ts_diff.tv_nsec,cmd_arr_i+1,cmd_arr->size,config.debug_print_type==DBP_CommandNumber?"":"\n");
         }
         if(config.debug_print_type==DBP_CommandNumber){
             LastCommands[LastCommands_i]=cmd_arr_i+1;
@@ -659,6 +659,14 @@ bool run_program(command_array_t* cmd_arr, const char* file_str, Config config, 
         }
         #define cmdprintf(...) if((config.debug_print_type==DBP_AllCommands||this_cmd.print_cmd)) printf(__VA_ARGS__)
         #define PrintLastCommand(ToArray) if(config.debug_print_type==DBP_CommandNumber){ToArray##_n=0;memset(ToArray,0,LAST_CMD_BUFFER_LEN);strncpy(ToArray,this_cmd.start_cmd_p,(this_cmd.end_cmd_p-this_cmd.start_cmd_p+1<LAST_CMD_BUFFER_LEN)?(this_cmd.end_cmd_p-this_cmd.start_cmd_p+1):LAST_CMD_BUFFER_LEN);}
+        #define ExitIfProcessVLFalse(F)\
+        if(!F){\
+            pthread_mutex_lock(&input_mutex);\
+            srs.program_done=true;\
+            no_error=false;\
+            pthread_mutex_unlock(&input_mutex);\
+            break;\
+        }
         LastJump_n++;
         LastRepeat_n++;
         LastQuery_n++;
@@ -687,14 +695,8 @@ bool run_program(command_array_t* cmd_arr, const char* file_str, Config config, 
                 PrintLastCommand(LastKey);
                 break;
             case CMD_Delay://Using timespec_get and timespec_diff (custom function) to try to get "precise delays"
-                if(!ProcessVLCallback(vl,cmd_u.delay.callback,&an_output)){
-                    pthread_mutex_lock(&input_mutex);
-                    srs.program_done=true;
-                    no_error=false;
-                    pthread_mutex_unlock(&input_mutex);
-                    break;
-                }
-                an_output=VLNumberCast(an_output,VLNT_Long);//If double.
+                ExitIfProcessVLFalse(ProcessVLCallback(vl,cmd_u.delay.callback,&an_output))
+                an_output=VLNumberCast(an_output,VLNT_Long);
                 timespec_diff(&ts_usleep_before,&ts_usleep_before_adj,&ts_diff);
                 time_after_last_usleep=ts_diff.tv_sec*NSEC_TO_SEC+ts_diff.tv_nsec;
                 real_delay+=an_output.l*cmd_u.delay.delay_mult*1000-time_after_last_usleep;
@@ -716,11 +718,13 @@ bool run_program(command_array_t* cmd_arr, const char* file_str, Config config, 
                 real_delay-=ts_diff.tv_sec*NSEC_TO_SEC+ts_diff.tv_nsec;
                 break;
             case CMD_RepeatEnd:
-                if(cmd_u.repeat_end.counter_max){//Max counter non-zero.
+                ExitIfProcessVLFalse(ProcessVLCallback(vl,cmd_u.repeat_end.counter,&an_output))
+                an_output=VLNumberCast(an_output,VLNT_Int);
+                if(an_output.i){//Max counter non-zero.
                     rst_counter=&(cmd_arr->cmds[cmd_u.repeat_end.cmd_index].cmd_u.repeat_start.counter);
                     ++(*rst_counter);
-                    cmdprintf("Jump to Command #%d until Counter %d/%d String ID#%d\n",cmd_u.repeat_end.cmd_index+2,*rst_counter,cmd_u.repeat_end.counter_max,cmd_u.repeat_end.str_index);
-                    if(*rst_counter!=cmd_u.repeat_end.counter_max) cmd_arr_i=cmd_u.repeat_end.cmd_index;//Go back if not counter_max
+                    cmdprintf("Jump to Command #%d until Counter %d/%d String ID#%d\n",cmd_u.repeat_end.cmd_index+2,*rst_counter,an_output.i,cmd_u.repeat_end.str_index);
+                    if(*rst_counter!=an_output.i) cmd_arr_i=cmd_u.repeat_end.cmd_index;//Go back if not counter_max
                     else *rst_counter=0;//Reset to loop again.
                 }else{//Loop forever otherwise.
                     cmdprintf("Jump to Command #%d (Loops forever) String ID#%d\n",cmd_u.repeat_end.cmd_index+2,cmd_u.repeat_end.str_index);

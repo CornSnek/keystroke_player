@@ -366,7 +366,7 @@ else if((status=_RPNEvaluatorIsVarNameOk(current_token,vl,stack_an,process_num))
         case RPNVS_NegativeBitShift:\
             fprintf(stderr,ERR("Illegal Operation Error: Bit-shifting using a negative number on the second argument is not supported.\n"));\
             break;\
-        default: break;/*Shouldn't be here.*/\
+        default: exit(EXIT_FAILURE); break;/*Shouldn't be here.*/\
     }\
     free(current_token);\
     free(rpn_str_no_b);\

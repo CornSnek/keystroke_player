@@ -1,5 +1,5 @@
-init,l,wait_s=1;
+init,l,wait_s=0;
 (A;
 edit,wait_s=(wait_s,++);
 .m(wait_s,100,*);
-)A;
+)A=69;
