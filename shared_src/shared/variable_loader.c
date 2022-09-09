@@ -1,7 +1,7 @@
 #include "variable_loader.h"
 StringMap_ImplDef(as_number_t,as_number)
 bool _VL_callback_rewrite_variable(VariableLoader_t* this,as_number_t* new_value,const char* variable);
-bool _VL_callback_rewrite_variable_rpn(VariableLoader_t* this,const char* rpn_str,const char* variable);
+bool _VL_callback_rewrite_variable_rpn(VariableLoader_t* this,const char* rpn_str,const char* variable,bool see_stack);
 bool _VL_callback_double_func(as_number_t* at_address,double value);
 bool _VL_callback_long_func(as_number_t* at_address,long value);
 bool _VL_callback_int_func(as_number_t* at_address,int value);
@@ -72,7 +72,7 @@ bool ProcessVLCallback(VariableLoader_t* vl,vlcallback_info vlc_info,as_number_t
         case VLCallback_Char: return callback->func.as_char(number_io,callback->args.number);
         case VLCallback_LoadVariable: return callback->func.as_load_variable(vl,number_io,callback->args.variable);
         case VLCallback_RewriteVariable: return callback->func.as_rewrite_variable(vl,number_io,callback->args.variable);
-        case VLCallback_RewriteVariableRPN: return callback->func.as_rewrite_variable_rpn(vl,callback->args.rpn.rpn_str,callback->args.rpn.variable);
+        case VLCallback_RewriteVariableRPN: return callback->func.as_rewrite_variable_rpn(vl,callback->args.rpn.rpn_str,callback->args.rpn.variable,callback->args.rpn.see_stack);
         case VLCallback_NumberRPN: return callback->func.as_number_rpn(vl,number_io,callback->args.an_rpn.rpn_str,callback->args.an_rpn.see_stack);
     }
     fprintf(stderr,ERR("Bad callback type. Code shouldn't reach here.\n")); exit(EXIT_FAILURE); return false;
@@ -103,14 +103,14 @@ vlcallback_info VL_new_callback_rewrite_variable(VariableLoader_t* this,char* va
     });
 }
 //Takes malloc ownership of both strings.
-vlcallback_info VL_new_callback_rewrite_variable_rpn(VariableLoader_t* this,char* rpn_str,char* variable){
+vlcallback_info VL_new_callback_rewrite_variable_rpn(VariableLoader_t* this,char* rpn_str,char* variable,bool see_stack){
     SSManager_add_string(this->ssm,&rpn_str);
     SSManager_add_string(this->ssm,&variable);
     return _VariableLoader_add_callback(this,&(vlcallback_t){
         .callback_type=VLCallback_RewriteVariableRPN,
         .number_type=VLNT_Invalid,
         .func.as_rewrite_variable_rpn=_VL_callback_rewrite_variable_rpn,
-        .args.rpn=(vlargs_rpn_t){.rpn_str=rpn_str,.variable=variable}
+        .args.rpn=(vlargs_rpn_t){.rpn_str=rpn_str,.variable=variable,.see_stack=see_stack}
     });
 }
 //Takes malloc ownership of rpn.
@@ -203,12 +203,12 @@ ValueAssignE VL_add_as_char(VariableLoader_t* this,char** variable,char value){
 }
 //Rewrite by casting the number to the original variable's type.
 bool _VL_callback_rewrite_variable(VariableLoader_t* this,as_number_t* new_value,const char* variable){
-    StringMapOpt_as_number_t old_v={0};//TODO add to parser.c
-#define NEW_VALUE_CAST(mem,op,ToType)\
-(ToType)((mem op type)==VLNT_Double?(mem op d):\
-(mem op type)==VLNT_Long?(mem op l):\
-(mem op type)==VLNT_Int?(mem op i):\
-(mem op type)==VLNT_Char?(mem op c):0)
+    StringMapOpt_as_number_t old_v={0};
+    #define NEW_VALUE_CAST(mem,op,ToType)\
+    (ToType)((mem op type)==VLNT_Double?(mem op d):\
+    (mem op type)==VLNT_Long?(mem op l):\
+    (mem op type)==VLNT_Int?(mem op i):\
+    (mem op type)==VLNT_Char?(mem op c):0)
     if((old_v=StringMap_as_number_read(this->sman,variable)).exists){
         switch(old_v.value.type){
             case VLNT_Char: StringMap_as_number_assign(this->sman,variable,(as_number_t){.c=NEW_VALUE_CAST(new_value,->,char),.type=old_v.value.type}); break;
@@ -222,11 +222,11 @@ bool _VL_callback_rewrite_variable(VariableLoader_t* this,as_number_t* new_value
     return false;
 }
 #include "rpn_evaluator.h"
-bool _VL_callback_rewrite_variable_rpn(VariableLoader_t* this,const char* rpn_str,const char* variable){
+bool _VL_callback_rewrite_variable_rpn(VariableLoader_t* this,const char* rpn_str,const char* variable,bool see_stack){
     StringMapOpt_as_number_t old_v=StringMap_as_number_read(this->sman,variable);
     as_number_t an={0};
     if(!old_v.exists) return false;
-    RPNValidStringE status=RPNEvaluatorEvaluate(rpn_str,this,&an,false,true,RPN_EVAL_START_B,RPN_EVAL_END_B,RPN_EVAL_SEP);
+    RPNValidStringE status=RPNEvaluatorEvaluate(rpn_str,this,&an,see_stack,true,RPN_EVAL_START_B,RPN_EVAL_END_B,RPN_EVAL_SEP);
     if(status!=RPNVS_Ok) return false;
     switch(old_v.value.type){
         case VLNT_Char: StringMap_as_number_assign(this->sman,variable,(as_number_t){.c=NEW_VALUE_CAST(an,.,char),.type=old_v.value.type}); break;

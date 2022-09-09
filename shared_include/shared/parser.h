@@ -33,7 +33,7 @@ extern const char* ReadStateStrings[RS_Count];
     RS_Query,\
     RS_QueryComparePixel,\
     RS_QueryCoordsType,\
-    RS_QueryCoordsVarRPN,\
+    RS_QueryCoordsVarValue,\
     RS_QueryCoordsWithin,\
     RS_InitVarType,\
     RS_InitVarName,\

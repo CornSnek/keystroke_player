@@ -308,7 +308,7 @@ bool macro_buffer_process_next(macro_buffer_t* this,bool print_debug){//Returns 
             case RS_RepeatEndValue:
                 if(isdigit(current_char)){
                     begin_p=current_char_p;
-                    while(*(end_p=++current_char_p)!=';'&&*end_p&&isdigit(*end_p)){}
+                    while(*(end_p=++current_char_p)!=';'&&isdigit(*end_p)&&*end_p){}
                     if(*end_p!=';'){
                         fprintf(stderr,ERR("Semicolon not found or non-number found at line %lu char %lu state %s.\n"),line_num,char_num,ReadStateStrings[read_state]);
                         DO_ERROR();
@@ -419,7 +419,7 @@ bool macro_buffer_process_next(macro_buffer_t* this,bool print_debug){//Returns 
             case RS_DelayValue:
                 if(isdigit(current_char)){
                     begin_p=current_char_p;
-                    while(*(end_p=++current_char_p)!=';'&&*end_p&&isdigit(*end_p)){}
+                    while(*(end_p=++current_char_p)!=';'&&isdigit(*end_p)&&*end_p){}
                     if(*end_p!=';'){
                         fprintf(stderr,ERR("Semicolon not found or non-number found at line %lu char %lu state %s.\n"),line_num,char_num,ReadStateStrings[read_state]);
                         DO_ERROR();
@@ -733,7 +733,7 @@ bool macro_buffer_process_next(macro_buffer_t* this,bool print_debug){//Returns 
                     }
                     read_i++;
                     read_offset_i=-1;
-                    read_state=RS_QueryCoordsVarRPN;
+                    read_state=RS_QueryCoordsVarValue;
                     break;
                 }
                 if(current_char=='<'){
@@ -743,16 +743,16 @@ bool macro_buffer_process_next(macro_buffer_t* this,bool print_debug){//Returns 
                     }
                     read_i++;
                     read_offset_i=-1;
-                    read_state=RS_QueryCoordsVarRPN;
+                    read_state=RS_QueryCoordsVarValue;
                     break;
                 }
                 fprintf(stderr,ERR("Unexpected character '%c' at line %lu char %lu state %s.\n"),current_char,line_num,char_num,ReadStateStrings[read_state]);
                 DO_ERROR();
                 break;
-            case RS_QueryCoordsVarRPN:
+            case RS_QueryCoordsVarValue:
                 if(isdigit(current_char)){
                     begin_p=current_char_p;
-                    while(*(end_p=++current_char_p)!='?'&&*end_p&&isdigit(*end_p)){}
+                    while(*(end_p=++current_char_p)!='?'&&isdigit(*end_p)&&*end_p){}
                     if(*end_p!='?'){
                         fprintf(stderr,ERR("Question mark not found or non-number found at line %lu char %lu state %s.\n"),line_num,char_num,ReadStateStrings[read_state]);
                         DO_ERROR();
@@ -995,7 +995,7 @@ bool macro_buffer_process_next(macro_buffer_t* this,bool print_debug){//Returns 
                     rpn_str=char_string_slice(begin_p,end_p);
                     command_array_add(this->cmd_arr,
                         (command_t){.type=CMD_EditVar,.subtype=CMDST_Var,.print_cmd=print_cmd,
-                            .cmd_u.edit_var=VL_new_callback_rewrite_variable_rpn(this->vl,rpn_str,str_name)
+                            .cmd_u.edit_var=VL_new_callback_rewrite_variable_rpn(this->vl,rpn_str,str_name,print_debug)
                         }
                     );
                     read_offset_i+=end_p-begin_p+1;

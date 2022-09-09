@@ -53,7 +53,7 @@ typedef bool(*vlcallback_char_f_t)(as_number_t*,char);
 typedef bool(*vlcallback_number_rpn_f_t)(const VariableLoader_t*,as_number_t*,const char*,bool);
 typedef bool(*vlcallback_load_variable_f_t)(const VariableLoader_t*,as_number_t*,const char*);
 typedef bool(*vlcallback_rewrite_variable_f_t)(VariableLoader_t*,as_number_t*,const char*);
-typedef bool(*vlcallback_rewrite_variable_rpn_f_t)(VariableLoader_t*,const char*,const char*);
+typedef bool(*vlcallback_rewrite_variable_rpn_f_t)(VariableLoader_t*,const char*,const char*,bool);
 typedef union vlfunction_union{
     vlcallback_double_f_t as_double;
     vlcallback_long_f_t as_long;
@@ -67,6 +67,7 @@ typedef union vlfunction_union{
 typedef struct vlargs_rpn_s{
     const char* variable;
     const char* rpn_str;
+    bool see_stack;
 }vlargs_rpn_t;
 typedef struct vlargs_an_rpn_s{
     const char* rpn_str;
@@ -118,7 +119,7 @@ vlcallback_info VL_new_callback_char(VariableLoader_t* this,char value);
 //Variables (Uses VaribleLoader)
 vlcallback_info VL_new_callback_load_variable(VariableLoader_t* this,char* variable);
 vlcallback_info VL_new_callback_rewrite_variable(VariableLoader_t* this,char* variable);
-vlcallback_info VL_new_callback_rewrite_variable_rpn(VariableLoader_t* this,char* rpn_str,char* variable);
+vlcallback_info VL_new_callback_rewrite_variable_rpn(VariableLoader_t* this,char* rpn_str,char* variable,bool see_stack);
 //Uses VariableLoader and RPN.
 vlcallback_info VL_new_callback_number_rpn(VariableLoader_t* this,char* rpn_str,bool see_stack);
 //For RPNEvaluator
