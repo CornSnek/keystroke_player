@@ -841,17 +841,21 @@ bool run_program(command_array_t* cmd_arr, const char* file_str, Config config, 
                 PrintLastCommand(LastQuery);
                 break;
             case CMD_QueryCompareCoords:
-                ;const CompareCoords cc=cmd_u.compare_coords.cmp_flags;
-                cmdprintf("Don't skip next command if mouse coordinate %c%c%s%d. ",(cc&CMP_Y)==CMP_Y?'y':'x',(cc&CMP_GT)==CMP_GT?'>':'<',(cc&CMP_W_EQ)==CMP_W_EQ?"=":"",cmd_u.compare_coords.var);
-                pthread_mutex_lock(&input_mutex);
-                xdo_get_mouse_location(xdo_obj,&x_mouse,&y_mouse,0);
-                pthread_mutex_unlock(&input_mutex);
-                ;const int mouse_compare=(cc&CMP_Y)==CMP_Y?y_mouse:x_mouse;
-                if((cc&CMP_GT)==CMP_GT) query_is_true=(cc&CMP_W_EQ)==CMP_W_EQ?mouse_compare>=cmd_u.compare_coords.var:mouse_compare>cmd_u.compare_coords.var;
-                else query_is_true=(cc&CMP_W_EQ)==CMP_W_EQ?mouse_compare<=cmd_u.compare_coords.var:mouse_compare<cmd_u.compare_coords.var;
-                cmdprintf("Compare is %s.\n",query_is_true?"true":"false");
-                PrintLastCommand(LastQuery);
-                break;
+                {
+                    ExitIfProcessVLFalse(ProcessVLCallback(vl,cmd_u.compare_coords.var_callback,&an_output))
+                    an_output=VLNumberCast(an_output,VLNT_Int);
+                    const CompareCoords cc=cmd_u.compare_coords.cmp_flags;
+                    cmdprintf("Don't skip next command if mouse coordinate %c%c%s%d. ",(cc&CMP_Y)==CMP_Y?'y':'x',(cc&CMP_GT)==CMP_GT?'>':'<',(cc&CMP_W_EQ)==CMP_W_EQ?"=":"",an_output.i);
+                    pthread_mutex_lock(&input_mutex);
+                    xdo_get_mouse_location(xdo_obj,&x_mouse,&y_mouse,0);
+                    pthread_mutex_unlock(&input_mutex);
+                    const int mouse_compare=(cc&CMP_Y)==CMP_Y?y_mouse:x_mouse;
+                    if((cc&CMP_GT)==CMP_GT) query_is_true=(cc&CMP_W_EQ)==CMP_W_EQ?mouse_compare>=an_output.i:mouse_compare>an_output.i;
+                    else query_is_true=(cc&CMP_W_EQ)==CMP_W_EQ?mouse_compare<=an_output.i:mouse_compare<an_output.i;
+                    cmdprintf("Compare is %s.\n",query_is_true?"true":"false");
+                    PrintLastCommand(LastQuery);
+                    break;
+                }
             case CMD_QueryCoordsWithin:
                 coords_within=cmd_u.coords_within;
                 cmdprintf("Don't skip next command if mouse is within Top Left x:%d y:%d Bottom Right x:%d y:%d. ",coords_within.xl,coords_within.yl,coords_within.xh,coords_within.yh);

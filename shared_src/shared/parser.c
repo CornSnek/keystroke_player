@@ -310,7 +310,7 @@ bool macro_buffer_process_next(macro_buffer_t* this,bool print_debug){//Returns 
                     begin_p=current_char_p;
                     while(*(end_p=++current_char_p)!=';'&&*end_p&&isdigit(*end_p)){}
                     if(*end_p!=';'){
-                        fprintf(stderr,ERR("Semicolon or non-number found at line %lu char %lu state %s.\n"),line_num,char_num,ReadStateStrings[read_state]);
+                        fprintf(stderr,ERR("Semicolon not found or non-number found at line %lu char %lu state %s.\n"),line_num,char_num,ReadStateStrings[read_state]);
                         DO_ERROR();
                         break;
                     }
@@ -421,7 +421,7 @@ bool macro_buffer_process_next(macro_buffer_t* this,bool print_debug){//Returns 
                     begin_p=current_char_p;
                     while(*(end_p=++current_char_p)!=';'&&*end_p&&isdigit(*end_p)){}
                     if(*end_p!=';'){
-                        fprintf(stderr,ERR("Semicolon or non-number found at line %lu char %lu state %s.\n"),line_num,char_num,ReadStateStrings[read_state]);
+                        fprintf(stderr,ERR("Semicolon not found or non-number found at line %lu char %lu state %s.\n"),line_num,char_num,ReadStateStrings[read_state]);
                         DO_ERROR();
                         break;
                     }
@@ -751,12 +751,29 @@ bool macro_buffer_process_next(macro_buffer_t* this,bool print_debug){//Returns 
                 break;
             case RS_QueryCoordsVarRPN:
                 if(isdigit(current_char)){
-                    read_state=RS_QueryCoordsVar;
+                    begin_p=current_char_p;
+                    while(*(end_p=++current_char_p)!='?'&&*end_p&&isdigit(*end_p)){}
+                    if(*end_p!='?'){
+                        fprintf(stderr,ERR("Question mark not found or non-number found at line %lu char %lu state %s.\n"),line_num,char_num,ReadStateStrings[read_state]);
+                        DO_ERROR();
+                        break;
+                    }
+                    num_str=char_string_slice(begin_p,end_p-1);
+                    command_array_add(this->cmd_arr,
+                        (command_t){.type=CMD_QueryCompareCoords,.subtype=CMDST_Query,.print_cmd=print_cmd,
+                            .cmd_u.compare_coords=(compare_coords_t){
+                                .cmp_flags=cmp_flags,.var_callback=VL_new_callback_int(this->vl,strtol(num_str,NULL,10))
+                            }
+                        }
+                    );
+                    free(num_str);
+                    read_offset_i+=end_p-begin_p;
+                    key_processed=true;
                     break;
                 }
-                if(current_char=='('){//TODO
+                if(current_char=='('){
                     begin_p=current_char_p;
-                    while(*(end_p=++current_char_p)!=')'&&*end_p!=';'&&*end_p){}
+                    while(*(end_p=++current_char_p)!=')'&&*end_p!='?'&&*end_p){}
                     if(*end_p!=')'){
                         fprintf(stderr,ERR("RPN string doesn't terminate with ')' at line %lu char %lu state %s.\n"),line_num,char_num,ReadStateStrings[read_state]);
                         DO_ERROR();
@@ -764,33 +781,13 @@ bool macro_buffer_process_next(macro_buffer_t* this,bool print_debug){//Returns 
                     }
                     rpn_str=char_string_slice(begin_p,end_p);
                     command_array_add(this->cmd_arr,
-                        (command_t){.type=CMD_EditVar,.subtype=CMDST_Var,.print_cmd=print_cmd,
-                            .cmd_u.edit_var=VL_new_callback_rewrite_variable_rpn(this->vl,rpn_str,str_name)
-                        }
-                    );
-                    read_offset_i+=end_p-begin_p+1;
-                    key_processed=true;
-                    break;
-                }
-                fprintf(stderr,ERR("Unexpected character '%c' at line %lu char %lu state %s.\n"),current_char,line_num,char_num,ReadStateStrings[read_state]);
-                DO_ERROR();
-                break;
-            case RS_QueryCoordsVar:
-                if(isdigit(current_char)) break;
-                if(current_char=='?'){
-                    num_str=malloc(sizeof(char)*read_offset_i+1);
-                    EXIT_IF_NULL(num_str,char*);
-                    strncpy(num_str,this->contents+this->token_i+read_i,read_offset_i);
-                    num_str[read_offset_i]='\0';
-                    parsed_num[0]=strtol(num_str,NULL,10);
-                    free(num_str);
-                    command_array_add(this->cmd_arr,
                         (command_t){.type=CMD_QueryCompareCoords,.subtype=CMDST_Query,.print_cmd=print_cmd,
                             .cmd_u.compare_coords=(compare_coords_t){
-                                .cmp_flags=cmp_flags,.var=parsed_num[0]
+                                .cmp_flags=cmp_flags,.var_callback=VL_new_callback_number_rpn(this->vl,rpn_str,print_debug)
                             }
                         }
                     );
+                    read_offset_i+=end_p-begin_p+1;
                     key_processed=true;
                     break;
                 }
@@ -1287,12 +1284,21 @@ void command_array_print(const command_array_t* this,const VariableLoader_t* vl,
                 printf("QueryComparePixel r: %d g: %d b: %d threshold: %d\n",cmd.pixel_compare.r,cmd.pixel_compare.g,cmd.pixel_compare.b,cmd.pixel_compare.thr);
                 break;
             case CMD_QueryCompareCoords:
-                printf("QueryCompareCoords cmp_flags: '%c,%c%s' var:%d\n"
+                printf("QueryCompareCoords cmp_flags: '%c,%c%s' var"
                     ,(cmd.compare_coords.cmp_flags&CMP_Y)==CMP_Y?'y':'x'
                     ,(cmd.compare_coords.cmp_flags&CMP_GT)==CMP_GT?'>':'<'
                     ,(cmd.compare_coords.cmp_flags&CMP_W_EQ)==CMP_W_EQ?",=":""
-                    ,cmd.compare_coords.var
                 );
+                vlct=VL_get_callback(vl,cmd.compare_coords.var_callback);
+                switch(vlct->callback_type){
+                    case VLCallback_Int:
+                        printf(": %lu\n",vlct->args.number);
+                        break;
+                    case VLCallback_NumberRPN:
+                        printf("(RPN): '%s'\n",vlct->args.an_rpn.rpn_str);
+                        break;
+                    default: exit(EXIT_FAILURE); break; //Shouldn't be here.
+                }
                 break;
             case CMD_QueryCoordsWithin:
                 printf("QueryCoordsWithin xl: %d yl: %d xh: %d yh: %d\n",cmd.coords_within.xl,cmd.coords_within.yl,cmd.coords_within.xh,cmd.coords_within.yh);

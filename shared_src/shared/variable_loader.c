@@ -223,7 +223,7 @@ bool _VL_callback_rewrite_variable(VariableLoader_t* this,as_number_t* new_value
 }
 #include "rpn_evaluator.h"
 bool _VL_callback_rewrite_variable_rpn(VariableLoader_t* this,const char* rpn_str,const char* variable){
-    StringMapOpt_as_number_t old_v=StringMap_as_number_read(this->sman,variable);//TODO
+    StringMapOpt_as_number_t old_v=StringMap_as_number_read(this->sman,variable);
     as_number_t an={0};
     if(!old_v.exists) return false;
     RPNValidStringE status=RPNEvaluatorEvaluate(rpn_str,this,&an,false,true,RPN_EVAL_START_B,RPN_EVAL_END_B,RPN_EVAL_SEP);
