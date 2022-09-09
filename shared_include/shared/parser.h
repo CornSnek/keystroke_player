@@ -86,8 +86,8 @@ typedef struct repeat_end_s{
     vlcallback_info counter;
 }repeat_end_t;
 typedef struct mouse_move_s{
-    int x;
-    int y;
+    vlcallback_info x_cb;
+    vlcallback_info y_cb;
     bool is_absolute;
 }mouse_move_t;
 typedef struct mouse_click_s{

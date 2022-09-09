@@ -596,7 +596,7 @@ bool run_program(command_array_t* cmd_arr, const char* file_str, Config config, 
     nano_sec time_after_last_usleep;
     nano_sec real_delay=0;//Adjust delay depending on time after commands and after sleeping.
     delay_ns_t adj_usleep;
-    as_number_t an_output={0};
+    as_number_t an_output[4]={0};
     XColor pc;
     coords_within_t coords_within;
     int x_mouse,y_mouse,x_mouse_store=0,y_mouse_store=0;
@@ -666,7 +666,7 @@ bool run_program(command_array_t* cmd_arr, const char* file_str, Config config, 
             no_error=false;\
             pthread_mutex_unlock(&input_mutex);\
             break;\
-        }
+        } (void)0
         LastJump_n++;
         LastRepeat_n++;
         LastQuery_n++;
@@ -695,13 +695,13 @@ bool run_program(command_array_t* cmd_arr, const char* file_str, Config config, 
                 PrintLastCommand(LastKey);
                 break;
             case CMD_Delay://Using timespec_get and timespec_diff (custom function) to try to get "precise delays"
-                ExitIfProcessVLFalse(ProcessVLCallback(vl,cmd_u.delay.callback,&an_output))
-                an_output=VLNumberCast(an_output,VLNT_Long);
+                ExitIfProcessVLFalse(ProcessVLCallback(vl,cmd_u.delay.callback,&an_output[0]));
+                an_output[0]=VLNumberCast(an_output[0],VLNT_Long);
                 timespec_diff(&ts_usleep_before,&ts_usleep_before_adj,&ts_diff);
                 time_after_last_usleep=ts_diff.tv_sec*NSEC_TO_SEC+ts_diff.tv_nsec;
-                real_delay+=an_output.l*cmd_u.delay.delay_mult*1000-time_after_last_usleep;
+                real_delay+=an_output[0].l*cmd_u.delay.delay_mult*1000-time_after_last_usleep;
                 adj_usleep=real_delay>0?((delay_ns_t)(real_delay/1000+(real_delay%1000>499?1:0))):0u;//0 and rounded nanoseconds.
-                cmdprintf("Sleeping for %ld microseconds (Adjusted to %ld due to commands) \n",an_output.l*cmd_u.delay.delay_mult,adj_usleep);
+                cmdprintf("Sleeping for %ld microseconds (Adjusted to %ld due to commands) \n",an_output[0].l*cmd_u.delay.delay_mult,adj_usleep);
                 {
                     int seconds=adj_usleep/MICSEC_TO_SEC;//Split into seconds so that it doesn't sleep when mouse moved over large seconds.
                     int left_over=adj_usleep%MICSEC_TO_SEC;
@@ -718,13 +718,13 @@ bool run_program(command_array_t* cmd_arr, const char* file_str, Config config, 
                 real_delay-=ts_diff.tv_sec*NSEC_TO_SEC+ts_diff.tv_nsec;
                 break;
             case CMD_RepeatEnd:
-                ExitIfProcessVLFalse(ProcessVLCallback(vl,cmd_u.repeat_end.counter,&an_output))
-                an_output=VLNumberCast(an_output,VLNT_Int);
-                if(an_output.i){//Max counter non-zero.
+                ExitIfProcessVLFalse(ProcessVLCallback(vl,cmd_u.repeat_end.counter,&an_output[0]));
+                an_output[0]=VLNumberCast(an_output[0],VLNT_Int);
+                if(an_output[0].i){//Max counter non-zero.
                     rst_counter=&(cmd_arr->cmds[cmd_u.repeat_end.cmd_index].cmd_u.repeat_start.counter);
                     ++(*rst_counter);
-                    cmdprintf("Jump to Command #%d until Counter %d/%d String ID#%d\n",cmd_u.repeat_end.cmd_index+2,*rst_counter,an_output.i,cmd_u.repeat_end.str_index);
-                    if(*rst_counter!=an_output.i) cmd_arr_i=cmd_u.repeat_end.cmd_index;//Go back if not counter_max
+                    cmdprintf("Jump to Command #%d until Counter %d/%d String ID#%d\n",cmd_u.repeat_end.cmd_index+2,*rst_counter,an_output[0].i,cmd_u.repeat_end.str_index);
+                    if(*rst_counter!=an_output[0].i) cmd_arr_i=cmd_u.repeat_end.cmd_index;//Go back if not counter_max
                     else *rst_counter=0;//Reset to loop again.
                 }else{//Loop forever otherwise.
                     cmdprintf("Jump to Command #%d (Loops forever) String ID#%d\n",cmd_u.repeat_end.cmd_index+2,cmd_u.repeat_end.str_index);
@@ -763,10 +763,14 @@ bool run_program(command_array_t* cmd_arr, const char* file_str, Config config, 
                 PrintLastCommand(LastKey);
                 break;
             case CMD_MoveMouse:
-                cmdprintf("Mouse move at (%d,%d) (%s).",cmd_u.mouse_move.x,cmd_u.mouse_move.y,cmd_u.mouse_move.is_absolute?"absolute":"relative");
+                ExitIfProcessVLFalse(ProcessVLCallback(vl,cmd_u.mouse_move.x_cb,&an_output[0]));
+                an_output[0]=VLNumberCast(an_output[0],VLNT_Int);
+                ExitIfProcessVLFalse(ProcessVLCallback(vl,cmd_u.mouse_move.y_cb,&an_output[1]));
+                an_output[1]=VLNumberCast(an_output[1],VLNT_Int);
+                cmdprintf("Mouse move at (%d,%d) (%s).",an_output[0].i,an_output[1].i,cmd_u.mouse_move.is_absolute?"absolute":"relative");
                 pthread_mutex_lock(&input_mutex);
-                if(cmd_u.mouse_move.is_absolute) custom_xdo_move_mouse_absolute(xdo_obj,cmd_u.mouse_move.x,cmd_u.mouse_move.y);
-                else xdo_move_mouse_relative(xdo_obj,cmd_u.mouse_move.x,cmd_u.mouse_move.y);
+                if(cmd_u.mouse_move.is_absolute) custom_xdo_move_mouse_absolute(xdo_obj,an_output[0].i,an_output[1].i);
+                else xdo_move_mouse_relative(xdo_obj,an_output[0].i,an_output[1].i);
                 if(config.debug_print_type==DBP_AllCommands||this_cmd.print_cmd){
                     xdo_get_mouse_location(xdo_obj,&x_mouse,&y_mouse,0);//To check mouse location.
                     if(cmd_u.mouse_move.is_absolute) puts("");
@@ -842,16 +846,16 @@ bool run_program(command_array_t* cmd_arr, const char* file_str, Config config, 
                 break;
             case CMD_QueryCompareCoords:
                 {
-                    ExitIfProcessVLFalse(ProcessVLCallback(vl,cmd_u.compare_coords.var_callback,&an_output))
-                    an_output=VLNumberCast(an_output,VLNT_Int);
+                    ExitIfProcessVLFalse(ProcessVLCallback(vl,cmd_u.compare_coords.var_callback,&an_output[0]));
+                    an_output[0]=VLNumberCast(an_output[0],VLNT_Int);
                     const CompareCoords cc=cmd_u.compare_coords.cmp_flags;
-                    cmdprintf("Don't skip next command if mouse coordinate %c%c%s%d. ",(cc&CMP_Y)==CMP_Y?'y':'x',(cc&CMP_GT)==CMP_GT?'>':'<',(cc&CMP_W_EQ)==CMP_W_EQ?"=":"",an_output.i);
+                    cmdprintf("Don't skip next command if mouse coordinate %c%c%s%d. ",(cc&CMP_Y)==CMP_Y?'y':'x',(cc&CMP_GT)==CMP_GT?'>':'<',(cc&CMP_W_EQ)==CMP_W_EQ?"=":"",an_output[0].i);
                     pthread_mutex_lock(&input_mutex);
                     xdo_get_mouse_location(xdo_obj,&x_mouse,&y_mouse,0);
                     pthread_mutex_unlock(&input_mutex);
                     const int mouse_compare=(cc&CMP_Y)==CMP_Y?y_mouse:x_mouse;
-                    if((cc&CMP_GT)==CMP_GT) query_is_true=(cc&CMP_W_EQ)==CMP_W_EQ?mouse_compare>=an_output.i:mouse_compare>an_output.i;
-                    else query_is_true=(cc&CMP_W_EQ)==CMP_W_EQ?mouse_compare<=an_output.i:mouse_compare<an_output.i;
+                    if((cc&CMP_GT)==CMP_GT) query_is_true=(cc&CMP_W_EQ)==CMP_W_EQ?mouse_compare>=an_output[0].i:mouse_compare>an_output[0].i;
+                    else query_is_true=(cc&CMP_W_EQ)==CMP_W_EQ?mouse_compare<=an_output[0].i:mouse_compare<an_output[0].i;
                     cmdprintf("Compare is %s.\n",query_is_true?"true":"false");
                     PrintLastCommand(LastQuery);
                     break;

@@ -4,4 +4,5 @@ edit,wait_s=(wait_s,++);
 .s1;
 ?coords=y>=(wait_s,10,*)?
 pass;
+mmr=10,20;
 )A=69;

@@ -32,7 +32,7 @@ bool macro_buffer_process_next(macro_buffer_t* this,bool print_debug){//Returns 
     ReadState read_state=RS_Start;
     bool key_processed=false;
     InputState input_state=IS_Down;
-    char* str_name=0,* num_str=0,* rpn_str=0,* parse_start_p=this->contents+this->token_i;
+    char* str_name=0,* num_str_arr[4]={0},* rpn_str_arr[4]={0},* parse_start_p=this->contents+this->token_i;
     const char* begin_p,* end_p;
     long delay_mult=0;
     long parsed_num[4]={0};
@@ -40,7 +40,7 @@ bool macro_buffer_process_next(macro_buffer_t* this,bool print_debug){//Returns 
     bool added_keystate=false;
     int read_i=0; //Index to read.
     int read_offset_i=0; //Last character to read by offset of read_i.
-    bool first_number=false;
+    bool first_number_parse=false;
     bool print_cmd=false;
     bool store_index=false;
     CompareCoords cmp_flags=CMP_NULL;
@@ -314,17 +314,17 @@ bool macro_buffer_process_next(macro_buffer_t* this,bool print_debug){//Returns 
                         DO_ERROR();
                         break;
                     }
-                    num_str=char_string_slice(begin_p,end_p-1);//-1 to exclude ;
+                    num_str_arr[0]=char_string_slice(begin_p,end_p-1);//-1 to exclude ;
                     command_array_add(this->cmd_arr,
                         (command_t){.type=CMD_RepeatEnd,.subtype=CMDST_Jump,.print_cmd=print_cmd,
                             .cmd_u.repeat_end=(repeat_end_t){
                                 .cmd_index=repeat_id_manager_search_command_index(this->rim,str_name),
                                 .str_index=repeat_id_manager_search_string_index(this->rim,str_name),
-                                .counter=VL_new_callback_int(this->vl,strtol(num_str,NULL,10))
+                                .counter=VL_new_callback_int(this->vl,strtol(num_str_arr[0],NULL,10))
                             }
                         }
                     );
-                    free(num_str);
+                    free(num_str_arr[0]);
                     read_offset_i+=end_p-begin_p;
                     key_processed=true;
                     break;
@@ -337,13 +337,13 @@ bool macro_buffer_process_next(macro_buffer_t* this,bool print_debug){//Returns 
                         DO_ERROR();
                         break;   
                     }
-                    rpn_str=char_string_slice(begin_p,end_p);
+                    rpn_str_arr[0]=char_string_slice(begin_p,end_p);
                     command_array_add(this->cmd_arr,
                         (command_t){.type=CMD_RepeatEnd,.subtype=CMDST_Jump,.print_cmd=print_cmd,
                             .cmd_u.repeat_end=(repeat_end_t){
                                 .cmd_index=repeat_id_manager_search_command_index(this->rim,str_name),
                                 .str_index=repeat_id_manager_search_string_index(this->rim,str_name),
-                                .counter=VL_new_callback_number_rpn(this->vl,rpn_str,print_debug)
+                                .counter=VL_new_callback_number_rpn(this->vl,rpn_str_arr[0],print_debug)
                             }
                         }
                     );
@@ -425,16 +425,16 @@ bool macro_buffer_process_next(macro_buffer_t* this,bool print_debug){//Returns 
                         DO_ERROR();
                         break;
                     }
-                    num_str=char_string_slice(begin_p,end_p-1);
+                    num_str_arr[0]=char_string_slice(begin_p,end_p-1);
                     command_array_add(this->cmd_arr,
                         (command_t){.type=CMD_Delay,.subtype=CMDST_Command,.print_cmd=print_cmd,
                             .cmd_u.delay=(delay_t){
-                                .callback=VL_new_callback_long(this->vl,strtol(num_str,NULL,10)),
+                                .callback=VL_new_callback_long(this->vl,strtol(num_str_arr[0],NULL,10)),
                                 .delay_mult=delay_mult
                             }
                         }
                     );
-                    free(num_str);
+                    free(num_str_arr[0]);
                     read_offset_i+=end_p-begin_p;
                     key_processed=true;
                     break;
@@ -447,11 +447,11 @@ bool macro_buffer_process_next(macro_buffer_t* this,bool print_debug){//Returns 
                         DO_ERROR();
                         break;   
                     }
-                    rpn_str=char_string_slice(begin_p,end_p);
+                    rpn_str_arr[0]=char_string_slice(begin_p,end_p);
                     command_array_add(this->cmd_arr,
                         (command_t){.type=CMD_Delay,.subtype=CMDST_Command,.print_cmd=print_cmd,
                             .cmd_u.delay=(delay_t){
-                                .callback=VL_new_callback_number_rpn(this->vl,rpn_str,print_debug),
+                                .callback=VL_new_callback_number_rpn(this->vl,rpn_str_arr[0],print_debug),
                                 .delay_mult=delay_mult
                             }
                         }
@@ -464,15 +464,15 @@ bool macro_buffer_process_next(macro_buffer_t* this,bool print_debug){//Returns 
                 DO_ERROR();
                 break;
             case RS_MouseClickType:
-                if(isdigit(current_char)&&!first_number){
-                    num_str=calloc(sizeof(char),2);
-                    EXIT_IF_NULL(num_str,char*);
-                    num_str[0]=current_char;
-                    parsed_num[0]=strtol(num_str,NULL,10);
-                    free(num_str);
-                    first_number=true;
+                if(isdigit(current_char)&&!first_number_parse){
+                    num_str_arr[0]=calloc(sizeof(char),2);
+                    EXIT_IF_NULL(num_str_arr[0],char*);
+                    num_str_arr[0][0]=current_char;
+                    parsed_num[0]=strtol(num_str_arr[0],NULL,10);
+                    free(num_str_arr[0]);
+                    first_number_parse=true;
                     break;
-                }else if(current_char=='='&&first_number){
+                }else if(current_char=='='&&first_number_parse){
                     read_i+=2;//To read numbers.
                     read_offset_i=-1;
                     read_state=RS_MouseClickState;
@@ -510,38 +510,61 @@ bool macro_buffer_process_next(macro_buffer_t* this,bool print_debug){//Returns 
                 DO_ERROR();
                 break;
             case RS_MoveMouse:
-                if(isdigit(current_char)||current_char=='-') break;
-                else if(current_char==','&&!first_number){
-                    num_str=malloc(sizeof(char)*read_offset_i+1);
-                    EXIT_IF_NULL(num_str,char*);
-                    strncpy(num_str,this->contents+this->token_i+read_i,read_offset_i);
-                    num_str[read_offset_i]='\0';
-                    parsed_num[0]=strtol(num_str,NULL,10);
-                    free(num_str);
-                    read_i+=read_offset_i+1;//Read second string.
-                    read_offset_i=-1;
-                    first_number=true;
-                    break;
-                }else if(current_char==';'){
-                    if(first_number){
-                        num_str=malloc(sizeof(char)*read_offset_i+1);
-                        EXIT_IF_NULL(num_str,char*);
-                        strncpy(num_str,this->contents+this->token_i+read_i,read_offset_i);
-                        num_str[read_offset_i]='\0';
-                        parsed_num[1]=strtol(num_str,NULL,10);
-                        free(num_str);
-                        command_array_add(this->cmd_arr,
-                        (command_t){.type=CMD_MoveMouse,.subtype=CMDST_Command,.print_cmd=print_cmd,
-                                .cmd_u.mouse_move=(mouse_move_t){
-                                    .x=parsed_num[0],.y=parsed_num[1],.is_absolute=mouse_absolute
-                                }
-                            }
-                        );
-                        key_processed=true;
-                        break;
+                if(!first_number_parse){
+                    if(isdigit(current_char)||current_char=='-'){
+                        begin_p=current_char_p;
+                        while(*(end_p=++current_char_p)!=','&&isdigit(*end_p)&&*end_p){}
+                        if(*end_p!=','){
+                            fprintf(stderr,ERR("Comma not found or non-number found at line %lu char %lu state %s.\n"),line_num,char_num,ReadStateStrings[read_state]);
+                            DO_ERROR();
+                            break;
+                        }
+                        num_str_arr[0]=char_string_slice(begin_p,end_p-1);
+                        puts(num_str_arr[0]);
+                        read_i+=end_p-begin_p+1;
+                        read_offset_i=-1;
+                    }else if(false){
+
                     }
-                    fprintf(stderr,ERR("2 numbers are needed (separated by comma) at line %lu char %lu.\n"),line_num,char_num);
-                   DO_ERROR();
+                    first_number_parse=true;
+                    break;
+                }else{
+                    if(isdigit(current_char)||current_char=='-'){
+                        begin_p=current_char_p;
+                        while(*(end_p=++current_char_p)!=';'&&isdigit(*end_p)&&*end_p){}
+                        if(*end_p!=';'){
+                            fprintf(stderr,ERR("Semicolon not found or non-number found at line %lu char %lu state %s.\n"),line_num,char_num,ReadStateStrings[read_state]);
+                            DO_ERROR();
+                            break;
+                        }
+                        num_str_arr[1]=char_string_slice(begin_p,end_p-1);
+                        puts(num_str_arr[1]);
+                        read_i+=end_p-begin_p+1;
+                        read_offset_i=-1;
+                    }else if(false){
+                        
+                    }
+                    vlcallback_info vlci[2];
+                    if(num_str_arr[0]){
+                        vlci[0]=VL_new_callback_int(this->vl,strtol(num_str_arr[0],NULL,10));
+                        free(num_str_arr[0]);
+                    }else{
+
+                    }
+                    if(num_str_arr[1]){
+                        vlci[1]=VL_new_callback_int(this->vl,strtol(num_str_arr[1],NULL,10));
+                        free(num_str_arr[1]);
+                    }else{
+
+                    }
+                    command_array_add(this->cmd_arr,
+                    (command_t){.type=CMD_MoveMouse,.subtype=CMDST_Command,.print_cmd=print_cmd,
+                            .cmd_u.mouse_move=(mouse_move_t){
+                                .x_cb=vlci[0],.y_cb=vlci[1],.is_absolute=mouse_absolute
+                            }
+                        }
+                    );
+                    key_processed=true;
                     break;
                 }
                 fprintf(stderr,ERR("Unexpected character '%c' at line %lu char %lu state %s.\n"),current_char,line_num,char_num,ReadStateStrings[read_state]);
@@ -675,12 +698,12 @@ bool macro_buffer_process_next(macro_buffer_t* this,bool print_debug){//Returns 
                 if(isdigit(current_char)) break;
                 if(current_char==','){
                     if(parsed_num_i<3){
-                        num_str=malloc(sizeof(char)*read_offset_i+1);
-                        EXIT_IF_NULL(num_str,char*);
-                        strncpy(num_str,this->contents+this->token_i+read_i,read_offset_i);
-                        num_str[read_offset_i]='\0';
-                        parsed_num[parsed_num_i]=strtol(num_str,NULL,10);
-                        free(num_str);
+                        num_str_arr[0]=malloc(sizeof(char)*read_offset_i+1);
+                        EXIT_IF_NULL(num_str_arr[0],char*);
+                        strncpy(num_str_arr[0],this->contents+this->token_i+read_i,read_offset_i);
+                        num_str_arr[0][read_offset_i]='\0';
+                        parsed_num[parsed_num_i]=strtol(num_str_arr[0],NULL,10);
+                        free(num_str_arr[0]);
                         if(parsed_num[parsed_num_i]>255){
                             fprintf(stderr,ERR("Number should be between 0 and 255 at line %lu char %lu state %s.\n"),line_num,char_num,ReadStateStrings[read_state]);
                             DO_ERROR();
@@ -697,12 +720,12 @@ bool macro_buffer_process_next(macro_buffer_t* this,bool print_debug){//Returns 
                 }
                 if(current_char=='?'){
                     if(parsed_num_i==3){
-                        num_str=malloc(sizeof(char)*read_offset_i+1);
-                        EXIT_IF_NULL(num_str,char*);
-                        strncpy(num_str,this->contents+this->token_i+read_i,read_offset_i);
-                        num_str[read_offset_i]='\0';
-                        parsed_num[parsed_num_i]=strtol(num_str,NULL,10);
-                        free(num_str);
+                        num_str_arr[0]=malloc(sizeof(char)*read_offset_i+1);
+                        EXIT_IF_NULL(num_str_arr[0],char*);
+                        strncpy(num_str_arr[0],this->contents+this->token_i+read_i,read_offset_i);
+                        num_str_arr[0][read_offset_i]='\0';
+                        parsed_num[parsed_num_i]=strtol(num_str_arr[0],NULL,10);
+                        free(num_str_arr[0]);
                         if(parsed_num[parsed_num_i]>255){
                             fprintf(stderr,ERR("Number should be between 0 and 255 at line %lu char %lu state %s.\n"),line_num,char_num,ReadStateStrings[read_state]);
                             DO_ERROR();
@@ -758,15 +781,15 @@ bool macro_buffer_process_next(macro_buffer_t* this,bool print_debug){//Returns 
                         DO_ERROR();
                         break;
                     }
-                    num_str=char_string_slice(begin_p,end_p-1);
+                    num_str_arr[0]=char_string_slice(begin_p,end_p-1);
                     command_array_add(this->cmd_arr,
                         (command_t){.type=CMD_QueryCompareCoords,.subtype=CMDST_Query,.print_cmd=print_cmd,
                             .cmd_u.compare_coords=(compare_coords_t){
-                                .cmp_flags=cmp_flags,.var_callback=VL_new_callback_int(this->vl,strtol(num_str,NULL,10))
+                                .cmp_flags=cmp_flags,.var_callback=VL_new_callback_int(this->vl,strtol(num_str_arr[0],NULL,10))
                             }
                         }
                     );
-                    free(num_str);
+                    free(num_str_arr[0]);
                     read_offset_i+=end_p-begin_p;
                     key_processed=true;
                     break;
@@ -779,11 +802,11 @@ bool macro_buffer_process_next(macro_buffer_t* this,bool print_debug){//Returns 
                         DO_ERROR();
                         break;   
                     }
-                    rpn_str=char_string_slice(begin_p,end_p);
+                    rpn_str_arr[0]=char_string_slice(begin_p,end_p);
                     command_array_add(this->cmd_arr,
                         (command_t){.type=CMD_QueryCompareCoords,.subtype=CMDST_Query,.print_cmd=print_cmd,
                             .cmd_u.compare_coords=(compare_coords_t){
-                                .cmp_flags=cmp_flags,.var_callback=VL_new_callback_number_rpn(this->vl,rpn_str,print_debug)
+                                .cmp_flags=cmp_flags,.var_callback=VL_new_callback_number_rpn(this->vl,rpn_str_arr[0],print_debug)
                             }
                         }
                     );
@@ -798,12 +821,12 @@ bool macro_buffer_process_next(macro_buffer_t* this,bool print_debug){//Returns 
                 if(isdigit(current_char)) break;
                 if(current_char==','){
                     if(parsed_num_i<3){
-                        num_str=malloc(sizeof(char)*read_offset_i+1);
-                        EXIT_IF_NULL(num_str,char*);
-                        strncpy(num_str,this->contents+this->token_i+read_i,read_offset_i);
-                        num_str[read_offset_i]='\0';
-                        parsed_num[parsed_num_i]=strtol(num_str,NULL,10);
-                        free(num_str);
+                        num_str_arr[0]=malloc(sizeof(char)*read_offset_i+1);
+                        EXIT_IF_NULL(num_str_arr[0],char*);
+                        strncpy(num_str_arr[0],this->contents+this->token_i+read_i,read_offset_i);
+                        num_str_arr[0][read_offset_i]='\0';
+                        parsed_num[parsed_num_i]=strtol(num_str_arr[0],NULL,10);
+                        free(num_str_arr[0]);
                         parsed_num_i++;
                         read_i+=read_offset_i+1;//Read other strings.
                         read_offset_i=-1;
@@ -815,12 +838,12 @@ bool macro_buffer_process_next(macro_buffer_t* this,bool print_debug){//Returns 
                 }
                 if(current_char=='?'){
                     if(parsed_num_i==3){
-                        num_str=malloc(sizeof(char)*read_offset_i+1);
-                        EXIT_IF_NULL(num_str,char*);
-                        strncpy(num_str,this->contents+this->token_i+read_i,read_offset_i);
-                        num_str[read_offset_i]='\0';
-                        parsed_num[parsed_num_i]=strtol(num_str,NULL,10);
-                        free(num_str);
+                        num_str_arr[0]=malloc(sizeof(char)*read_offset_i+1);
+                        EXIT_IF_NULL(num_str_arr[0],char*);
+                        strncpy(num_str_arr[0],this->contents+this->token_i+read_i,read_offset_i);
+                        num_str_arr[0][read_offset_i]='\0';
+                        parsed_num[parsed_num_i]=strtol(num_str_arr[0],NULL,10);
+                        free(num_str_arr[0]);
                         command_array_add(this->cmd_arr,
                             (command_t){.type=CMD_QueryCoordsWithin,.subtype=CMDST_Query,.print_cmd=print_cmd,
                                 .cmd_u.coords_within=(coords_within_t){
@@ -875,13 +898,13 @@ bool macro_buffer_process_next(macro_buffer_t* this,bool print_debug){//Returns 
             case RS_InitVarValue:
                 if(isdigit(current_char)||current_char=='.'||current_char=='-') break;
                 if(current_char==';'){
-                    num_str=malloc(sizeof(char)*read_offset_i+1);
-                    EXIT_IF_NULL(num_str,char*);
-                    strncpy(num_str,this->contents+this->token_i+read_i,read_offset_i);
-                    num_str[read_offset_i]='\0';
+                    num_str_arr[0]=malloc(sizeof(char)*read_offset_i+1);
+                    EXIT_IF_NULL(num_str_arr[0],char*);
+                    strncpy(num_str_arr[0],this->contents+this->token_i+read_i,read_offset_i);
+                    num_str_arr[0][read_offset_i]='\0';
                     switch(vct){
                         case VLCallback_Char:
-                            if(VL_add_as_char(this->vl,&str_name,strtol(num_str,0,10))==VA_Rewritten){
+                            if(VL_add_as_char(this->vl,&str_name,strtol(num_str_arr[0],0,10))==VA_Rewritten){
                                 fprintf(stderr,ERR("Variable name '%s' already assigned at line %lu char %lu state %s.\n"),str_name,line_num,char_num,ReadStateStrings[read_state]);
                                 this->parse_error=true;
                                 break;
@@ -890,7 +913,7 @@ bool macro_buffer_process_next(macro_buffer_t* this,bool print_debug){//Returns 
                                 (command_t){.type=CMD_InitVar,.subtype=CMDST_Var,.print_cmd=print_cmd,
                                     .cmd_u.init_var=(init_var_t){
                                         .as_number=(as_number_t){
-                                            .c=strtol(num_str,0,10),
+                                            .c=strtol(num_str_arr[0],0,10),
                                             .type=VLNT_Char
                                         },
                                         .variable=str_name
@@ -899,7 +922,7 @@ bool macro_buffer_process_next(macro_buffer_t* this,bool print_debug){//Returns 
                             );
                             break;
                         case VLCallback_Int:
-                            if(VL_add_as_int(this->vl,&str_name,strtol(num_str,0,10))==VA_Rewritten){
+                            if(VL_add_as_int(this->vl,&str_name,strtol(num_str_arr[0],0,10))==VA_Rewritten){
                                 fprintf(stderr,ERR("Variable name '%s' already assigned at line %lu char %lu state %s.\n"),str_name,line_num,char_num,ReadStateStrings[read_state]);
                                 this->parse_error=true;
                                 break;
@@ -908,7 +931,7 @@ bool macro_buffer_process_next(macro_buffer_t* this,bool print_debug){//Returns 
                                 (command_t){.type=CMD_InitVar,.subtype=CMDST_Var,.print_cmd=print_cmd,
                                     .cmd_u.init_var=(init_var_t){
                                         .as_number=(as_number_t){
-                                            .i=strtol(num_str,0,10),
+                                            .i=strtol(num_str_arr[0],0,10),
                                             .type=VLNT_Int
                                         },
                                         .variable=str_name
@@ -917,7 +940,7 @@ bool macro_buffer_process_next(macro_buffer_t* this,bool print_debug){//Returns 
                             );
                             break;
                         case VLCallback_Long:
-                            if(VL_add_as_long(this->vl,&str_name,strtol(num_str,0,10))==VA_Rewritten){
+                            if(VL_add_as_long(this->vl,&str_name,strtol(num_str_arr[0],0,10))==VA_Rewritten){
                                 fprintf(stderr,ERR("Variable name '%s' already assigned at line %lu char %lu state %s.\n"),str_name,line_num,char_num,ReadStateStrings[read_state]);
                                 this->parse_error=true;
                                 break;
@@ -926,7 +949,7 @@ bool macro_buffer_process_next(macro_buffer_t* this,bool print_debug){//Returns 
                                 (command_t){.type=CMD_InitVar,.subtype=CMDST_Var,.print_cmd=print_cmd,
                                     .cmd_u.init_var=(init_var_t){
                                         .as_number=(as_number_t){
-                                            .l=strtol(num_str,0,10),
+                                            .l=strtol(num_str_arr[0],0,10),
                                             .type=VLNT_Long
                                         },
                                         .variable=str_name
@@ -935,7 +958,7 @@ bool macro_buffer_process_next(macro_buffer_t* this,bool print_debug){//Returns 
                             );
                             break;
                         case VLCallback_Double:
-                            if(VL_add_as_double(this->vl,&str_name,strtol(num_str,0,10))==VA_Rewritten){
+                            if(VL_add_as_double(this->vl,&str_name,strtol(num_str_arr[0],0,10))==VA_Rewritten){
                                 fprintf(stderr,ERR("Variable name '%s' already assigned at line %lu char %lu state %s.\n"),str_name,line_num,char_num,ReadStateStrings[read_state]);
                                 this->parse_error=true;
                                 break;
@@ -944,7 +967,7 @@ bool macro_buffer_process_next(macro_buffer_t* this,bool print_debug){//Returns 
                                 (command_t){.type=CMD_InitVar,.subtype=CMDST_Var,.print_cmd=print_cmd,
                                     .cmd_u.init_var=(init_var_t){
                                         .as_number=(as_number_t){
-                                            .d=strtod(num_str,0),
+                                            .d=strtod(num_str_arr[0],0),
                                             .type=VLNT_Double
                                         },
                                         .variable=str_name
@@ -954,7 +977,7 @@ bool macro_buffer_process_next(macro_buffer_t* this,bool print_debug){//Returns 
                             break;
                         default: exit(EXIT_FAILURE); break; //Code shouldn't be here.
                     }
-                    free(num_str);
+                    free(num_str_arr[0]);
                     key_processed=true;
                     break;
                 }
@@ -992,10 +1015,10 @@ bool macro_buffer_process_next(macro_buffer_t* this,bool print_debug){//Returns 
                         DO_ERROR();
                         break;   
                     }
-                    rpn_str=char_string_slice(begin_p,end_p);
+                    rpn_str_arr[0]=char_string_slice(begin_p,end_p);
                     command_array_add(this->cmd_arr,
                         (command_t){.type=CMD_EditVar,.subtype=CMDST_Var,.print_cmd=print_cmd,
-                            .cmd_u.edit_var=VL_new_callback_rewrite_variable_rpn(this->vl,rpn_str,str_name,print_debug)
+                            .cmd_u.edit_var=VL_new_callback_rewrite_variable_rpn(this->vl,rpn_str_arr[0],str_name,print_debug)
                         }
                     );
                     read_offset_i+=end_p-begin_p+1;
@@ -1257,7 +1280,27 @@ void command_array_print(const command_array_t* this,const VariableLoader_t* vl,
                 printf("MouseClick MouseType: %d MouseState: %u\n",cmd.mouse_click.mouse_type,cmd.mouse_click.mouse_state);
                 break;
             case CMD_MoveMouse:
-                printf("MoveMouse x: %d y: %d is_absolute: %d\n",cmd.mouse_move.x,cmd.mouse_move.y,cmd.mouse_move.is_absolute);
+                printf("MoveMouse is_absolute: %d \n",cmd.mouse_move.is_absolute);
+                vlct=VL_get_callback(vl,cmd.mouse_move.x_cb);
+                switch(vlct->callback_type){
+                    case VLCallback_Int:
+                        printf("x: %lu ",vlct->args.number);
+                        break;
+                    case VLCallback_NumberRPN:
+                        printf("x(RPN): '%s' ",vlct->args.an_rpn.rpn_str);
+                        break;
+                    default: exit(EXIT_FAILURE); break; //Shouldn't be here.
+                }
+                vlct=VL_get_callback(vl,cmd.mouse_move.y_cb);
+                switch(vlct->callback_type){
+                    case VLCallback_Int:
+                        printf("y: %lu\n",vlct->args.number);
+                        break;
+                    case VLCallback_NumberRPN:
+                        printf("y(RPN): '%s'\n",vlct->args.an_rpn.rpn_str);
+                        break;
+                    default: exit(EXIT_FAILURE); break; //Shouldn't be here.
+                }
                 break;
             case CMD_Exit:
                 puts("ExitProgram");
