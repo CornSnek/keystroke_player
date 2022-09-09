@@ -33,6 +33,7 @@ bool macro_buffer_process_next(macro_buffer_t* this,bool print_debug){//Returns 
     bool key_processed=false;
     InputState input_state=IS_Down;
     char* str_name=0,* num_str_arr[4]={0},* rpn_str_arr[4]={0},* parse_start_p=this->contents+this->token_i;
+    vlcallback_info vlci[4];
     const char* begin_p,* end_p;
     long delay_mult=0;
     long parsed_num[4]={0};
@@ -520,12 +521,24 @@ bool macro_buffer_process_next(macro_buffer_t* this,bool print_debug){//Returns 
                             break;
                         }
                         num_str_arr[0]=char_string_slice(begin_p,end_p-1);
-                        puts(num_str_arr[0]);
                         read_i+=end_p-begin_p+1;
                         read_offset_i=-1;
-                    }else if(false){
-
-                    }
+                    }else if(current_char=='('){
+                        begin_p=current_char_p;
+                        while(*(end_p=++current_char_p)!=')'&&*end_p!=';'&&*end_p){}
+                        if(*end_p!=')'){
+                            fprintf(stderr,ERR("RPN string doesn't terminate with ')' at line %lu char %lu state %s.\n"),line_num,char_num,ReadStateStrings[read_state]);
+                            DO_ERROR();
+                            break;   
+                        }
+                        rpn_str_arr[0]=char_string_slice(begin_p,end_p);
+                        read_i+=end_p-begin_p+2;//+2 for ')' and ','.
+                        read_offset_i=-1;
+                    }else goto rs_mm_invalid_char;
+                    if(num_str_arr[0]){
+                        vlci[0]=VL_new_callback_int(this->vl,strtol(num_str_arr[0],NULL,10));
+                        free(num_str_arr[0]);
+                    }else vlci[0]=VL_new_callback_number_rpn(this->vl,rpn_str_arr[0],print_debug);
                     first_number_parse=true;
                     break;
                 }else{
@@ -538,25 +551,24 @@ bool macro_buffer_process_next(macro_buffer_t* this,bool print_debug){//Returns 
                             break;
                         }
                         num_str_arr[1]=char_string_slice(begin_p,end_p-1);
-                        puts(num_str_arr[1]);
                         read_i+=end_p-begin_p+1;
                         read_offset_i=-1;
-                    }else if(false){
-                        
-                    }
-                    vlcallback_info vlci[2];
-                    if(num_str_arr[0]){
-                        vlci[0]=VL_new_callback_int(this->vl,strtol(num_str_arr[0],NULL,10));
-                        free(num_str_arr[0]);
-                    }else{
-
-                    }
+                    }else if(current_char=='('){
+                        begin_p=current_char_p;
+                        while(*(end_p=++current_char_p)!=')'&&*end_p!=';'&&*end_p){}
+                        if(*end_p!=')'){
+                            fprintf(stderr,ERR("RPN string doesn't terminate with ')' at line %lu char %lu state %s.\n"),line_num,char_num,ReadStateStrings[read_state]);
+                            DO_ERROR();
+                            break;   
+                        }
+                        rpn_str_arr[1]=char_string_slice(begin_p,end_p);
+                        read_i+=end_p-begin_p+2;
+                        read_offset_i=-1;
+                    }else goto rs_mm_invalid_char;
                     if(num_str_arr[1]){
                         vlci[1]=VL_new_callback_int(this->vl,strtol(num_str_arr[1],NULL,10));
                         free(num_str_arr[1]);
-                    }else{
-
-                    }
+                    }else vlci[1]=VL_new_callback_number_rpn(this->vl,rpn_str_arr[1],print_debug);
                     command_array_add(this->cmd_arr,
                     (command_t){.type=CMD_MoveMouse,.subtype=CMDST_Command,.print_cmd=print_cmd,
                             .cmd_u.mouse_move=(mouse_move_t){
@@ -567,6 +579,7 @@ bool macro_buffer_process_next(macro_buffer_t* this,bool print_debug){//Returns 
                     key_processed=true;
                     break;
                 }
+                rs_mm_invalid_char:
                 fprintf(stderr,ERR("Unexpected character '%c' at line %lu char %lu state %s.\n"),current_char,line_num,char_num,ReadStateStrings[read_state]);
                 DO_ERROR();
                 break;

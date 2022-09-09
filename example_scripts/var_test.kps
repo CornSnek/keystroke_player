@@ -1,8 +1,6 @@
-init,l,wait_s=0;
+init,l,a_var=0;
 (A;
-edit,wait_s=(wait_s,++);
-.s1;
-?coords=y>=(wait_s,10,*)?
-pass;
-mmr=10,20;
-)A=69;
+edit,a_var=(a_var,++);
+.m(a_var,sind,1,+,10,*);
+mmr=(a_var,cosd,5,*),(a_var,sind,5,*);
+)A;
