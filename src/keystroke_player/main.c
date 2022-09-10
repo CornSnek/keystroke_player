@@ -862,11 +862,19 @@ bool run_program(command_array_t* cmd_arr, const char* file_str, Config config, 
                 }
             case CMD_QueryCoordsWithin:
                 coords_within=cmd_u.coords_within;
-                cmdprintf("Don't skip next command if mouse is within Top Left x:%d y:%d Bottom Right x:%d y:%d. ",coords_within.xl,coords_within.yl,coords_within.xh,coords_within.yh);
+                ExitIfProcessVLFalse(ProcessVLCallback(vl,coords_within.xl_cb,&an_output[0]));
+                an_output[0]=VLNumberCast(an_output[0],VLNT_Int);
+                ExitIfProcessVLFalse(ProcessVLCallback(vl,coords_within.yl_cb,&an_output[1]));
+                an_output[1]=VLNumberCast(an_output[1],VLNT_Int);
+                ExitIfProcessVLFalse(ProcessVLCallback(vl,coords_within.xh_cb,&an_output[2]));
+                an_output[2]=VLNumberCast(an_output[2],VLNT_Int);
+                ExitIfProcessVLFalse(ProcessVLCallback(vl,coords_within.yh_cb,&an_output[3]));
+                an_output[3]=VLNumberCast(an_output[3],VLNT_Int);
+                cmdprintf("Don't skip next command if mouse is within Top Left x:%d y:%d Bottom Right x:%d y:%d. ",an_output[0].i,an_output[1].i,an_output[2].i,an_output[3].i);
                 pthread_mutex_lock(&input_mutex);
                 xdo_get_mouse_location(xdo_obj,&x_mouse,&y_mouse,0);
                 pthread_mutex_unlock(&input_mutex);
-                query_is_true=x_mouse>=coords_within.xl&&x_mouse<=coords_within.xh&&y_mouse>=coords_within.yl&&y_mouse<=coords_within.yh;
+                query_is_true=x_mouse>=an_output[0].i&&x_mouse<=an_output[2].i&&y_mouse>=an_output[1].i&&y_mouse<=an_output[3].i;
                 cmdprintf("It is %s within the box.\n",query_is_true?"":"not");
                 PrintLastCommand(LastQuery);
                 break;

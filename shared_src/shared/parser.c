@@ -544,7 +544,7 @@ bool macro_buffer_process_next(macro_buffer_t* this,bool print_debug){//Returns 
                     first_number_parsed=true;
                     break;
                 }//After second number is successfully parsed.
-                if(*(++current_char_p)!=';'){
+                if(this->contents[this->token_i+read_i+read_offset_i]!=';'){
                     fprintf(stderr,ERR("Expecting only 2 numbers that end with ';' at line %lu char %lu state %s.\n"),line_num,char_num,ReadStateStrings[read_state]);
                     DO_ERROR();
                     break;
@@ -806,48 +806,45 @@ bool macro_buffer_process_next(macro_buffer_t* this,bool print_debug){//Returns 
                 DO_ERROR();
                 break;
             case RS_QueryCoordsWithin:
-                if(isdigit(current_char)) break;
-                if(current_char==','){
-                    if(parsed_num_i<3){
-                        num_str_arr[0]=malloc(sizeof(char)*read_offset_i+1);
-                        EXIT_IF_NULL(num_str_arr[0],char*);
-                        strncpy(num_str_arr[0],this->contents+this->token_i+read_i,read_offset_i);
-                        num_str_arr[0][read_offset_i]='\0';
-                        parsed_num[parsed_num_i]=strtol(num_str_arr[0],NULL,10);
-                        free(num_str_arr[0]);
-                        parsed_num_i++;
-                        read_i+=read_offset_i+1;//Read other strings.
-                        read_offset_i=-1;
+                if(isdigit(current_char)){
+                    begin_p=current_char_p;
+                    while(*(end_p=++current_char_p)!=((parsed_num_i==3)?'?':',')&&isdigit(*end_p)&&*end_p){}
+                    if(*end_p!=((parsed_num_i==3)?'?':',')){
+                        fprintf(stderr,ERR("%s not found or non-number found at line %lu char %lu state %s.\n"),(parsed_num_i==3)?"Question mark":"Comma",line_num,char_num,ReadStateStrings[read_state]);
+                        DO_ERROR();
                         break;
                     }
-                    fprintf(stderr,ERR("There should only be 4 numbers separated by 3 ',' at line %lu char %lu state %s.\n"),line_num,char_num,ReadStateStrings[read_state]);
-                   DO_ERROR();
+                    num_str_arr[parsed_num_i]=char_string_slice(begin_p,end_p-1);
+                    read_i+=end_p-begin_p+1;
+                    read_offset_i=-1;
+                }else if(current_char=='('){
+                    fprintf(stderr,ERR("TODO"));
+                    DO_ERROR();
+                    break;
+                }else{
+                    fprintf(stderr,ERR("Unexpected character '%c' at line %lu char %lu state %s.\n"),current_char,line_num,char_num,ReadStateStrings[read_state]);
+                    DO_ERROR();
                     break;
                 }
-                if(current_char=='?'){
-                    if(parsed_num_i==3){
-                        num_str_arr[0]=malloc(sizeof(char)*read_offset_i+1);
-                        EXIT_IF_NULL(num_str_arr[0],char*);
-                        strncpy(num_str_arr[0],this->contents+this->token_i+read_i,read_offset_i);
-                        num_str_arr[0][read_offset_i]='\0';
-                        parsed_num[parsed_num_i]=strtol(num_str_arr[0],NULL,10);
-                        free(num_str_arr[0]);
-                        command_array_add(this->cmd_arr,
-                            (command_t){.type=CMD_QueryCoordsWithin,.subtype=CMDST_Query,.print_cmd=print_cmd,
-                                .cmd_u.coords_within=(coords_within_t){
-                                    .xl=parsed_num[0],.yl=parsed_num[1],.xh=parsed_num[2],.yh=parsed_num[3]
-                                }
-                            }
-                        );
-                        key_processed=true;
-                        break;
+                if(num_str_arr[parsed_num_i]){
+                    vlci[parsed_num_i]=VL_new_callback_int(this->vl,strtol(num_str_arr[parsed_num_i],NULL,10));
+                    free(num_str_arr[parsed_num_i]);
+                }else vlci[parsed_num_i]=VL_new_callback_number_rpn(this->vl,rpn_str_arr[parsed_num_i],print_debug);
+                if(parsed_num_i++!=3) break; //Don't break after 4th number is successfully parsed.
+                printf(ERR("%c\n"),this->contents[this->token_i+read_i+read_offset_i]);
+                if(this->contents[this->token_i+read_i+read_offset_i]!='?'){
+                    fprintf(stderr,ERR("Expecting only 4 numbers that end with '?' at line %lu char %lu state %s.\n"),line_num,char_num,ReadStateStrings[read_state]);
+                    DO_ERROR();
+                    break;
+                }
+                command_array_add(this->cmd_arr,
+                    (command_t){.type=CMD_QueryCoordsWithin,.subtype=CMDST_Query,.print_cmd=print_cmd,
+                        .cmd_u.coords_within=(coords_within_t){
+                            .xl_cb=vlci[0],.yl_cb=vlci[1],.xh_cb=vlci[2],.yh_cb=vlci[3]
+                        }
                     }
-                    fprintf(stderr,ERR("There should only be 4 numbers separated by 3 ',' at line %lu char %lu state %s.\n"),line_num,char_num,ReadStateStrings[read_state]);
-                   DO_ERROR();
-                    break;
-                }
-                fprintf(stderr,ERR("Unexpected character '%c' at line %lu char %lu state %s.\n"),current_char,line_num,char_num,ReadStateStrings[read_state]);
-                DO_ERROR();
+                );
+                key_processed=true;
                 break;
             case RS_InitVarType:
                 switch(current_char){
@@ -1266,7 +1263,7 @@ void command_array_print(const command_array_t* this,const VariableLoader_t* vl,
                 printf("MouseClick MouseType: %d MouseState: %u\n",cmd.mouse_click.mouse_type,cmd.mouse_click.mouse_state);
                 break;
             case CMD_MoveMouse:
-                printf("MoveMouse is_absolute: %d \n",cmd.mouse_move.is_absolute);
+                printf("MoveMouse is_absolute: %d ",cmd.mouse_move.is_absolute);
                 vlct=VL_get_callback(vl,cmd.mouse_move.x_cb);
                 switch(vlct->callback_type){
                     case VLCallback_Int:
@@ -1330,7 +1327,47 @@ void command_array_print(const command_array_t* this,const VariableLoader_t* vl,
                 }
                 break;
             case CMD_QueryCoordsWithin:
-                printf("QueryCoordsWithin xl: %d yl: %d xh: %d yh: %d\n",cmd.coords_within.xl,cmd.coords_within.yl,cmd.coords_within.xh,cmd.coords_within.yh);
+                printf("QuerryCoordsWithin ");
+                vlct=VL_get_callback(vl,cmd.coords_within.xl_cb);
+                switch(vlct->callback_type){
+                    case VLCallback_Int:
+                        printf("xl: %lu ",vlct->args.number);
+                        break;
+                    case VLCallback_NumberRPN:
+                        printf("xl(RPN): '%s' ",vlct->args.an_rpn.rpn_str);
+                        break;
+                    default: exit(EXIT_FAILURE); break; //Shouldn't be here.
+                }
+                vlct=VL_get_callback(vl,cmd.coords_within.yl_cb);
+                switch(vlct->callback_type){
+                    case VLCallback_Int:
+                        printf("yl: %lu ",vlct->args.number);
+                        break;
+                    case VLCallback_NumberRPN:
+                        printf("yl(RPN): '%s' ",vlct->args.an_rpn.rpn_str);
+                        break;
+                    default: exit(EXIT_FAILURE); break; //Shouldn't be here.
+                }
+                vlct=VL_get_callback(vl,cmd.coords_within.xh_cb);
+                switch(vlct->callback_type){
+                    case VLCallback_Int:
+                        printf("xh: %lu ",vlct->args.number);
+                        break;
+                    case VLCallback_NumberRPN:
+                        printf("xh(RPN): '%s' ",vlct->args.an_rpn.rpn_str);
+                        break;
+                    default: exit(EXIT_FAILURE); break; //Shouldn't be here.
+                }
+                vlct=VL_get_callback(vl,cmd.coords_within.yh_cb);
+                switch(vlct->callback_type){
+                    case VLCallback_Int:
+                        printf("yh: %lu\n",vlct->args.number);
+                        break;
+                    case VLCallback_NumberRPN:
+                        printf("yh(RPN): '%s'\n",vlct->args.an_rpn.rpn_str);
+                        break;
+                    default: exit(EXIT_FAILURE); break; //Shouldn't be here.
+                }
                 break;
             case CMD_InitVar:
                 printf("InitVar Name: '%s' Type: '%s' Value: '",cmd.init_var.variable,VLNumberTypeStr(cmd.init_var.as_number.type));

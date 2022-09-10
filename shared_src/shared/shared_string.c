@@ -516,8 +516,8 @@ size_t trim_comments(char** strptr){//Same as above, but with comments until new
     (*strptr)[str_i-comment_count]='\0';
     return str_i-comment_count;
 }
-_Pragma("GCC diagnostic push")
-_Pragma("GCC diagnostic ignored \"-Wstringop-truncation\"")
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wstringop-truncation"
 void replace_str(char** strptr, const char* replace, const char* with){
     char* new_strptr=(malloc(sizeof(char)));
     EXIT_IF_NULL(new_strptr,char*);
@@ -583,7 +583,7 @@ void replace_str_at(char** strptr_owner, const char* replace, const char* with,c
     free(*strptr_owner);
     *strptr_owner=new_strptr;//Change freed pointer to new pointer.
 }
-_Pragma("GCC diagnostic pop")
+#pragma GCC diagnostic pop
 //Reverse lexicographical order so that longer words that overlap other words get replaced first.
 //Ex: For unsorted strings ["abc","abcd","abcde"], qsort will change it to ["abcde","abcd","abc"] so that it will replace "abcde" first.
 int replace_node_biggest_first(const void* lhs,const void* rhs){

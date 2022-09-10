@@ -121,7 +121,7 @@ typedef struct compare_coords_s{
     vlcallback_info var_callback;
 }compare_coords_t;
 typedef struct coords_within_s{
-    int xl,yl,xh,yh;
+    vlcallback_info xl_cb,yl_cb,xh_cb,yh_cb;
 }coords_within_t;
 typedef struct init_var_s{
     as_number_t as_number;
