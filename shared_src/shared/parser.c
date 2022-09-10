@@ -544,6 +544,11 @@ bool macro_buffer_process_next(macro_buffer_t* this,bool print_debug){//Returns 
                     first_number_parsed=true;
                     break;
                 }//After second number is successfully parsed.
+                if(*(++current_char_p)!=';'){
+                    fprintf(stderr,ERR("Expecting only 2 numbers that end with ';' at line %lu char %lu state %s.\n"),line_num,char_num,ReadStateStrings[read_state]);
+                    DO_ERROR();
+                    break;
+                }
                 command_array_add(this->cmd_arr,
                 (command_t){.type=CMD_MoveMouse,.subtype=CMDST_Command,.print_cmd=print_cmd,
                         .cmd_u.mouse_move=(mouse_move_t){
