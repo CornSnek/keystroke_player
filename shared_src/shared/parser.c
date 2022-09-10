@@ -41,7 +41,7 @@ bool macro_buffer_process_next(macro_buffer_t* this,bool print_debug){//Returns 
     bool added_keystate=false;
     int read_i=0; //Index to read.
     int read_offset_i=0; //Last character to read by offset of read_i.
-    bool first_number_parse=false;
+    bool first_number_parsed=false;
     bool print_cmd=false;
     bool store_index=false;
     CompareCoords cmp_flags=CMP_NULL;
@@ -463,15 +463,15 @@ bool macro_buffer_process_next(macro_buffer_t* this,bool print_debug){//Returns 
                 DO_ERROR();
                 break;
             case RS_MouseClickType:
-                if(isdigit(current_char)&&!first_number_parse){
+                if(isdigit(current_char)&&!first_number_parsed){
                     num_str_arr[0]=calloc(sizeof(char),2);
                     EXIT_IF_NULL(num_str_arr[0],char*);
                     num_str_arr[0][0]=current_char;
                     parsed_num[0]=strtol(num_str_arr[0],NULL,10);
                     free(num_str_arr[0]);
-                    first_number_parse=true;
+                    first_number_parsed=true;
                     break;
-                }else if(current_char=='='&&first_number_parse){
+                }else if(current_char=='='&&first_number_parsed){
                     read_i+=2;//To read numbers.
                     read_offset_i=-1;
                     read_state=RS_MouseClickState;
@@ -511,13 +511,13 @@ bool macro_buffer_process_next(macro_buffer_t* this,bool print_debug){//Returns 
             case RS_MoveMouse:
                 if(isdigit(current_char)||current_char=='-'){
                     begin_p=current_char_p;
-                    while(*(end_p=++current_char_p)!=','&&isdigit(*end_p)&&*end_p){}
-                    if(*end_p!=','){
-                        fprintf(stderr,ERR("Comma not found or non-number found at line %lu char %lu state %s.\n"),line_num,char_num,ReadStateStrings[read_state]);
+                    while(*(end_p=++current_char_p)!=(first_number_parsed?';':',')&&isdigit(*end_p)&&*end_p){}
+                    if(*end_p!=(first_number_parsed?';':',')){
+                        fprintf(stderr,ERR("%s not found or non-number found at line %lu char %lu state %s.\n"),first_number_parsed?"Semicolon":"Comma",line_num,char_num,ReadStateStrings[read_state]);
                         DO_ERROR();
                         break;
                     }
-                    num_str_arr[first_number_parse]=char_string_slice(begin_p,end_p-1);
+                    num_str_arr[first_number_parsed]=char_string_slice(begin_p,end_p-1);
                     read_i+=end_p-begin_p+1;
                     read_offset_i=-1;
                 }else if(current_char=='('){
@@ -528,22 +528,22 @@ bool macro_buffer_process_next(macro_buffer_t* this,bool print_debug){//Returns 
                         DO_ERROR();
                         break;   
                     }
-                    rpn_str_arr[first_number_parse]=char_string_slice(begin_p,end_p);
-                    read_i+=end_p-begin_p+2;//+2 for ')' and ','.
+                    rpn_str_arr[first_number_parsed]=char_string_slice(begin_p,end_p);
+                    read_i+=end_p-begin_p+2;//+2 for ')' and ','/';'.
                     read_offset_i=-1;
                 }else{
                     fprintf(stderr,ERR("Unexpected character '%c' at line %lu char %lu state %s.\n"),current_char,line_num,char_num,ReadStateStrings[read_state]);
                     DO_ERROR();
                     break;
                 }
-                if(num_str_arr[first_number_parse]){
-                    vlci[first_number_parse]=VL_new_callback_int(this->vl,strtol(num_str_arr[first_number_parse],NULL,10));
-                    free(num_str_arr[first_number_parse]);
-                }else vlci[first_number_parse]=VL_new_callback_number_rpn(this->vl,rpn_str_arr[first_number_parse],print_debug);
-                if(!first_number_parse){
-                    first_number_parse=true;
+                if(num_str_arr[first_number_parsed]){
+                    vlci[first_number_parsed]=VL_new_callback_int(this->vl,strtol(num_str_arr[first_number_parsed],NULL,10));
+                    free(num_str_arr[first_number_parsed]);
+                }else vlci[first_number_parsed]=VL_new_callback_number_rpn(this->vl,rpn_str_arr[first_number_parsed],print_debug);
+                if(!first_number_parsed){
+                    first_number_parsed=true;
                     break;
-                }
+                }//After second number is successfully parsed.
                 command_array_add(this->cmd_arr,
                 (command_t){.type=CMD_MoveMouse,.subtype=CMDST_Command,.print_cmd=print_cmd,
                         .cmd_u.mouse_move=(mouse_move_t){
