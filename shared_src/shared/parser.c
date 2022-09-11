@@ -332,7 +332,7 @@ bool macro_buffer_process_next(macro_buffer_t* this,bool print_debug){//Returns 
                     begin_p=current_char_p;
                     while(*(end_p=++current_char_p)!=')'&&*end_p!=';'&&*end_p){}
                     if(*end_p!=')'||*(end_p+1)!=';'){
-                        fprintf(stderr,ERR("RPN string doesn't terminate with ')' at line %lu char %lu state %s.\n"),line_num,char_num,ReadStateStrings[read_state]);
+                        fprintf(stderr,ERR("RPN string doesn't terminate with ');' at line %lu char %lu state %s.\n"),line_num,char_num,ReadStateStrings[read_state]);
                         DO_ERROR();
                         break;   
                     }
@@ -442,7 +442,7 @@ bool macro_buffer_process_next(macro_buffer_t* this,bool print_debug){//Returns 
                     begin_p=current_char_p;
                     while(*(end_p=++current_char_p)!=')'&&*end_p!=';'&&*end_p){}
                     if(*end_p!=')'||*(end_p+1)!=';'){
-                        fprintf(stderr,ERR("RPN string doesn't terminate with ')' at line %lu char %lu state %s.\n"),line_num,char_num,ReadStateStrings[read_state]);
+                        fprintf(stderr,ERR("RPN string doesn't terminate with ');' at line %lu char %lu state %s.\n"),line_num,char_num,ReadStateStrings[read_state]);
                         DO_ERROR();
                         break;   
                     }
@@ -524,7 +524,7 @@ bool macro_buffer_process_next(macro_buffer_t* this,bool print_debug){//Returns 
                     begin_p=current_char_p;
                     while(*(end_p=++current_char_p)!=')'&&*end_p!=';'&&*end_p){}
                     if(*end_p!=')'||*(end_p+1)!=(first_number_parsed?';':',')){
-                        fprintf(stderr,ERR("RPN string doesn't terminate with ')' at line %lu char %lu state %s.\n"),line_num,char_num,ReadStateStrings[read_state]);
+                        fprintf(stderr,ERR("RPN string doesn't terminate with ')%c' at line %lu char %lu state %s.\n"),first_number_parsed?';':',',line_num,char_num,ReadStateStrings[read_state]);
                         DO_ERROR();
                         break;   
                     }
@@ -786,7 +786,7 @@ bool macro_buffer_process_next(macro_buffer_t* this,bool print_debug){//Returns 
                     begin_p=current_char_p;
                     while(*(end_p=++current_char_p)!=')'&&*end_p!='?'&&*end_p){}
                     if(*end_p!=')'||*(end_p+1)!=';'){
-                        fprintf(stderr,ERR("RPN string doesn't terminate with ')' at line %lu char %lu state %s.\n"),line_num,char_num,ReadStateStrings[read_state]);
+                        fprintf(stderr,ERR("RPN string doesn't terminate with ');' at line %lu char %lu state %s.\n"),line_num,char_num,ReadStateStrings[read_state]);
                         DO_ERROR();
                         break;   
                     }
@@ -852,6 +852,7 @@ bool macro_buffer_process_next(macro_buffer_t* this,bool print_debug){//Returns 
                     case 'i': vct=VLCallback_Int; goto valid_var_char;
                     case 'l': vct=VLCallback_Long; goto valid_var_char;
                     case 'd': vct=VLCallback_Double; goto valid_var_char;
+                    case 'r': vct=VLCallback_NumberRPN; goto valid_var_char;
                     default: goto invalid_var_char;
                 }
                 valid_var_char:
@@ -862,7 +863,7 @@ bool macro_buffer_process_next(macro_buffer_t* this,bool print_debug){//Returns 
                     break;
                 }
                 invalid_var_char:
-                fprintf(stderr,ERR("Invalid characters (Should be 'l' or 'd' with ',' at end) at line %lu char %lu state %s.\n"),line_num,char_num,ReadStateStrings[read_state]);
+                fprintf(stderr,ERR("Invalid characters (Should be 'c/i/l/d/r' with ',' at end) at line %lu char %lu state %s.\n"),line_num,char_num,ReadStateStrings[read_state]);
                 DO_ERROR();
                 break;
             case RS_InitVarName:
@@ -881,6 +882,94 @@ bool macro_buffer_process_next(macro_buffer_t* this,bool print_debug){//Returns 
                 DO_ERROR();
                 break;
             case RS_InitVarValue:
+                if(vct==VLCallback_NumberRPN){
+                    switch(*current_char_p){
+                        case 'c': vct=VLCallback_Char; goto valid_var_char2;
+                        case 'i': vct=VLCallback_Int; goto valid_var_char2;
+                        case 'l': vct=VLCallback_Long; goto valid_var_char2;
+                        case 'd': vct=VLCallback_Double; goto valid_var_char2;
+                        default: goto invalid_var_char2;
+                    }
+                    invalid_var_char2:
+                    fprintf(stderr,ERR("RPN string needs to start with integer type i/l/d/c for InitVar commands at line %lu char %lu state %s.\n"),line_num,char_num,ReadStateStrings[read_state]);
+                    free(str_name);
+                    DO_ERROR();
+                    break; 
+                    valid_var_char2:
+                    if(*(++current_char_p)=='('){
+                        as_number_t an;
+                        begin_p=current_char_p;
+                        while(*(end_p=++current_char_p)!=')'&&*end_p!='?'&&*end_p){}
+                        if(*end_p!=')'||*(end_p+1)!=';'){
+                            free(str_name);
+                            fprintf(stderr,ERR("RPN string doesn't terminate with ');' at line %lu char %lu state %s.\n"),line_num,char_num,ReadStateStrings[read_state]);
+                            DO_ERROR();
+                            break;   
+                        }
+                        rpn_str_arr[0]=char_string_slice(begin_p,end_p);
+                        RPNValidStringE status=RPNEvaluatorEvaluate(rpn_str_arr[0],this->vl,&an,print_debug,true,RPN_EVAL_START_B,RPN_EVAL_END_B,RPN_EVAL_SEP);
+                        free(rpn_str_arr[0]);
+                        if(status!=RPNVS_Ok){
+                            free(str_name);
+                            DO_ERROR();
+                            break;
+                        }
+                        switch(vct){
+                            case VLCallback_Char: an=VLNumberCast(an,VLNT_Char); break;
+                            case VLCallback_Int: an=VLNumberCast(an,VLNT_Int); break;
+                            case VLCallback_Long: an=VLNumberCast(an,VLNT_Long); break;
+                            case VLCallback_Double: an=VLNumberCast(an,VLNT_Double); break;
+                            default: exit(EXIT_FAILURE); break; //Shouldn't be here.
+                        }
+                        switch(an.type){
+                            case VLNT_Char:
+                                if(VL_add_as_char(this->vl,&str_name,an.c)==VA_Rewritten){
+                                    fprintf(stderr,ERR("Variable name '%s' already assigned at line %lu char %lu state %s.\n"),str_name,line_num,char_num,ReadStateStrings[read_state]);
+                                    this->parse_error=true;
+                                    break;
+                                }
+                                goto init_var_value_rpn_success;
+                            case VLNT_Int:
+                                if(VL_add_as_int(this->vl,&str_name,an.i)==VA_Rewritten){
+                                    fprintf(stderr,ERR("Variable name '%s' already assigned at line %lu char %lu state %s.\n"),str_name,line_num,char_num,ReadStateStrings[read_state]);
+                                    this->parse_error=true;
+                                    break;
+                                }
+                                goto init_var_value_rpn_success;
+                            case VLNT_Long:
+                                if(VL_add_as_long(this->vl,&str_name,an.l)==VA_Rewritten){
+                                    fprintf(stderr,ERR("Variable name '%s' already assigned at line %lu char %lu state %s.\n"),str_name,line_num,char_num,ReadStateStrings[read_state]);
+                                    this->parse_error=true;
+                                    break;
+                                }
+                                goto init_var_value_rpn_success;
+                            case VLNT_Double:
+                                if(VL_add_as_double(this->vl,&str_name,an.d)==VA_Rewritten){
+                                    fprintf(stderr,ERR("Variable name '%s' already assigned at line %lu char %lu state %s.\n"),str_name,line_num,char_num,ReadStateStrings[read_state]);
+                                    this->parse_error=true;
+                                    break;
+                                }
+                                goto init_var_value_rpn_success;
+                            default: exit(EXIT_FAILURE); break; //Shouldn't be here.
+                        }
+                        init_var_value_rpn_success:
+                        command_array_add(this->cmd_arr,
+                            (command_t){.type=CMD_InitVar,.subtype=CMDST_Var,.print_cmd=print_cmd,
+                                .cmd_u.init_var=(init_var_t){
+                                    .as_number=an,
+                                    .variable=str_name
+                                }
+                            }
+                        );
+                        read_offset_i+=end_p-begin_p+1;
+                        key_processed=true;
+                        break;
+                    }
+                    free(str_name);
+                    fprintf(stderr,ERR("Unexpected character '%c' at line %lu char %lu state %s.\n"),current_char,line_num,char_num,ReadStateStrings[read_state]);
+                    DO_ERROR();
+                    break;
+                }
                 if(isdigit(current_char)||current_char=='.'||current_char=='-') break;
                 if(current_char==';'){
                     num_str_arr[0]=malloc(sizeof(char)*read_offset_i+1);
@@ -960,7 +1049,7 @@ bool macro_buffer_process_next(macro_buffer_t* this,bool print_debug){//Returns 
                                 }
                             );
                             break;
-                        default: exit(EXIT_FAILURE); break; //Code shouldn't be here.
+                        default: exit(EXIT_FAILURE); break; //Shouldn't be here.
                     }
                     free(num_str_arr[0]);
                     key_processed=true;
@@ -996,7 +1085,7 @@ bool macro_buffer_process_next(macro_buffer_t* this,bool print_debug){//Returns 
                     begin_p=current_char_p;
                     while(*(end_p=++current_char_p)!=')'&&*end_p!=';'&&*end_p){}
                     if(*end_p!=')'||*(end_p+1)!=';'){
-                        fprintf(stderr,ERR("RPN string doesn't terminate with ')' at line %lu char %lu state %s.\n"),line_num,char_num,ReadStateStrings[read_state]);
+                        fprintf(stderr,ERR("RPN string doesn't terminate with ');' at line %lu char %lu state %s.\n"),line_num,char_num,ReadStateStrings[read_state]);
                         DO_ERROR();
                         break;   
                     }
