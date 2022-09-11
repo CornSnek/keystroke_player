@@ -1,6 +1,10 @@
-init,l,a_var=0;
+init,i,deg_n=0;
+init,d,tri_w=0;#Triangle wave from 0 to 1 to 0 linearly
+init,i,tri_f=2880;
+init,i,tri_h=1440;
 (A;
-edit,a_var=(a_var,++,360,%);
-.m10;#(a_var,sind,1,+,10,*);
-mmr=(a_var,cosd,5,*),(a_var,sind,5,*);
+edit,deg_n=(deg_n,++);
+edit,tri_w=(deg_n,tri_f,%,tri_h,/,0,==,deg_n,tri_h,%,tri_h,deg_n,tri_h,%,-,b?t:f,tri_h,as_d,/);#0 to tri_h back to 0
+.m5;#(deg_n,sind,1,+,10,*);
+mmr=(deg_n,cosd,8,tri_w,*,*),(deg_n,sind,8,tri_w,*,*);
 )A;

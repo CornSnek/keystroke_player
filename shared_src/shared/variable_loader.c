@@ -9,6 +9,7 @@ bool _VL_callback_char_func(as_number_t* at_address,char value);
 bool _VL_callback_number_rpn(const VariableLoader_t* vl,as_number_t* at_address,const char* rpn_str,bool see_stack);
 bool _VL_callback_load_variable_func(const VariableLoader_t* this,as_number_t* at_address,const char* variable);
 as_number_opt_t String_to_as_number_t(const char* token){
+    if(strlen(token)==1&&*token=='-') return (as_number_opt_t){0};//No name collision with minus sign.
     VLNumberType vlnt=VLNT_Long;//Default
     for(size_t i=0;i<strlen(token);i++){
         const char current_char=token[i];

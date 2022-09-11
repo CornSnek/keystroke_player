@@ -331,7 +331,7 @@ bool macro_buffer_process_next(macro_buffer_t* this,bool print_debug){//Returns 
                 if(current_char=='('){
                     begin_p=current_char_p;
                     while(*(end_p=++current_char_p)!=')'&&*end_p!=';'&&*end_p){}
-                    if(*end_p!=')'){
+                    if(*end_p!=')'||*(end_p+1)!=';'){
                         fprintf(stderr,ERR("RPN string doesn't terminate with ')' at line %lu char %lu state %s.\n"),line_num,char_num,ReadStateStrings[read_state]);
                         DO_ERROR();
                         break;   
@@ -441,7 +441,7 @@ bool macro_buffer_process_next(macro_buffer_t* this,bool print_debug){//Returns 
                 if(current_char=='('){
                     begin_p=current_char_p;
                     while(*(end_p=++current_char_p)!=')'&&*end_p!=';'&&*end_p){}
-                    if(*end_p!=')'){
+                    if(*end_p!=')'||*(end_p+1)!=';'){
                         fprintf(stderr,ERR("RPN string doesn't terminate with ')' at line %lu char %lu state %s.\n"),line_num,char_num,ReadStateStrings[read_state]);
                         DO_ERROR();
                         break;   
@@ -523,7 +523,7 @@ bool macro_buffer_process_next(macro_buffer_t* this,bool print_debug){//Returns 
                 }else if(current_char=='('){
                     begin_p=current_char_p;
                     while(*(end_p=++current_char_p)!=')'&&*end_p!=';'&&*end_p){}
-                    if(*end_p!=')'){
+                    if(*end_p!=')'||*(end_p+1)!=(first_number_parsed?';':',')){
                         fprintf(stderr,ERR("RPN string doesn't terminate with ')' at line %lu char %lu state %s.\n"),line_num,char_num,ReadStateStrings[read_state]);
                         DO_ERROR();
                         break;   
@@ -785,7 +785,7 @@ bool macro_buffer_process_next(macro_buffer_t* this,bool print_debug){//Returns 
                 if(current_char=='('){
                     begin_p=current_char_p;
                     while(*(end_p=++current_char_p)!=')'&&*end_p!='?'&&*end_p){}
-                    if(*end_p!=')'){
+                    if(*end_p!=')'||*(end_p+1)!=';'){
                         fprintf(stderr,ERR("RPN string doesn't terminate with ')' at line %lu char %lu state %s.\n"),line_num,char_num,ReadStateStrings[read_state]);
                         DO_ERROR();
                         break;   
@@ -995,7 +995,7 @@ bool macro_buffer_process_next(macro_buffer_t* this,bool print_debug){//Returns 
                 if(current_char=='('){
                     begin_p=current_char_p;
                     while(*(end_p=++current_char_p)!=')'&&*end_p!=';'&&*end_p){}
-                    if(*end_p!=')'){
+                    if(*end_p!=')'||*(end_p+1)!=';'){
                         fprintf(stderr,ERR("RPN string doesn't terminate with ')' at line %lu char %lu state %s.\n"),line_num,char_num,ReadStateStrings[read_state]);
                         DO_ERROR();
                         break;   
