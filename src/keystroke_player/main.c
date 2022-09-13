@@ -80,7 +80,7 @@ int main(void){
                 also_run=false;
                 printf(
                     "--------------------\n"
-                    "Keystroke Player: Plays mouse/keyboard macro scripts and stops when the q key is pressed, or the script exits\n"
+                    "Keystroke Player: Plays mouse/keyboard macro scripts and stops when the Escape key is pressed, or the script exits\n"
                     "Press c for Config\n"
                     "Press b to Build File\n"
                     "Press r to Build and Run File\n"
@@ -477,7 +477,7 @@ void* keyboard_check_listener(void* srs_v){
     delay_ns_t key_check_delay=srs_p->key_check_delay;
     Display* xdpy=((shared_rs*)srs_v)->xdo_obj->xdpy;
     int scr=DefaultScreen(xdpy);
-    XGrabKey(xdpy,XKeysymToKeycode(xdpy,XK_Q),None,RootWindow(xdpy,scr),False,GrabModeAsync,GrabModeAsync);
+    XGrabKey(xdpy,XKeysymToKeycode(xdpy,XK_Escape),None,RootWindow(xdpy,scr),False,GrabModeAsync,GrabModeAsync);
     XFlush(xdpy);
     XEvent e={0};
     while(!srs_p->program_done){
@@ -486,13 +486,13 @@ void* keyboard_check_listener(void* srs_v){
         pthread_mutex_lock(&input_mutex);
         while(XPending(xdpy)){ //XPending doesn't make XNextEvent block if 0 events.
             XNextEvent(xdpy,&e); 
-            if(e.type==KeyPress&&e.xkey.keycode==XKeysymToKeycode(xdpy,XK_Q)){
-                puts("q key pressed. Stopping macro script.");
+            if(e.type==KeyPress&&e.xkey.keycode==XKeysymToKeycode(xdpy,XK_Escape)){
+                puts("Escape key pressed. Stopping macro script.");
                 srs_p->program_done=true;
             }
         }
     }
-    XUngrabKey(xdpy,XKeysymToKeycode(xdpy,XK_Q),None,RootWindow(xdpy,scr));
+    XUngrabKey(xdpy,XKeysymToKeycode(xdpy,XK_Escape),None,RootWindow(xdpy,scr));
     XFlush(xdpy);
     pthread_mutex_unlock(&input_mutex);
     pthread_exit(NULL);
@@ -571,8 +571,8 @@ bool run_program(command_array_t* cmd_arr, const char* file_str, Config config, 
     key_down_check_t* kdc=key_down_check_new();
     shared_rs srs=(shared_rs){.xdo_obj=xdo_obj,.program_done=false,.key_check_delay=config.key_check_delay};
     printf("Starting script in %ld microseconds (%f seconds)\n",config.init_delay,(float)config.init_delay/1000000);
+    puts("Press Escape Key to stop the macro.");
     usleep(config.init_delay);
-    puts("Running. Press q to stop the macro.");
     pthread_t keyboard_input_t;
     int ret=pthread_mutex_init(&input_mutex,PTHREAD_MUTEX_TIMED_NP);
     if(ret){

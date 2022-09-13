@@ -4,7 +4,7 @@ Note: Still developing things for this program. TODO: Adding variables to the sc
 # Usage
 Run the program. It is a command line program where you can edit configs, and compile/run scripts.
 Uses X11 Keygrabs as keybinds to go through menus. Press the escape key to toggle disabling keybind functionality.
-It runs keyboard/macro macro scripts that can stop executing the program completely if the q key is pressed, it reaches the end, or it exits via `exit;`
+It runs keyboard/macro macro scripts that can stop executing the program completely if the escape key is pressed, it reaches the end, the program throws a runtime error, or it exits via `exit;`
 .
 # Script Commands and Queries
 Some examples of the script commands are shown in example_scripts.

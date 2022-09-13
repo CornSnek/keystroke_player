@@ -459,7 +459,7 @@ bool macro_buffer_process_next(macro_buffer_t* this,bool print_debug){//Returns 
                     key_processed=true;
                     break;
                 }
-                fprintf(stderr,ERR("TODO: at line %lu char %lu state %s.\n"),line_num,char_num,ReadStateStrings[read_state]);
+                fprintf(stderr,ERR("Unexpected character '%c' at line %lu char %lu state %s.\n"),current_char,line_num,char_num,ReadStateStrings[read_state]);
                 DO_ERROR();
                 break;
             case RS_MouseClickType:
@@ -785,8 +785,8 @@ bool macro_buffer_process_next(macro_buffer_t* this,bool print_debug){//Returns 
                 if(current_char=='('){
                     begin_p=current_char_p;
                     while(*(end_p=++current_char_p)!=')'&&*end_p!='?'&&*end_p){}
-                    if(*end_p!=')'||*(end_p+1)!=';'){
-                        fprintf(stderr,ERR("RPN string doesn't terminate with ');' at line %lu char %lu state %s.\n"),line_num,char_num,ReadStateStrings[read_state]);
+                    if(*end_p!=')'||*(end_p+1)!='?'){
+                        fprintf(stderr,ERR("RPN string doesn't terminate with ')?' at line %lu char %lu state %s.\n"),line_num,char_num,ReadStateStrings[read_state]);
                         DO_ERROR();
                         break;   
                     }
@@ -808,8 +808,8 @@ bool macro_buffer_process_next(macro_buffer_t* this,bool print_debug){//Returns 
             case RS_QueryCoordsWithin:
                 if(isdigit(current_char)){
                     begin_p=current_char_p;
-                    while(*(end_p=++current_char_p)!=((parsed_num_i==3)?'?':',')&&isdigit(*end_p)&&*end_p){}
-                    if(*end_p!=((parsed_num_i==3)?'?':',')){
+                    while(*(end_p=++current_char_p)!=((parsed_num_i!=3)?',':'?')&&isdigit(*end_p)&&*end_p){}
+                    if(*end_p!=((parsed_num_i!=3)?',':'?')){
                         fprintf(stderr,ERR("%s not found or non-number found at line %lu char %lu state %s.\n"),(parsed_num_i==3)?"Question mark":"Comma",line_num,char_num,ReadStateStrings[read_state]);
                         DO_ERROR();
                         break;
@@ -818,9 +818,16 @@ bool macro_buffer_process_next(macro_buffer_t* this,bool print_debug){//Returns 
                     read_i+=end_p-begin_p+1;
                     read_offset_i=-1;
                 }else if(current_char=='('){
-                    fprintf(stderr,ERR("TODO"));
-                    DO_ERROR();
-                    break;
+                    begin_p=current_char_p;
+                    while(*(end_p=++current_char_p)!=')'&&*end_p!=';'&&*end_p){}
+                    if(*end_p!=')'||*(end_p+1)!=((parsed_num_i!=3)?',':'?')){
+                        fprintf(stderr,ERR("RPN string doesn't terminate with ')%c' at line %lu char %lu state %s.\n"),(parsed_num_i!=3)?',':'?',line_num,char_num,ReadStateStrings[read_state]);
+                        DO_ERROR();
+                        break;   
+                    }
+                    rpn_str_arr[parsed_num_i]=char_string_slice(begin_p,end_p);
+                    read_i+=end_p-begin_p+2;
+                    read_offset_i=-1;
                 }else{
                     fprintf(stderr,ERR("Unexpected character '%c' at line %lu char %lu state %s.\n"),current_char,line_num,char_num,ReadStateStrings[read_state]);
                     DO_ERROR();
@@ -832,11 +839,6 @@ bool macro_buffer_process_next(macro_buffer_t* this,bool print_debug){//Returns 
                 }else vlci[parsed_num_i]=VL_new_callback_number_rpn(this->vl,rpn_str_arr[parsed_num_i],print_debug);
                 if(parsed_num_i++!=3) break; //Don't break after 4th number is successfully parsed.
                 printf(ERR("%c\n"),this->contents[this->token_i+read_i+read_offset_i]);
-                if(this->contents[this->token_i+read_i+read_offset_i]!='?'){
-                    fprintf(stderr,ERR("Expecting only 4 numbers that end with '?' at line %lu char %lu state %s.\n"),line_num,char_num,ReadStateStrings[read_state]);
-                    DO_ERROR();
-                    break;
-                }
                 command_array_add(this->cmd_arr,
                     (command_t){.type=CMD_QueryCoordsWithin,.subtype=CMDST_Query,.print_cmd=print_cmd,
                         .cmd_u.coords_within=(coords_within_t){
@@ -961,7 +963,7 @@ bool macro_buffer_process_next(macro_buffer_t* this,bool print_debug){//Returns 
                                 }
                             }
                         );
-                        read_offset_i+=end_p-begin_p+1;
+                        read_offset_i+=end_p-begin_p+2;
                         key_processed=true;
                         break;
                     }
