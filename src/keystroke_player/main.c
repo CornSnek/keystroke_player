@@ -599,6 +599,7 @@ bool run_program(command_array_t* cmd_arr, const char* file_str, Config config, 
     as_number_t an_output[4]={0};
     XColor pc;
     coords_within_t coords_within;
+    pixel_compare_t pixel_compare;
     int x_mouse,y_mouse,x_mouse_store=0,y_mouse_store=0;
     char LastKey[LAST_CMD_BUFFER_LEN+1]={0},LastJump[LAST_CMD_BUFFER_LEN+1]={0},LastRepeat[LAST_CMD_BUFFER_LEN+1]={0},LastQuery[LAST_CMD_BUFFER_LEN+1]={0};
     int LastKey_n=0,LastJump_n=0,LastRepeat_n=0,LastQuery_n=0;
@@ -832,14 +833,23 @@ bool run_program(command_array_t* cmd_arr, const char* file_str, Config config, 
                 PrintLastCommand(LastKey);
                 break;
             case CMD_QueryComparePixel:
-                cmdprintf("Don't skip next command if pixel at mouse matches r,g,b=%d,%d,%d with threshold of %d. ",cmd_u.pixel_compare.r,cmd_u.pixel_compare.g,cmd_u.pixel_compare.b,cmd_u.pixel_compare.thr);
+                pixel_compare=cmd_u.pixel_compare;
+                ExitIfProcessVLFalse(ProcessVLCallback(vl,pixel_compare.r_cb,&an_output[0]));
+                an_output[0]=VLNumberCast(an_output[0],VLNT_Char);
+                ExitIfProcessVLFalse(ProcessVLCallback(vl,pixel_compare.g_cb,&an_output[1]));
+                an_output[1]=VLNumberCast(an_output[1],VLNT_Char);
+                ExitIfProcessVLFalse(ProcessVLCallback(vl,pixel_compare.b_cb,&an_output[2]));
+                an_output[2]=VLNumberCast(an_output[2],VLNT_Char);
+                ExitIfProcessVLFalse(ProcessVLCallback(vl,pixel_compare.thr_cb,&an_output[3]));
+                an_output[3]=VLNumberCast(an_output[3],VLNT_Char);
+                cmdprintf("Don't skip next command if pixel at mouse matches r,g,b=%d,%d,%d with threshold of %d. ",an_output[0].i,an_output[1].i,an_output[2].i,an_output[3].i);
                 pthread_mutex_lock(&input_mutex);
                 xdo_get_mouse_location(xdo_obj,&x_mouse,&y_mouse,0);
                 get_pixel_color(xdo_obj->xdpy,x_mouse,y_mouse,&pc);
                 pthread_mutex_unlock(&input_mutex);
-                query_is_true=(abs((unsigned char)(pc.red>>8)-cmd_u.pixel_compare.r)<=cmd_u.pixel_compare.thr
-                    &&abs((unsigned char)(pc.green>>8)-cmd_u.pixel_compare.g)<=cmd_u.pixel_compare.thr
-                    &&abs((unsigned char)(pc.blue>>8)-cmd_u.pixel_compare.b)<=cmd_u.pixel_compare.thr
+                query_is_true=(abs((pc.red>>8)-an_output[0].c)<=an_output[3].i
+                    &&abs((pc.green>>8)-an_output[1].c)<=an_output[3].i
+                    &&abs((pc.blue>>8)-an_output[2].c)<=an_output[3].i
                 );
                 cmdprintf("Pixel does%s match (r,g,b=%d,%d,%d).\n",query_is_true?"":"n't",pc.red>>8,pc.green>>8,pc.blue>>8);
                 PrintLastCommand(LastQuery);

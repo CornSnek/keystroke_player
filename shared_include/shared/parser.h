@@ -105,7 +105,7 @@ typedef struct jump_from_s{
     int str_index;
 }jump_from_t;
 typedef struct pixel_compare_s{
-    unsigned char r,g,b,thr;
+    vlcallback_info r_cb,g_cb,b_cb,thr_cb;
 }pixel_compare_t;
 typedef enum _CompareCoords{
     CMP_NULL=0,

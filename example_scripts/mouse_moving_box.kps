@@ -1,4 +1,4 @@
-?within=100,100,(1000),(1000)?JT>WithinBox;mma=1085,1077;JF>WithinBox;
+?within=100,100,100,100?JT>WithinBox;mma=1085,1077;JF>WithinBox;
 JF>UpLeft;mmr=-5,-1;.m50;?coords=y<300?JT>DownLeft;
     ?coords=x<435?JT>UpRight;
     JT>UpLeft;
