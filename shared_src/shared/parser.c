@@ -44,6 +44,7 @@ bool macro_buffer_process_next(macro_buffer_t* this,bool print_debug){//Returns 
     bool first_number_parsed=false;
     bool print_cmd=false;
     bool store_index=false;
+    bool invert_query=false;
     CompareCoords cmp_flags=CMP_NULL;
     VLCallbackType vct;
     bool mouse_absolute;
@@ -652,6 +653,12 @@ bool macro_buffer_process_next(macro_buffer_t* this,bool print_debug){//Returns 
                 DO_ERROR();
                 break;
             case RS_Query:
+                if(current_char=='!'){
+                    read_i+=1;
+                    read_offset_i=-1;
+                    invert_query=!invert_query;
+                    break;
+                }
                 if(!strncmp(current_char_p,"pxc=",4)){
                     read_i+=4;
                     read_offset_i=-1;
@@ -719,7 +726,8 @@ bool macro_buffer_process_next(macro_buffer_t* this,bool print_debug){//Returns 
                     (command_t){.type=CMD_QueryComparePixel,.subtype=CMDST_Query,.print_cmd=print_cmd,
                         .cmd_u.pixel_compare=(pixel_compare_t){
                             .r_cb=vlci[0],.g_cb=vlci[1],.b_cb=vlci[2],.thr_cb=vlci[3]
-                        }
+                        },
+                        .invert_query=invert_query
                     }
                 );
                 key_processed=true;
@@ -762,7 +770,8 @@ bool macro_buffer_process_next(macro_buffer_t* this,bool print_debug){//Returns 
                         (command_t){.type=CMD_QueryCompareCoords,.subtype=CMDST_Query,.print_cmd=print_cmd,
                             .cmd_u.compare_coords=(compare_coords_t){
                                 .cmp_flags=cmp_flags,.var_callback=VL_new_callback_int(this->vl,strtol(num_str_arr[0],NULL,10))
-                            }
+                            },
+                            .invert_query=invert_query
                         }
                     );
                     free(num_str_arr[0]);
@@ -783,7 +792,8 @@ bool macro_buffer_process_next(macro_buffer_t* this,bool print_debug){//Returns 
                         (command_t){.type=CMD_QueryCompareCoords,.subtype=CMDST_Query,.print_cmd=print_cmd,
                             .cmd_u.compare_coords=(compare_coords_t){
                                 .cmp_flags=cmp_flags,.var_callback=VL_new_callback_number_rpn(this->vl,rpn_str_arr[0],print_debug)
-                            }
+                            },
+                            .invert_query=invert_query
                         }
                     );
                     read_offset_i+=end_p-begin_p+1;
@@ -830,7 +840,8 @@ bool macro_buffer_process_next(macro_buffer_t* this,bool print_debug){//Returns 
                     (command_t){.type=CMD_QueryCoordsWithin,.subtype=CMDST_Query,.print_cmd=print_cmd,
                         .cmd_u.coords_within=(coords_within_t){
                             .xl_cb=vlci[0],.yl_cb=vlci[1],.xh_cb=vlci[2],.yh_cb=vlci[3]
-                        }
+                        },
+                        .invert_query=invert_query
                     }
                 );
                 key_processed=true;
@@ -1104,9 +1115,19 @@ bool macro_buffer_process_next(macro_buffer_t* this,bool print_debug){//Returns 
     this->token_i+=read_i+read_offset_i;
     char* parse_end_p=this->contents+this->token_i-1;
     if(!this->parse_error){
-        this->cmd_arr->cmds[this->cmd_arr->size-1].start_cmd_p=parse_start_p;
-        this->cmd_arr->cmds[this->cmd_arr->size-1].end_cmd_p=parse_end_p;
+        int cmd_i=this->cmd_arr->size-1;
+        command_t* this_cmd=this->cmd_arr->cmds+cmd_i;
+        this_cmd->start_cmd_p=parse_start_p;
+        this_cmd->end_cmd_p=parse_end_p;
+        if(this_cmd->subtype==CMDST_Query) this_cmd->query_jump_ne=2;
+        else goto not_query;
+        while(--cmd_i>=0){
+            command_t* last_cmd=this->cmd_arr->cmds+cmd_i;
+            if(last_cmd->subtype!=CMDST_Query) break;
+            last_cmd->query_jump_ne++;//Increase relative jump for chained queries if not equal.
+        }
     }
+    not_query:
     return !this->parse_error;
 }
 #undef DO_ERROR
@@ -1390,6 +1411,7 @@ void command_array_print(const command_array_t* this,const VariableLoader_t* vl,
                 break;
             case CMD_QueryComparePixel:
                 printf("QueryComparePixel ");
+                printf("%s",this->cmds[i].invert_query?"(inverted) ":"");
                 vlct=VL_get_callback(vl,cmd.pixel_compare.r_cb);
                 switch(vlct->callback_type){
                     case VLCallback_Char:
@@ -1432,7 +1454,8 @@ void command_array_print(const command_array_t* this,const VariableLoader_t* vl,
                 }
                 break;
             case CMD_QueryCompareCoords:
-                printf("QueryCompareCoords cmp_flags: '%c,%c%s' var"
+                printf("QueryCompareCoords %scmp_flags: '%c,%c%s' var"
+                    ,this->cmds[i].invert_query?"(inverted) ":""
                     ,(cmd.compare_coords.cmp_flags&CMP_Y)==CMP_Y?'y':'x'
                     ,(cmd.compare_coords.cmp_flags&CMP_GT)==CMP_GT?'>':'<'
                     ,(cmd.compare_coords.cmp_flags&CMP_W_EQ)==CMP_W_EQ?",=":""
@@ -1450,6 +1473,7 @@ void command_array_print(const command_array_t* this,const VariableLoader_t* vl,
                 break;
             case CMD_QueryCoordsWithin:
                 printf("QuerryCoordsWithin ");
+                printf("%s",this->cmds[i].invert_query?"(inverted) ":"");
                 vlct=VL_get_callback(vl,cmd.coords_within.xl_cb);
                 switch(vlct->callback_type){
                     case VLCallback_Int:

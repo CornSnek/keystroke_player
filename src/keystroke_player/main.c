@@ -319,18 +319,19 @@ int main(void){
                     }
                 }
                 if(list_var){
-                    printf("Functions used (Updated since 8/31/2022):\n"
-                    "abs,max,min,random_c,as_c,random_i,as_i,random_l,as_l,random_d,as_d\n"
+                    printf("Functions used (Updated since 9/17/2022):\n"
+                    "abs,max(u),min(u),random_c,as_c,random_i,as_i,random_l,as_l,random_d,as_d\n"
                     "exp,exp2,log,log2,log10,pow,sqrt,cbrt,hypot,sin(d),cos(d),tan(d),asin(d),acos(d),atan(d),ceil,floor,round,trunc\n"
                     "+,++,-,-m,--,*,/,/u,%%,%%u,&,|,~,^,<<,<<u,>>,>>u,==,==u,!=,!=u,>,>u,<,<u,>=,>=u,<=,<=u,!,&&,||\n"
                     "Notes: Functions/operators are nearly similar to c. Int/char/long are all signed.\n"
+                    "Unlike in C, ++ and -- doesn't increment/decrement the variable value after usage.\n"
                     "For comparisons with unsigned integers, append u to ==,!-,>,<,>=,<=,/, and %%\n"
                     "(Note: Not implemented for double types). -m is unary minus sign, trigonometric functions can use degrees\n"
-                    "if appended with d (Ex: sind,atand...)\n"
+                    "if appended with d (Ex: sind,atand...). minu and maxu compares unsigned integers.\n"
                     "random_(c/i/l) for random numbers of their respective types.\n"
-                    "random_d just outputs a number from 0 to 1. Function as_(c/i/l/d) is used for type casting.\n"
-                    "Dividing by 0 with /(u) or %%(u) doesn't abort the program, but fails any program/macro/rpn.\n"
-                    "Using a negative signed number for the second operation in >>(u) and <<(u) also fails the program.\n"
+                    "random_d just outputs a double from 0 to 1. Function as_(c/i/l/d) is used for type casting.\n"
+                    "Dividing by 0 with /(u) or %%(u) doesn't abort the program, but terminates the macro.\n"
+                    "Using a negative signed number for the second operation in >>(u) and <<(u) also terminates the macro.\n"
                     "Note that it does not abort the program in c, but mixed signedness is not implemented in this program.\n"
                     "Custom variables currently set: ");
                     for(size_t i=0;i<vl->sman->MaxSize;i++) if(vl->sman->keys[i]) printf("%s, ",vl->sman->keys[i]);
@@ -842,7 +843,7 @@ bool run_program(command_array_t* cmd_arr, const char* file_str, Config config, 
                 an_output[2]=VLNumberCast(an_output[2],VLNT_Char);
                 ExitIfProcessVLFalse(ProcessVLCallback(vl,pixel_compare.thr_cb,&an_output[3]));
                 an_output[3]=VLNumberCast(an_output[3],VLNT_Char);
-                cmdprintf("Don't skip next command if pixel at mouse matches r,g,b=%d,%d,%d with threshold of %d. ",an_output[0].i,an_output[1].i,an_output[2].i,an_output[3].i);
+                cmdprintf("%s next command if pixel at mouse matches r,g,b=%d,%d,%d with threshold of %d. ",this_cmd.invert_query?"Skip":"Don't skip",an_output[0].i,an_output[1].i,an_output[2].i,an_output[3].i);
                 pthread_mutex_lock(&input_mutex);
                 xdo_get_mouse_location(xdo_obj,&x_mouse,&y_mouse,0);
                 get_pixel_color(xdo_obj->xdpy,x_mouse,y_mouse,&pc);
@@ -859,7 +860,7 @@ bool run_program(command_array_t* cmd_arr, const char* file_str, Config config, 
                     ExitIfProcessVLFalse(ProcessVLCallback(vl,cmd_u.compare_coords.var_callback,&an_output[0]));
                     an_output[0]=VLNumberCast(an_output[0],VLNT_Int);
                     const CompareCoords cc=cmd_u.compare_coords.cmp_flags;
-                    cmdprintf("Don't skip next command if mouse coordinate %c%c%s%d. ",(cc&CMP_Y)==CMP_Y?'y':'x',(cc&CMP_GT)==CMP_GT?'>':'<',(cc&CMP_W_EQ)==CMP_W_EQ?"=":"",an_output[0].i);
+                    cmdprintf("%s next command if mouse coordinate %c%c%s%d. ",this_cmd.invert_query?"Skip":"Don't skip",(cc&CMP_Y)==CMP_Y?'y':'x',(cc&CMP_GT)==CMP_GT?'>':'<',(cc&CMP_W_EQ)==CMP_W_EQ?"=":"",an_output[0].i);
                     pthread_mutex_lock(&input_mutex);
                     xdo_get_mouse_location(xdo_obj,&x_mouse,&y_mouse,0);
                     pthread_mutex_unlock(&input_mutex);
@@ -880,7 +881,7 @@ bool run_program(command_array_t* cmd_arr, const char* file_str, Config config, 
                 an_output[2]=VLNumberCast(an_output[2],VLNT_Int);
                 ExitIfProcessVLFalse(ProcessVLCallback(vl,coords_within.yh_cb,&an_output[3]));
                 an_output[3]=VLNumberCast(an_output[3],VLNT_Int);
-                cmdprintf("Don't skip next command if mouse is within Top Left x:%d y:%d Bottom Right x:%d y:%d. ",an_output[0].i,an_output[1].i,an_output[2].i,an_output[3].i);
+                cmdprintf("%s next command if mouse is within Top Left x:%d y:%d Bottom Right x:%d y:%d. ",this_cmd.invert_query?"Skip":"Don't skip",an_output[0].i,an_output[1].i,an_output[2].i,an_output[3].i);
                 pthread_mutex_lock(&input_mutex);
                 xdo_get_mouse_location(xdo_obj,&x_mouse,&y_mouse,0);
                 pthread_mutex_unlock(&input_mutex);
@@ -910,10 +911,10 @@ bool run_program(command_array_t* cmd_arr, const char* file_str, Config config, 
         pthread_mutex_lock(&input_mutex);
         if(this_cmd.subtype!=CMDST_Query) ++cmd_arr_i;
         else{
-            if(query_is_true){
+            if(query_is_true^this_cmd.invert_query){//xor
                 query_is_true=false;
                 cmd_arr_i++;
-            }else cmd_arr_i+=2;//Skip
+            }else cmd_arr_i+=this_cmd.query_jump_ne;//Skip next command. If chained, skip more than 1.
         }
         if(cmd_arr_i==cmd_arr_len){
             srs.program_done=true;//To end the mouse_input_t thread loop as well.

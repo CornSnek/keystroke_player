@@ -1,6 +1,10 @@
 # keystroke_player
-Linux X11 Keyboard/Mouse Macro program script player. This is inspired by click4ever from https://github.com/daniel-araujo/click4ever. I just added keyboard support and scripting support for personal scripting uses.
-Note: Still developing things for this program. TODO: Adding variables to the script.
+Linux X11 Keyboard/Mouse Macro program script player. This is inspired by click4ever from https://github.com/daniel-araujo/click4ever and AutoHotkey https://github.com/Lexikos/AutoHotkey_L.
+
+I added keyboard support and scripting support for personal scripting uses. The whole purpose was to create an autoclicker/keyboard macro for Linux to automate playing games by writing scripts.
+
+Note: Still developing things for this program.
+
 # Usage
 Run the program. It is a command line program where you can edit configs, and compile/run scripts.
 Uses X11 Keygrabs as keybinds to go through menus. Press the escape key to toggle disabling keybind functionality.
@@ -89,9 +93,13 @@ PRINT command = `PRINT>>(Command)`
 
 There are Query Commands that will skip the next command if false, or not skip if true. They are prefixed with a `?` and end with a `?`. These should be used next to a JumpTo command. For example:
 
-`?(query_command)?JT>ThisQueryIsTrue;(Commands here if false); ... JF>ThisQueryIsTrue;(Commands here if true);`
+`?(query_command)?JT>ThisQueryIsTrue;(false command); ... JF>ThisQueryIsTrue;(true command);`
 
-QueryComparePixel command = `?pxc=[0-9]+,[0-9]+,[0-9]+,[0-9]+?`
+If queries are chained together, for example, `?q1??q2?q3?(true);(false);`, all queries will jump to the `(false);` command if either query is false. Otherwise, they will read the next query, or go to the `(true);` command if all queries are true.
+
+All queries can be inverted by prefixing them with a `!` after `?` to skip the next command if true, or not if false (Example: `?!(query)?`. Chained queries with `!` also applies to the above.
+
+QueryComparePixel command = `\?!?pxc=[0-9]+,[0-9]+,[0-9]+,[0-9]+\?`
 
     QueryComparePixel checks if the pixel at it's current mouse position is true. Valid numbers should be from 0 to 255.
     They are formatted by (rc,gc,bc,threshold) (Pixel to compare), where threshold will check any pixel colors close to rm,gm,bm (Pixel by mouse)
@@ -101,7 +109,7 @@ QueryComparePixel command = `?pxc=[0-9]+,[0-9]+,[0-9]+,[0-9]+?`
         the mouse pixel is r,g,b=108,148,128 the query is true since 108, 148, and 128 is within 20.
         If the mouse pixel is r,g,b=255,255,255, the query is false since 255 is not within 20.
 
-QueryCompareCoords command = `?coords=[xy][<>]=?[0-9]?`
+QueryCompareCoords command = `\?!?coords=[xy][<>]=?[0-9]\?`
 
     Compares either the x or y coordinate of the mouse. Supports
     >, >=, <, and <= only.
@@ -109,7 +117,7 @@ QueryCompareCoords command = `?coords=[xy][<>]=?[0-9]?`
         greater than or equal to 100.
         ?coords=y<500? compares if y is less than 500.
 
-QueryCoordsWithin command = `?within=[0-9]+,[0-9]+,[0-9]+,[0-9]+?`
+QueryCoordsWithin command = `\?!?within=[0-9]+,[0-9]+,[0-9]+,[0-9]+\?`
 
     Check if mouse is within the boxed coordinates xl,yl,xh,yh.
     xl,yl are the top left coordinates.
@@ -134,6 +142,9 @@ From example_scripts/run_in_circles.kps:
     (M7;m1=c;d=d;.m100;d=u;)M7=2;
     (M8;m1=c;d+w=d;.m100;d+w=u;)M8=2;
     )A; #Loop forever.
+
+# Variable Loading and Manipulation
+TODO
 
 # Text Substitution Macros and Macro Expansion
 You can add text-substitution macros in the scripts. They are basically used to copy and paste code like in C. To make macros, they must be within these brackets `[!! !!]` at the start of the file. Each macro definition must be within `[! !]` and have a definition separator `:=`. It is of the format `[!MACRO_NAME:Var1:Var2:Var3:...:= (Macro Definition) !]`. Note that the macro definition can have whitespace, but it will be trimmed within the macro definition. To get the variable names for the macro definition so the macro call can substitute them, use `:(variable_name)` To call a macro in the code, just call it with the macro name and its arguments (if any). Example: The macro call `[!MACRO_CALL:abc:def:ghi!]`, where `[!MACRO_CALL:v1:v2:v3:= :v1+:v2*:v3 !]` is the definition of the macro becomes `abc+def*ghi`.

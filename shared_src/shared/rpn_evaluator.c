@@ -439,7 +439,7 @@ RPNValidStringE _RPNEvaluatorIsVarNameOk(const char* token,const VariableLoader_
     }
     return token_is_var?RPNVS_IsVLName:RPNVS_IsFunction;
 }
-//Bool if out of numbers. TODO: Process possible functions.
+//Bool if out of numbers.
 bool _ProcessRPNFunctionCall(Stack_as_number_t* stack_an,const rpn_func_call_t* rpn_f_c,bool process_num){
     StackOpt_as_number_t* args=malloc(sizeof(StackOpt_as_number_t)*rpn_f_c->num_args);
     as_number_t result;

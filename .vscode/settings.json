@@ -91,7 +91,8 @@
         "float.h": "c",
         "rpn_evaluator.h": "c",
         "stack_generic.h": "c",
-        "frequency.h": "c"
+        "frequency.h": "c",
+        "stdint.h": "c"
     },
     //"editor.autoClosingBrackets": "never",
     //"editor.autoClosingDelete": "never",
