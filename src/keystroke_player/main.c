@@ -889,6 +889,14 @@ bool run_program(command_array_t* cmd_arr, const char* file_str, Config config, 
                 cmdprintf("It is %s within the box.\n",query_is_true?"":"not");
                 PrintLastCommand(LastQuery);
                 break;
+            case CMD_QueryRPNEval:
+                ExitIfProcessVLFalse(ProcessVLCallback(vl,cmd_u.rpn_eval,&an_output[0]));
+                an_output[0]=VLNumberCast(an_output[0],VLNT_Int);
+                cmdprintf("%s next command if RPN string '%s' is non-zero. ",this_cmd.invert_query?"Skip":"Don't skip",VL_get_callback(vl,cmd_u.rpn_eval)->args.an_rpn.rpn_str);
+                query_is_true=an_output[0].i;
+                cmdprintf("It is %szero.\n",query_is_true?"non-":"");
+                PrintLastCommand(LastQuery);
+                break;
             case CMD_InitVar:
                 cmdprintf("Initialized variable string name '%s' of type %s of value '",cmd_u.init_var.variable,VLNumberTypeStr(cmd_u.init_var.as_number.type));
                 if((config.debug_print_type==DBP_AllCommands||this_cmd.print_cmd)){

@@ -36,7 +36,7 @@ bool macro_buffer_process_next(macro_buffer_t* this,bool print_debug){//Returns 
     vlcallback_info vlci[4];
     const char* begin_p,* end_p;
     long delay_mult=0;
-    long parsed_num[4]={0};
+    long parsed_num=0;
     int parsed_num_i=0;
     bool added_keystate=false;
     int read_i=0; //Index to read.
@@ -468,7 +468,7 @@ bool macro_buffer_process_next(macro_buffer_t* this,bool print_debug){//Returns 
                     num_str_arr[0]=calloc(sizeof(char),2);
                     EXIT_IF_NULL(num_str_arr[0],char*);
                     num_str_arr[0][0]=current_char;
-                    parsed_num[0]=strtol(num_str_arr[0],NULL,10);
+                    parsed_num=strtol(num_str_arr[0],NULL,10);
                     free(num_str_arr[0]);
                     first_number_parsed=true;
                     break;
@@ -496,7 +496,7 @@ bool macro_buffer_process_next(macro_buffer_t* this,bool print_debug){//Returns 
                     command_array_add(this->cmd_arr,
                         (command_t){.type=CMD_MouseClick,.subtype=CMDST_Command,.print_cmd=print_cmd,
                             .cmd_u.mouse_click=(mouse_click_t){.mouse_state=input_state,
-                                .mouse_type=parsed_num[0]
+                                .mouse_type=parsed_num
                             }
                         }
                     );
@@ -686,6 +686,12 @@ bool macro_buffer_process_next(macro_buffer_t* this,bool print_debug){//Returns 
                     read_state=RS_QueryCoordsWithin;
                     break;
                 }
+                if(!strncmp(current_char_p,"eval=",5)){
+                    read_i+=5;
+                    read_offset_i=-1;
+                    read_state=RS_QueryRPNEval;
+                    break;
+                }
                 fprintf(stderr,ERR("Unexpected character '%c' at line %lu char %lu state %s.\n"),current_char,line_num,char_num,ReadStateStrings[read_state]);
                 DO_ERROR();
                 break;
@@ -845,6 +851,28 @@ bool macro_buffer_process_next(macro_buffer_t* this,bool print_debug){//Returns 
                     }
                 );
                 key_processed=true;
+                break;
+            case RS_QueryRPNEval:
+                if(current_char=='('){
+                    begin_p=current_char_p;
+                    while(*(end_p=++current_char_p)!=')'&&*end_p!='?'&&*end_p){}
+                    if(*end_p!=')'||*(end_p+1)!='?'){
+                        fprintf(stderr,ERR("RPN string doesn't terminate with ')?' at line %lu char %lu state %s.\n"),line_num,char_num,ReadStateStrings[read_state]);
+                        DO_ERROR();
+                        break;   
+                    }
+                    rpn_str_arr[0]=char_string_slice(begin_p,end_p);
+                    command_array_add(this->cmd_arr,
+                        (command_t){.type=CMD_QueryRPNEval,.subtype=CMDST_Query,.print_cmd=print_cmd,
+                            .cmd_u.rpn_eval=VL_new_callback_number_rpn(this->vl,rpn_str_arr[0],print_debug)
+                        }
+                    );
+                    read_offset_i+=end_p-begin_p+1;
+                    key_processed=true;
+                    break;
+                }
+                fprintf(stderr,ERR("Unexpected character '%c' at line %lu char %lu state %s.\n"),current_char,line_num,char_num,ReadStateStrings[read_state]);
+                DO_ERROR();
                 break;
             case RS_InitVarType:
                 switch(current_char){
@@ -1114,7 +1142,7 @@ bool macro_buffer_process_next(macro_buffer_t* this,bool print_debug){//Returns 
     }while(!key_processed);
     this->token_i+=read_i+read_offset_i;
     char* parse_end_p=this->contents+this->token_i-1;
-    if(!this->parse_error){
+    if(!this->parse_error){//TODO: Add parse_error bool if InitVar commands weren't at the start of the macro.
         int cmd_i=this->cmd_arr->size-1;
         command_t* this_cmd=this->cmd_arr->cmds+cmd_i;
         this_cmd->start_cmd_p=parse_start_p;
@@ -1514,6 +1542,9 @@ void command_array_print(const command_array_t* this,const VariableLoader_t* vl,
                         break;
                     default: exit(EXIT_FAILURE); break; //Shouldn't be here.
                 }
+                break;
+            case CMD_QueryRPNEval:
+                printf("QueryRPNEval String: '%s'\n",VL_get_callback(vl,cmd.rpn_eval)->args.an_rpn.rpn_str);
                 break;
             case CMD_InitVar:
                 printf("InitVar Name: '%s' Type: '%s' Value: '",cmd.init_var.variable,VLNumberTypeStr(cmd.init_var.as_number.type));

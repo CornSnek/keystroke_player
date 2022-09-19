@@ -123,6 +123,10 @@ QueryCoordsWithin command = `\?!?within=[0-9]+,[0-9]+,[0-9]+,[0-9]+\?`
     xl,yl are the top left coordinates.
     xh,yh are the bottom right coordinates.
 
+QueryRPNEval command = `\?eval=\(RPN\)\?`
+
+    For more information, see header Commands with Variable Loading and Manipulation
+
 Comments/Tabs/Spaces/Newlines can be added after a semi-colon has been added to a command.
 
 Here is an example script from example_scripts/autoclicker.kps:
@@ -143,8 +147,94 @@ From example_scripts/run_in_circles.kps:
     (M8;m1=c;d+w=d;.m100;d+w=u;)M8=2;
     )A; #Loop forever.
 
-# Variable Loading and Manipulation
-TODO
+# Variable Loading, Manipulation, and RPN
+
+Variables can be added to this program as a char, int, long int, or double. The program uses RPN notation (https://en.wikipedia.org/wiki/Reverse_Polish_notation) when writing expressions to load or save variables, or to add RPN notation to vary values for certain commands. RPN strings for this program start with `(` and end with `)`. All tokens are delimited with `,`. For example: `(1,1,+)` is a valid RPN string that, when evaluated, outputs `2`.
+
+Variables can be added to this program as a char, int, long int, or double. Note: All variables are in the global scope only and should be initialized before using (With the InitVar command). The following functions can be used that has near similar functions to the c operations and the math.h library. Note: These names are reserved and cannot be used to name functions with the same name. The program also prefixes __c, __i, __l, and __d for the functions below, and they are also reserved names for char/int/long/double functions respectively. Example: You cannot name a variable `abs`, as well as `__cabs`, `__iabs`, `__labs`, and `__dabs`.
+
+`abs`, `max/maxu`, `min/minu`, `random_c`, `as_c`, `random_i`, `as_i`, `random_l`, `as_l`, `random_d`, `as_d`, `exp`, `exp2`, `log`, `log2`, `log10`, `pow`, `sqrt`, `cbrt`, `hypot`, `sin/sind`, `cos/cosd`, `tan/tand`, `asin/asind`, `acos/acosd`, `atan/atand`, `ceil`, `floor`, `round`, `trunc`, `+`, `++`, `-`, `-m`, `--`, `*`, `/`, `/u`, `%`, `%u`, `&`, `|`, `~`, `^`, `<<`, `<<u`, `>>`, `>>u`, `==`, `==u`, `!=`, `!=u`, `>`, `>u`, `<`, `<u`, `>=`, `>=u`, `<=`, `<=u`, `!`, `&&`, `||`
+
+Some differences when using these functions, compared to C, are listed below.
+
+- int/char/long number types are all signed. You can append u for certain functions (`/u`, `%u`, `>=u`, etc.) to compare/operate numbers by its unsigned value. You cannot mix signedness, and you cannot use these functions with double types.
+- Unlike in C, `++` and `--` doesn't increment/decrement any variable values after usage.
+- For comparisons with unsigned integers (and not doubles), append u to `==`, `!-`, `>`, `<`, `>=`, `<=`, `/`, and `%`.
+- `-m` is unary minus sign.
+- Trigonometric functions can use degrees if appended with d (Ex: `sind`, `atand`...).
+- `minu` and `maxu` compares min and max for unsigned integers.
+- `random_(c/i/l)` outputs random numbers of their respective types anywhere from their minimum to maximum value.
+`random_d` just outputs a double from 0 to 1.
+- Functions `as_(c/i/l/d)` is used for type casting.
+- Dividing by 0 with `/ /u` or `% %u` doesn't abort the program, but terminates the macro.
+- Using a negative signed number for the second operation in `>> >>u` and `<< <<u` also terminates the macro.
+Note that it does not abort the program in C, but mixed signedness is not implemented in this program.
+
+# Commands with Variables 
+
+Here are commands that uses RPN notation to load/save/manipulate variables.
+
+InitVar command = `init,[cildr],[A-Za-z0-9_]=[cild]?(RPN);`
+Note: This should be used before using any other commands, or the program will throw an error.
+
+    Initializes a variable of type (c)har (i)nt (l)ong or (d)ouble.
+    (r)pn is used to express the value in RPN notation.
+    The rpn value is evaluated at compile time.
+    Third parameter is the name of the variable.
+    The value after = requires the type [cild] before the
+    RPN expression if the r character is used.
+
+    Valid command examples:
+    init,i,ten_int=10;
+    init,d,one_point_two=1.2;
+    init,r,added_vars=i(ten_int,one_point_two,+);
+    The third variable added_vars adds the two variables together and casts
+    it to an integer.
+
+EditVar command = `edit,[A-Za-z0-9_]=(RPN);`
+
+    Edits a variable to a new value. The new value is automatically
+    casted to its original type based on the InitVar command.
+
+    Valid command examples:
+    init,i,var1=1;
+    edit,var1=(var1,++); #Adds 1 to var1. Store as int.
+    edit,var1=(var1,random_d,10,*,+);
+    #For a random double from 0 to 10, add it to var1.
+    #Note: Even though it returns a double, the InitVar command of var1
+    #with the i flag will always cast it to an int. 
+
+QueryRPNEval command = `\?eval=\(RPN\)\?`
+
+    Checks the RPN string that will go to the next command
+    if the expression is non-zero. This is similar to
+    an if statement in C. Ex: if(condition){}, run
+    the statements inside the curly brackets if the
+    condition is non-zero.
+    Example of valid commands:
+    ?eval=(zero_var,0,==)?(true);(false);
+    ?eval=(zero_var,!)?(true);(false); #Similar to above.
+
+The following commands mentioned in header Script Commands and Queries also supports RPN strings and variables for dynamic values:
+
+Delay, RepeatEnd, MoveMouse (Absolute and Relative), QueryComparePixel, QueryCompareCoords, and QueryCoordsWithin.
+
+    Examples:
+    init,i,delay_v=0;
+    init,i,wait_c=40;
+    (A;
+    edit,delay_v=(delay_v,++);
+    edit,wait_c=(wait_c,--);
+    mmr=(delay_v),(wait_c); #Move mouse dynamically.
+    .m(delay_v,50,*); #Wait 50 milliseconds more each loop.
+    )A=(wait_c); #Decrease counter. Would stop at 20.
+
+    #Note the parenthesis for these commands,
+    #as they are RPN strings. You can mix values and
+    #rpn strings at the same time for these commands.
+    #Example below:
+    mmr=10,(move_y);
+    #Move right by 10 pixels and up/down depending on move_y.
 
 # Text Substitution Macros and Macro Expansion
 You can add text-substitution macros in the scripts. They are basically used to copy and paste code like in C. To make macros, they must be within these brackets `[!! !!]` at the start of the file. Each macro definition must be within `[! !]` and have a definition separator `:=`. It is of the format `[!MACRO_NAME:Var1:Var2:Var3:...:= (Macro Definition) !]`. Note that the macro definition can have whitespace, but it will be trimmed within the macro definition. To get the variable names for the macro definition so the macro call can substitute them, use `:(variable_name)` To call a macro in the code, just call it with the macro name and its arguments (if any). Example: The macro call `[!MACRO_CALL:abc:def:ghi!]`, where `[!MACRO_CALL:v1:v2:v3:= :v1+:v2*:v3 !]` is the definition of the macro becomes `abc+def*ghi`.
