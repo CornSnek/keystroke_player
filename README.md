@@ -123,7 +123,7 @@ QueryCoordsWithin command = `\?!?within=[0-9]+,[0-9]+,[0-9]+,[0-9]+\?`
     xl,yl are the top left coordinates.
     xh,yh are the bottom right coordinates.
 
-QueryRPNEval command = `\?eval=\(RPN\)\?`
+QueryRPNEval command = `\?!?eval=\(RPN\)\?`
 
     For more information, see header Commands with Variable Loading and Manipulation
 
@@ -204,7 +204,7 @@ EditVar command = `edit,[A-Za-z0-9_]=(RPN);`
     #Note: Even though it returns a double, the InitVar command of var1
     #with the i flag will always cast it to an int. 
 
-QueryRPNEval command = `\?eval=\(RPN\)\?`
+QueryRPNEval command = `\?!?eval=\(RPN\)\?`
 
     Checks the RPN string that will go to the next command
     if the expression is non-zero. This is similar to
