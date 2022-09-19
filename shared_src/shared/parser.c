@@ -1142,20 +1142,28 @@ bool macro_buffer_process_next(macro_buffer_t* this,bool print_debug){//Returns 
     }while(!key_processed);
     this->token_i+=read_i+read_offset_i;
     char* parse_end_p=this->contents+this->token_i-1;
-    if(!this->parse_error){//TODO: Add parse_error bool if InitVar commands weren't at the start of the macro.
+    if(!this->parse_error){
         int cmd_i=this->cmd_arr->size-1;
         command_t* this_cmd=this->cmd_arr->cmds+cmd_i;
+        if(this_cmd->type==CMD_InitVar){
+            int last_cmd_i=this->cmd_arr->size-2;
+            if(last_cmd_i>=0&&(this->cmd_arr->cmds[last_cmd_i].type!=CMD_InitVar)){\
+                fprintf(stderr,ERR("Unable to build! InitVar commands should be used only used at the start of the macro.\n"));
+                this->parse_error=true;
+                goto skip_check;
+            }
+        }
         this_cmd->start_cmd_p=parse_start_p;
         this_cmd->end_cmd_p=parse_end_p;
         if(this_cmd->subtype==CMDST_Query) this_cmd->query_jump_ne=2;
-        else goto not_query;
+        else goto skip_check;
         while(--cmd_i>=0){
             command_t* last_cmd=this->cmd_arr->cmds+cmd_i;
             if(last_cmd->subtype!=CMDST_Query) break;
             last_cmd->query_jump_ne++;//Increase relative jump for chained queries if not equal.
         }
     }
-    not_query:
+    skip_check:
     return !this->parse_error;
 }
 #undef DO_ERROR
