@@ -947,7 +947,7 @@ bool macro_buffer_process_next(macro_buffer_t* this,bool print_debug){//Returns 
                             case VLCallback_Int: an=VLNumberCast(an,VLNT_Int); break;
                             case VLCallback_Long: an=VLNumberCast(an,VLNT_Long); break;
                             case VLCallback_Double: an=VLNumberCast(an,VLNT_Double); break;
-                            default: exit(EXIT_FAILURE); break; //Shouldn't be here.
+                            default: SHOULD_BE_UNREACHABLE(); break;
                         }
                         switch(an.type){
                             case VLNT_Char:
@@ -982,7 +982,7 @@ bool macro_buffer_process_next(macro_buffer_t* this,bool print_debug){//Returns 
                                     break;
                                 }
                                 goto init_var_value_rpn_success;
-                            default: exit(EXIT_FAILURE); break; //Shouldn't be here.
+                            default: SHOULD_BE_UNREACHABLE(); break;
                         }
                         init_var_value_rpn_success:
                         command_array_add(this->cmd_arr,
@@ -1081,7 +1081,7 @@ bool macro_buffer_process_next(macro_buffer_t* this,bool print_debug){//Returns 
                                 }
                             );
                             break;
-                        default: exit(EXIT_FAILURE); break; //Shouldn't be here.
+                        default: SHOULD_BE_UNREACHABLE(); break;
                     }
                     free(num_str_arr[0]);
                     key_processed=true;
@@ -1253,8 +1253,7 @@ void repeat_id_manager_add_name(repeat_id_manager_t* this, char* str_owned, int 
         this->index[this->size-1]=index;
         return;
     }
-    fprintf(stderr,ERR("Repeat name '%s' has been used more than once. Program shouldn't execute here.\n"),str_owned);
-    exit(EXIT_FAILURE);
+    SHOULD_BE_UNREACHABLE();
 }
 int repeat_id_manager_search_command_index(const repeat_id_manager_t* this,const char* search_str){
     for(int i=0;i<this->size;i++){
@@ -1304,8 +1303,7 @@ void jump_id_manager_add_name(jump_id_manager_t* this, char* str_owned, int inde
         this->jump_from_added[this->size-1]=is_jump_from;
         return;
     }
-    fprintf(stderr,ERR("Jump name '%s' has been used more than once. Program shouldn't execute here.\n"),str_owned);
-    exit(EXIT_FAILURE);
+    SHOULD_BE_UNREACHABLE();
 }
 int jump_id_manager_search_command_index(const jump_id_manager_t* this,const char* search_str){
     for(int i=0;i<this->size;i++){
@@ -1375,7 +1373,7 @@ void command_array_print(const command_array_t* this,const VariableLoader_t* vl,
                     case VLCallback_NumberRPN:
                         printf("using RPN '%s' ",vlct->args.an_rpn.rpn_str);
                         break;
-                    default: exit(EXIT_FAILURE); break; //Shouldn't be here.
+                    default: SHOULD_BE_UNREACHABLE(); break;
                 }
                 printf("with multiplier of %ld\n",cmd.delay.delay_mult);
                 break;
@@ -1392,7 +1390,7 @@ void command_array_print(const command_array_t* this,const VariableLoader_t* vl,
                     case VLCallback_NumberRPN:
                         printf("MaxCounter(RPN): '%s'\n",vlct->args.an_rpn.rpn_str);
                         break;
-                    default: exit(EXIT_FAILURE); break; //Shouldn't be here.
+                    default: SHOULD_BE_UNREACHABLE(); break;
                 }
                 break;
             case CMD_RepeatResetCounters:
@@ -1411,7 +1409,7 @@ void command_array_print(const command_array_t* this,const VariableLoader_t* vl,
                     case VLCallback_NumberRPN:
                         printf("x(RPN): '%s' ",vlct->args.an_rpn.rpn_str);
                         break;
-                    default: exit(EXIT_FAILURE); break; //Shouldn't be here.
+                    default: SHOULD_BE_UNREACHABLE(); break;
                 }
                 vlct=VL_get_callback(vl,cmd.mouse_move.y_cb);
                 switch(vlct->callback_type){
@@ -1421,7 +1419,7 @@ void command_array_print(const command_array_t* this,const VariableLoader_t* vl,
                     case VLCallback_NumberRPN:
                         printf("y(RPN): '%s'\n",vlct->args.an_rpn.rpn_str);
                         break;
-                    default: exit(EXIT_FAILURE); break; //Shouldn't be here.
+                    default: SHOULD_BE_UNREACHABLE(); break;
                 }
                 break;
             case CMD_Exit:
@@ -1456,7 +1454,7 @@ void command_array_print(const command_array_t* this,const VariableLoader_t* vl,
                     case VLCallback_NumberRPN:
                         printf("r(RPN): '%s' ",vlct->args.an_rpn.rpn_str);
                         break;
-                    default: exit(EXIT_FAILURE); break; //Shouldn't be here.
+                    default: SHOULD_BE_UNREACHABLE(); break;
                 }
                 vlct=VL_get_callback(vl,cmd.pixel_compare.g_cb);
                 switch(vlct->callback_type){
@@ -1466,7 +1464,7 @@ void command_array_print(const command_array_t* this,const VariableLoader_t* vl,
                     case VLCallback_NumberRPN:
                         printf("g(RPN): '%s' ",vlct->args.an_rpn.rpn_str);
                         break;
-                    default: exit(EXIT_FAILURE); break; //Shouldn't be here.
+                    default: SHOULD_BE_UNREACHABLE(); break;
                 }
                 vlct=VL_get_callback(vl,cmd.pixel_compare.b_cb);
                 switch(vlct->callback_type){
@@ -1476,7 +1474,7 @@ void command_array_print(const command_array_t* this,const VariableLoader_t* vl,
                     case VLCallback_NumberRPN:
                         printf("b(RPN): '%s' ",vlct->args.an_rpn.rpn_str);
                         break;
-                    default: exit(EXIT_FAILURE); break; //Shouldn't be here.
+                    default: SHOULD_BE_UNREACHABLE(); break;
                 }
                 vlct=VL_get_callback(vl,cmd.pixel_compare.thr_cb);
                 switch(vlct->callback_type){
@@ -1486,7 +1484,7 @@ void command_array_print(const command_array_t* this,const VariableLoader_t* vl,
                     case VLCallback_NumberRPN:
                         printf("threshold(RPN): '%s'\n",vlct->args.an_rpn.rpn_str);
                         break;
-                    default: exit(EXIT_FAILURE); break; //Shouldn't be here.
+                    default: SHOULD_BE_UNREACHABLE(); break;
                 }
                 break;
             case CMD_QueryCompareCoords:
@@ -1504,7 +1502,7 @@ void command_array_print(const command_array_t* this,const VariableLoader_t* vl,
                     case VLCallback_NumberRPN:
                         printf("(RPN): '%s'\n",vlct->args.an_rpn.rpn_str);
                         break;
-                    default: exit(EXIT_FAILURE); break; //Shouldn't be here.
+                    default: SHOULD_BE_UNREACHABLE(); break;
                 }
                 break;
             case CMD_QueryCoordsWithin:
@@ -1518,7 +1516,7 @@ void command_array_print(const command_array_t* this,const VariableLoader_t* vl,
                     case VLCallback_NumberRPN:
                         printf("xl(RPN): '%s' ",vlct->args.an_rpn.rpn_str);
                         break;
-                    default: exit(EXIT_FAILURE); break; //Shouldn't be here.
+                    default: SHOULD_BE_UNREACHABLE(); break;
                 }
                 vlct=VL_get_callback(vl,cmd.coords_within.yl_cb);
                 switch(vlct->callback_type){
@@ -1528,7 +1526,7 @@ void command_array_print(const command_array_t* this,const VariableLoader_t* vl,
                     case VLCallback_NumberRPN:
                         printf("yl(RPN): '%s' ",vlct->args.an_rpn.rpn_str);
                         break;
-                    default: exit(EXIT_FAILURE); break; //Shouldn't be here.
+                    default: SHOULD_BE_UNREACHABLE(); break;
                 }
                 vlct=VL_get_callback(vl,cmd.coords_within.xh_cb);
                 switch(vlct->callback_type){
@@ -1538,7 +1536,7 @@ void command_array_print(const command_array_t* this,const VariableLoader_t* vl,
                     case VLCallback_NumberRPN:
                         printf("xh(RPN): '%s' ",vlct->args.an_rpn.rpn_str);
                         break;
-                    default: exit(EXIT_FAILURE); break; //Shouldn't be here.
+                    default: SHOULD_BE_UNREACHABLE(); break;
                 }
                 vlct=VL_get_callback(vl,cmd.coords_within.yh_cb);
                 switch(vlct->callback_type){
@@ -1548,7 +1546,7 @@ void command_array_print(const command_array_t* this,const VariableLoader_t* vl,
                     case VLCallback_NumberRPN:
                         printf("yh(RPN): '%s'\n",vlct->args.an_rpn.rpn_str);
                         break;
-                    default: exit(EXIT_FAILURE); break; //Shouldn't be here.
+                    default: SHOULD_BE_UNREACHABLE(); break;
                 }
                 break;
             case CMD_QueryRPNEval:

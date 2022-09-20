@@ -4,12 +4,14 @@
 #include <stdio.h>
 #ifndef NDEBUG
 #define EXIT_IF_NULL(token_name,type)\
-if(!token_name){\
-    fprintf(stderr,ERR("Unable to get pointer of type '" #type "' for token '" #token_name "' at line %d for file %s. Exiting program.\n"),__LINE__,__FILE__);\
-    exit(EXIT_FAILURE);\
-}((void)0)
+    if(!token_name){\
+        fprintf(stderr,ERR("Unable to get pointer of type '" #type "' for token '" #token_name "' at line %d for file %s. Exiting program.\n"),__LINE__,__FILE__);\
+        exit(EXIT_FAILURE);\
+    }((void)0)
+#define SHOULD_BE_UNREACHABLE() fprintf(stderr,ERR("This should be unreachable code at line %d for file %s. Exiting program.\n"),__LINE__,__FILE__); exit(EXIT_FAILURE)
 #else
 #define EXIT_IF_NULL(token_name,type) ((void)0)
+#define SHOULD_BE_UNREACHABLE() ((void)0)
 #endif
 #define ERR(string) "\x1b[1;33m" string "\x1b[0m"
 #define CLEAR_TERM "\x1B[H\x1B[0J"

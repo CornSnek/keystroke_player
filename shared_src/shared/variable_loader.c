@@ -59,7 +59,7 @@ as_number_t VLNumberCast(as_number_t num,VLNumberType type){
         case VLNT_Long: return (as_number_t){.l=(long)GET_NUM,.type=type};
         case VLNT_Int: return (as_number_t){.i=(int)GET_NUM,.type=type};
         case VLNT_Char: return (as_number_t){.c=(char)GET_NUM,.type=type};
-        default: exit(EXIT_FAILURE); return (as_number_t){0};//Shouldn't reach here.
+        default: SHOULD_BE_UNREACHABLE(); return (as_number_t){0};
     }
     #undef GET_NUM
 }
@@ -76,7 +76,7 @@ bool ProcessVLCallback(VariableLoader_t* vl,vlcallback_info vlc_info,as_number_t
         case VLCallback_RewriteVariableRPN: return callback->func.as_rewrite_variable_rpn(vl,callback->args.rpn.rpn_str,callback->args.rpn.variable,callback->args.rpn.see_stack);
         case VLCallback_NumberRPN: return callback->func.as_number_rpn(vl,number_io,callback->args.an_rpn.rpn_str,callback->args.an_rpn.see_stack);
     }
-    fprintf(stderr,ERR("Bad callback type. Code shouldn't reach here.\n")); exit(EXIT_FAILURE); return false;
+    SHOULD_BE_UNREACHABLE(); return false;
 }
 VariableLoader_t* VL_new(size_t size){
     VariableLoader_t* this=malloc(sizeof(VariableLoader_t));

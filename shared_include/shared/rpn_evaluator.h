@@ -120,10 +120,11 @@ void RPNEvaluatorInit();
 typedef enum _RPNValidStringE{
     RPNVS_Ok,
     RPNVS_ImproperBrackets,
-    RPNVS_NameCollision,
+    RPNVS_NameFunctionCollision,
     RPNVS_NameUndefined,
     RPNVS_IsFunction,
     RPNVS_IsVLName,
+    RPNVS_IsRPNVar,
     RPNVS_NotEnoughNumbers,
     RPNVS_TooManyNumbers,
     RPNVS_DivisionByZero,

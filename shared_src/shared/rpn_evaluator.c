@@ -5,6 +5,7 @@ ssize_t getrandom(void *buf, size_t buflen, unsigned int flags);
 StringMap_ImplDef(rpn_func_call_t,rpn_func_call)
 Stack_ImplDef(as_number_t,as_number)
 StringMap_rpn_func_call_t* DefaultRPNFunctionMap=0;
+StringMap_as_number_t* DefaultRPNVariablesMap=0;
 bool _DividedByZero=false;
 bool _BitShiftNegative=false;
 #define BinOps(Type,Type_suf,f_name,o) Type RPN_##Type_suf##_##f_name(Type a,Type b){return a o b;}
@@ -117,183 +118,187 @@ void rpn_f_null(void){}
 //To make the default StringMap before calling rpn_evaluator_new.
 void RPNEvaluatorInit(void){
     if(!DefaultRPNFunctionMap){
+        DefaultRPNVariablesMap=StringMap_as_number_new(10);
+#define SMVA(Str,NumberType,NumberMem) assert(StringMap_as_number_assign(DefaultRPNVariablesMap,Str,(as_number_t){.NumberMem=0,.type=NumberType})==VA_Written)
+        SMVA("@mouse_x",VLNT_Int,i);
+        SMVA("@mouse_y",VLNT_Int,i);
         DefaultRPNFunctionMap=StringMap_rpn_func_call_new(228);
         //Current size: 167
         //228 is [[0]=87,[1]=62,[2]=13,[3]=2,[4]=2,[5]=1] with djb hash
         //210 is [[0]=68,[1]=59,[2]=26,[3]=8,[4]=5,[5]=1]
-#define SMA(Str,RFT,RFT_u,F,NumArgs,ReturnType) assert(StringMap_rpn_func_call_assign(DefaultRPNFunctionMap,Str,(rpn_func_call_t){.type=RFT,.func.RFT_u=F,.num_args=NumArgs,.return_type=ReturnType})==VA_Written)
-        SMA("abs",RPNFT_Null,rpn_null,rpn_f_null,0,VLNT_Invalid);//To check for "Existence" for any name collisions for char/int/long/double. Will not be calculated.
-        SMA("max",RPNFT_Null,rpn_null,rpn_f_null,0,VLNT_Invalid);
-        SMA("min",RPNFT_Null,rpn_null,rpn_f_null,0,VLNT_Invalid);
-        SMA("maxu",RPNFT_Null,rpn_null,rpn_f_null,0,VLNT_Invalid);
-        SMA("minu",RPNFT_Null,rpn_null,rpn_f_null,0,VLNT_Invalid);
+#define SMFA(Str,RFT,RFT_u,F,NumArgs,ReturnType) assert(StringMap_rpn_func_call_assign(DefaultRPNFunctionMap,Str,(rpn_func_call_t){.type=RFT,.func.RFT_u=F,.num_args=NumArgs,.return_type=ReturnType})==VA_Written)
+        SMFA("abs",RPNFT_Null,rpn_null,rpn_f_null,0,VLNT_Invalid);//To check for "Existence" for any name collisions for char/int/long/double. Will not be calculated.
+        SMFA("max",RPNFT_Null,rpn_null,rpn_f_null,0,VLNT_Invalid);
+        SMFA("min",RPNFT_Null,rpn_null,rpn_f_null,0,VLNT_Invalid);
+        SMFA("maxu",RPNFT_Null,rpn_null,rpn_f_null,0,VLNT_Invalid);
+        SMFA("minu",RPNFT_Null,rpn_null,rpn_f_null,0,VLNT_Invalid);
 
-        SMA("__c+",RPNFT_Char_F_2Char,rpn_char_f_2char,RPN_c_add,2,VLNT_Char);
-        SMA("__c++",RPNFT_Char_F_1Char,rpn_char_f_1char,RPN_c_inc,1,VLNT_Char);
-        SMA("__c-",RPNFT_Char_F_2Char,rpn_char_f_2char,RPN_c_sub,2,VLNT_Char);
-        SMA("__c-m",RPNFT_Char_F_1Char,rpn_char_f_1char,RPN_c_neg,1,VLNT_Char);
-        SMA("__c--",RPNFT_Char_F_1Char,rpn_char_f_1char,RPN_c_dec,1,VLNT_Char);
-        SMA("__c*",RPNFT_Char_F_2Char,rpn_char_f_2char,RPN_c_mul,2,VLNT_Char);
-        SMA("__c/",RPNFT_Char_F_2Char,rpn_char_f_2char,RPN_c_div,2,VLNT_Char);
-        SMA("__c/u",RPNFT_Char_F_2UChar,rpn_char_f_2uchar,RPN_uc_div,2,VLNT_Char);
-        SMA("__c%",RPNFT_Char_F_2Char,rpn_char_f_2char,RPN_c_mod,2,VLNT_Char);
-        SMA("__c%u",RPNFT_Char_F_2UChar,rpn_char_f_2uchar,RPN_uc_mod,2,VLNT_Char);
-        SMA("__c&",RPNFT_Char_F_2Char,rpn_char_f_2char,RPN_c_b_and,2,VLNT_Char);
-        SMA("__c|",RPNFT_Char_F_2Char,rpn_char_f_2char,RPN_c_b_or,2,VLNT_Char);
-        SMA("__c~",RPNFT_Char_F_1Char,rpn_char_f_1char,RPN_c_b_not,1,VLNT_Char);
-        SMA("__c^",RPNFT_Char_F_2Char,rpn_char_f_2char,RPN_c_b_xor,2,VLNT_Char);
-        SMA("__c<<",RPNFT_Char_F_2Char,rpn_char_f_2char,RPN_c_bs_l,2,VLNT_Char);
-        SMA("__c<<u",RPNFT_Char_F_2UChar,rpn_char_f_2uchar,RPN_uc_bs_l,2,VLNT_Char);
-        SMA("__c>>",RPNFT_Char_F_2Char,rpn_char_f_2char,RPN_c_bs_r,2,VLNT_Char);
-        SMA("__c>>u",RPNFT_Char_F_2UChar,rpn_char_f_2uchar,RPN_uc_bs_r,2,VLNT_Char);
-        SMA("__c==",RPNFT_Char_F_Cmp,rpn_char_f_cmp,RPN_c_eq,2,VLNT_Int);//Int as boolean.
-        SMA("__c!=",RPNFT_Char_F_Cmp,rpn_char_f_cmp,RPN_c_neq,2,VLNT_Int);
-        SMA("__c>",RPNFT_Char_F_Cmp,rpn_char_f_cmp,RPN_c_gt,2,VLNT_Int);
-        SMA("__c<",RPNFT_Char_F_Cmp,rpn_char_f_cmp,RPN_c_lt,2,VLNT_Int);
-        SMA("__c>=",RPNFT_Char_F_Cmp,rpn_char_f_cmp,RPN_c_gte,2,VLNT_Int);
-        SMA("__c<=",RPNFT_Char_F_Cmp,rpn_char_f_cmp,RPN_c_lte,2,VLNT_Int);
-        SMA("__c==u",RPNFT_Char_F_UCmp,rpn_char_f_ucmp,RPN_uc_eq,2,VLNT_Int);
-        SMA("__c!=u",RPNFT_Char_F_UCmp,rpn_char_f_ucmp,RPN_uc_neq,2,VLNT_Int);
-        SMA("__c>u",RPNFT_Char_F_UCmp,rpn_char_f_ucmp,RPN_uc_gt,2,VLNT_Int);
-        SMA("__c<u",RPNFT_Char_F_UCmp,rpn_char_f_ucmp,RPN_uc_lt,2,VLNT_Int);
-        SMA("__c>=u",RPNFT_Char_F_UCmp,rpn_char_f_ucmp,RPN_uc_gte,2,VLNT_Int);
-        SMA("__c<=u",RPNFT_Char_F_UCmp,rpn_char_f_ucmp,RPN_uc_lte,2,VLNT_Int);
-        SMA("__cabs",RPNFT_Char_F_1Char,rpn_char_f_1char,_cabs,1,VLNT_Char);
-        SMA("__cmax",RPNFT_Char_F_2Char,rpn_char_f_2char,RPN_c_max,2,VLNT_Char);
-        SMA("__cmin",RPNFT_Char_F_2Char,rpn_char_f_2char,RPN_c_min,2,VLNT_Char);
-        SMA("__cmaxu",RPNFT_Char_F_2UChar,rpn_char_f_2uchar,RPN_uc_max,2,VLNT_Char);
-        SMA("__cminu",RPNFT_Char_F_2UChar,rpn_char_f_2uchar,RPN_uc_min,2,VLNT_Char);
-        SMA("random_c",RPNFT_Char_F_NoArg,rpn_char_f_noarg,random_c,0,VLNT_Char);
-        SMA("as_c",RPNFT_Char_F_1Char,rpn_char_f_1char,castas_c,1,VLNT_Char);
-        SMA("__cb?t:f",RPNFT_Char_F_Ternary,rpn_char_f_ternary,ternary_c,3,VLNT_Char);
+        SMFA("__c+",RPNFT_Char_F_2Char,rpn_char_f_2char,RPN_c_add,2,VLNT_Char);
+        SMFA("__c++",RPNFT_Char_F_1Char,rpn_char_f_1char,RPN_c_inc,1,VLNT_Char);
+        SMFA("__c-",RPNFT_Char_F_2Char,rpn_char_f_2char,RPN_c_sub,2,VLNT_Char);
+        SMFA("__c-m",RPNFT_Char_F_1Char,rpn_char_f_1char,RPN_c_neg,1,VLNT_Char);
+        SMFA("__c--",RPNFT_Char_F_1Char,rpn_char_f_1char,RPN_c_dec,1,VLNT_Char);
+        SMFA("__c*",RPNFT_Char_F_2Char,rpn_char_f_2char,RPN_c_mul,2,VLNT_Char);
+        SMFA("__c/",RPNFT_Char_F_2Char,rpn_char_f_2char,RPN_c_div,2,VLNT_Char);
+        SMFA("__c/u",RPNFT_Char_F_2UChar,rpn_char_f_2uchar,RPN_uc_div,2,VLNT_Char);
+        SMFA("__c%",RPNFT_Char_F_2Char,rpn_char_f_2char,RPN_c_mod,2,VLNT_Char);
+        SMFA("__c%u",RPNFT_Char_F_2UChar,rpn_char_f_2uchar,RPN_uc_mod,2,VLNT_Char);
+        SMFA("__c&",RPNFT_Char_F_2Char,rpn_char_f_2char,RPN_c_b_and,2,VLNT_Char);
+        SMFA("__c|",RPNFT_Char_F_2Char,rpn_char_f_2char,RPN_c_b_or,2,VLNT_Char);
+        SMFA("__c~",RPNFT_Char_F_1Char,rpn_char_f_1char,RPN_c_b_not,1,VLNT_Char);
+        SMFA("__c^",RPNFT_Char_F_2Char,rpn_char_f_2char,RPN_c_b_xor,2,VLNT_Char);
+        SMFA("__c<<",RPNFT_Char_F_2Char,rpn_char_f_2char,RPN_c_bs_l,2,VLNT_Char);
+        SMFA("__c<<u",RPNFT_Char_F_2UChar,rpn_char_f_2uchar,RPN_uc_bs_l,2,VLNT_Char);
+        SMFA("__c>>",RPNFT_Char_F_2Char,rpn_char_f_2char,RPN_c_bs_r,2,VLNT_Char);
+        SMFA("__c>>u",RPNFT_Char_F_2UChar,rpn_char_f_2uchar,RPN_uc_bs_r,2,VLNT_Char);
+        SMFA("__c==",RPNFT_Char_F_Cmp,rpn_char_f_cmp,RPN_c_eq,2,VLNT_Int);//Int as boolean.
+        SMFA("__c!=",RPNFT_Char_F_Cmp,rpn_char_f_cmp,RPN_c_neq,2,VLNT_Int);
+        SMFA("__c>",RPNFT_Char_F_Cmp,rpn_char_f_cmp,RPN_c_gt,2,VLNT_Int);
+        SMFA("__c<",RPNFT_Char_F_Cmp,rpn_char_f_cmp,RPN_c_lt,2,VLNT_Int);
+        SMFA("__c>=",RPNFT_Char_F_Cmp,rpn_char_f_cmp,RPN_c_gte,2,VLNT_Int);
+        SMFA("__c<=",RPNFT_Char_F_Cmp,rpn_char_f_cmp,RPN_c_lte,2,VLNT_Int);
+        SMFA("__c==u",RPNFT_Char_F_UCmp,rpn_char_f_ucmp,RPN_uc_eq,2,VLNT_Int);
+        SMFA("__c!=u",RPNFT_Char_F_UCmp,rpn_char_f_ucmp,RPN_uc_neq,2,VLNT_Int);
+        SMFA("__c>u",RPNFT_Char_F_UCmp,rpn_char_f_ucmp,RPN_uc_gt,2,VLNT_Int);
+        SMFA("__c<u",RPNFT_Char_F_UCmp,rpn_char_f_ucmp,RPN_uc_lt,2,VLNT_Int);
+        SMFA("__c>=u",RPNFT_Char_F_UCmp,rpn_char_f_ucmp,RPN_uc_gte,2,VLNT_Int);
+        SMFA("__c<=u",RPNFT_Char_F_UCmp,rpn_char_f_ucmp,RPN_uc_lte,2,VLNT_Int);
+        SMFA("__cabs",RPNFT_Char_F_1Char,rpn_char_f_1char,_cabs,1,VLNT_Char);
+        SMFA("__cmax",RPNFT_Char_F_2Char,rpn_char_f_2char,RPN_c_max,2,VLNT_Char);
+        SMFA("__cmin",RPNFT_Char_F_2Char,rpn_char_f_2char,RPN_c_min,2,VLNT_Char);
+        SMFA("__cmaxu",RPNFT_Char_F_2UChar,rpn_char_f_2uchar,RPN_uc_max,2,VLNT_Char);
+        SMFA("__cminu",RPNFT_Char_F_2UChar,rpn_char_f_2uchar,RPN_uc_min,2,VLNT_Char);
+        SMFA("random_c",RPNFT_Char_F_NoArg,rpn_char_f_noarg,random_c,0,VLNT_Char);
+        SMFA("as_c",RPNFT_Char_F_1Char,rpn_char_f_1char,castas_c,1,VLNT_Char);
+        SMFA("__cb?t:f",RPNFT_Char_F_Ternary,rpn_char_f_ternary,ternary_c,3,VLNT_Char);
 
-        SMA("__i+",RPNFT_Int_F_2Int,rpn_int_f_2int,RPN_i_add,2,VLNT_Int);
-        SMA("__i++",RPNFT_Int_F_1Int,rpn_int_f_1int,RPN_i_inc,1,VLNT_Int);
-        SMA("__i-",RPNFT_Int_F_2Int,rpn_int_f_2int,RPN_i_sub,2,VLNT_Int);
-        SMA("__i-m",RPNFT_Int_F_1Int,rpn_int_f_1int,RPN_i_neg,1,VLNT_Int);
-        SMA("__i--",RPNFT_Int_F_1Int,rpn_int_f_1int,RPN_i_dec,1,VLNT_Int);
-        SMA("__i*",RPNFT_Int_F_2Int,rpn_int_f_2int,RPN_i_mul,2,VLNT_Int);
-        SMA("__i/",RPNFT_Int_F_2Int,rpn_int_f_2int,RPN_i_div,2,VLNT_Int);
-        SMA("__i/u",RPNFT_Int_F_2UInt,rpn_int_f_2uint,RPN_ui_div,2,VLNT_Int);
-        SMA("__i%",RPNFT_Int_F_2Int,rpn_int_f_2int,RPN_i_mod,2,VLNT_Int);
-        SMA("__i%u",RPNFT_Int_F_2UInt,rpn_int_f_2uint,RPN_ui_mod,2,VLNT_Int);
-        SMA("__i&",RPNFT_Int_F_2Int,rpn_int_f_2int,RPN_i_b_and,2,VLNT_Int);
-        SMA("__i|",RPNFT_Int_F_2Int,rpn_int_f_2int,RPN_i_b_or,2,VLNT_Int);
-        SMA("__i~",RPNFT_Int_F_1Int,rpn_int_f_1int,RPN_i_b_not,1,VLNT_Int);
-        SMA("__i^",RPNFT_Int_F_2Int,rpn_int_f_2int,RPN_i_b_xor,2,VLNT_Int);
-        SMA("__i<<",RPNFT_Int_F_2Int,rpn_int_f_2int,RPN_i_bs_l,2,VLNT_Int);
-        SMA("__i<<u",RPNFT_Int_F_2UInt,rpn_int_f_2uint,RPN_ui_bs_l,2,VLNT_Int);
-        SMA("__i>>",RPNFT_Int_F_2Int,rpn_int_f_2int,RPN_i_bs_r,2,VLNT_Int);
-        SMA("__i>>u",RPNFT_Int_F_2UInt,rpn_int_f_2uint,RPN_ui_bs_r,2,VLNT_Int);
-        SMA("__i==",RPNFT_Int_F_Cmp,rpn_int_f_cmp,RPN_i_eq,2,VLNT_Int);
-        SMA("__i!=",RPNFT_Int_F_Cmp,rpn_int_f_cmp,RPN_i_neq,2,VLNT_Int);
-        SMA("__i>",RPNFT_Int_F_Cmp,rpn_int_f_cmp,RPN_i_gt,2,VLNT_Int);
-        SMA("__i<",RPNFT_Int_F_Cmp,rpn_int_f_cmp,RPN_i_lt,2,VLNT_Int);
-        SMA("__i>=",RPNFT_Int_F_Cmp,rpn_int_f_cmp,RPN_i_gte,2,VLNT_Int);
-        SMA("__i<=",RPNFT_Int_F_Cmp,rpn_int_f_cmp,RPN_i_lte,2,VLNT_Int);
-        SMA("__i==u",RPNFT_Int_F_UCmp,rpn_int_f_ucmp,RPN_ui_eq,2,VLNT_Int);
-        SMA("__i!=u",RPNFT_Int_F_UCmp,rpn_int_f_ucmp,RPN_ui_neq,2,VLNT_Int);
-        SMA("__i>u",RPNFT_Int_F_UCmp,rpn_int_f_ucmp,RPN_ui_gt,2,VLNT_Int);
-        SMA("__i<u",RPNFT_Int_F_UCmp,rpn_int_f_ucmp,RPN_ui_lt,2,VLNT_Int);
-        SMA("__i>=u",RPNFT_Int_F_UCmp,rpn_int_f_ucmp,RPN_ui_gte,2,VLNT_Int);
-        SMA("__i<=u",RPNFT_Int_F_UCmp,rpn_int_f_ucmp,RPN_ui_lte,2,VLNT_Int);
-        SMA("__iabs",RPNFT_Int_F_1Int,rpn_int_f_1int,abs,1,VLNT_Int);
-        SMA("__imax",RPNFT_Int_F_2Int,rpn_int_f_2int,RPN_i_max,2,VLNT_Int);
-        SMA("__imin",RPNFT_Int_F_2Int,rpn_int_f_2int,RPN_i_min,2,VLNT_Int);
-        SMA("__imaxu",RPNFT_Int_F_2UInt,rpn_int_f_2uint,RPN_ui_max,2,VLNT_Int);
-        SMA("__iminu",RPNFT_Int_F_2UInt,rpn_int_f_2uint,RPN_ui_min,2,VLNT_Int);
-        SMA("random_i",RPNFT_Int_F_NoArg,rpn_int_f_noarg,random_i,0,VLNT_Int);
-        SMA("as_i",RPNFT_Int_F_1Int,rpn_int_f_1int,castas_i,1,VLNT_Int);
-        SMA("__ib?t:f",RPNFT_Int_F_Ternary,rpn_int_f_ternary,ternary_i,3,VLNT_Int);
+        SMFA("__i+",RPNFT_Int_F_2Int,rpn_int_f_2int,RPN_i_add,2,VLNT_Int);
+        SMFA("__i++",RPNFT_Int_F_1Int,rpn_int_f_1int,RPN_i_inc,1,VLNT_Int);
+        SMFA("__i-",RPNFT_Int_F_2Int,rpn_int_f_2int,RPN_i_sub,2,VLNT_Int);
+        SMFA("__i-m",RPNFT_Int_F_1Int,rpn_int_f_1int,RPN_i_neg,1,VLNT_Int);
+        SMFA("__i--",RPNFT_Int_F_1Int,rpn_int_f_1int,RPN_i_dec,1,VLNT_Int);
+        SMFA("__i*",RPNFT_Int_F_2Int,rpn_int_f_2int,RPN_i_mul,2,VLNT_Int);
+        SMFA("__i/",RPNFT_Int_F_2Int,rpn_int_f_2int,RPN_i_div,2,VLNT_Int);
+        SMFA("__i/u",RPNFT_Int_F_2UInt,rpn_int_f_2uint,RPN_ui_div,2,VLNT_Int);
+        SMFA("__i%",RPNFT_Int_F_2Int,rpn_int_f_2int,RPN_i_mod,2,VLNT_Int);
+        SMFA("__i%u",RPNFT_Int_F_2UInt,rpn_int_f_2uint,RPN_ui_mod,2,VLNT_Int);
+        SMFA("__i&",RPNFT_Int_F_2Int,rpn_int_f_2int,RPN_i_b_and,2,VLNT_Int);
+        SMFA("__i|",RPNFT_Int_F_2Int,rpn_int_f_2int,RPN_i_b_or,2,VLNT_Int);
+        SMFA("__i~",RPNFT_Int_F_1Int,rpn_int_f_1int,RPN_i_b_not,1,VLNT_Int);
+        SMFA("__i^",RPNFT_Int_F_2Int,rpn_int_f_2int,RPN_i_b_xor,2,VLNT_Int);
+        SMFA("__i<<",RPNFT_Int_F_2Int,rpn_int_f_2int,RPN_i_bs_l,2,VLNT_Int);
+        SMFA("__i<<u",RPNFT_Int_F_2UInt,rpn_int_f_2uint,RPN_ui_bs_l,2,VLNT_Int);
+        SMFA("__i>>",RPNFT_Int_F_2Int,rpn_int_f_2int,RPN_i_bs_r,2,VLNT_Int);
+        SMFA("__i>>u",RPNFT_Int_F_2UInt,rpn_int_f_2uint,RPN_ui_bs_r,2,VLNT_Int);
+        SMFA("__i==",RPNFT_Int_F_Cmp,rpn_int_f_cmp,RPN_i_eq,2,VLNT_Int);
+        SMFA("__i!=",RPNFT_Int_F_Cmp,rpn_int_f_cmp,RPN_i_neq,2,VLNT_Int);
+        SMFA("__i>",RPNFT_Int_F_Cmp,rpn_int_f_cmp,RPN_i_gt,2,VLNT_Int);
+        SMFA("__i<",RPNFT_Int_F_Cmp,rpn_int_f_cmp,RPN_i_lt,2,VLNT_Int);
+        SMFA("__i>=",RPNFT_Int_F_Cmp,rpn_int_f_cmp,RPN_i_gte,2,VLNT_Int);
+        SMFA("__i<=",RPNFT_Int_F_Cmp,rpn_int_f_cmp,RPN_i_lte,2,VLNT_Int);
+        SMFA("__i==u",RPNFT_Int_F_UCmp,rpn_int_f_ucmp,RPN_ui_eq,2,VLNT_Int);
+        SMFA("__i!=u",RPNFT_Int_F_UCmp,rpn_int_f_ucmp,RPN_ui_neq,2,VLNT_Int);
+        SMFA("__i>u",RPNFT_Int_F_UCmp,rpn_int_f_ucmp,RPN_ui_gt,2,VLNT_Int);
+        SMFA("__i<u",RPNFT_Int_F_UCmp,rpn_int_f_ucmp,RPN_ui_lt,2,VLNT_Int);
+        SMFA("__i>=u",RPNFT_Int_F_UCmp,rpn_int_f_ucmp,RPN_ui_gte,2,VLNT_Int);
+        SMFA("__i<=u",RPNFT_Int_F_UCmp,rpn_int_f_ucmp,RPN_ui_lte,2,VLNT_Int);
+        SMFA("__iabs",RPNFT_Int_F_1Int,rpn_int_f_1int,abs,1,VLNT_Int);
+        SMFA("__imax",RPNFT_Int_F_2Int,rpn_int_f_2int,RPN_i_max,2,VLNT_Int);
+        SMFA("__imin",RPNFT_Int_F_2Int,rpn_int_f_2int,RPN_i_min,2,VLNT_Int);
+        SMFA("__imaxu",RPNFT_Int_F_2UInt,rpn_int_f_2uint,RPN_ui_max,2,VLNT_Int);
+        SMFA("__iminu",RPNFT_Int_F_2UInt,rpn_int_f_2uint,RPN_ui_min,2,VLNT_Int);
+        SMFA("random_i",RPNFT_Int_F_NoArg,rpn_int_f_noarg,random_i,0,VLNT_Int);
+        SMFA("as_i",RPNFT_Int_F_1Int,rpn_int_f_1int,castas_i,1,VLNT_Int);
+        SMFA("__ib?t:f",RPNFT_Int_F_Ternary,rpn_int_f_ternary,ternary_i,3,VLNT_Int);
 
-        SMA("__l+",RPNFT_Long_F_2Long,rpn_long_f_2long,RPN_l_add,2,VLNT_Long);
-        SMA("__l++",RPNFT_Long_F_1Long,rpn_long_f_1long,RPN_l_inc,1,VLNT_Long);
-        SMA("__l-",RPNFT_Long_F_2Long,rpn_long_f_2long,RPN_l_sub,2,VLNT_Long);
-        SMA("__l-m",RPNFT_Long_F_1Long,rpn_long_f_1long,RPN_l_neg,1,VLNT_Long);
-        SMA("__l--",RPNFT_Long_F_1Long,rpn_long_f_1long,RPN_l_dec,1,VLNT_Long);
-        SMA("__l*",RPNFT_Long_F_2Long,rpn_long_f_2long,RPN_l_mul,2,VLNT_Long);
-        SMA("__l/",RPNFT_Long_F_2Long,rpn_long_f_2long,RPN_l_div,2,VLNT_Long);
-        SMA("__l/u",RPNFT_Long_F_2ULong,rpn_long_f_2ulong,RPN_ul_div,2,VLNT_Long);
-        SMA("__l%",RPNFT_Long_F_2Long,rpn_long_f_2long,RPN_l_mod,2,VLNT_Long);
-        SMA("__l%u",RPNFT_Long_F_2ULong,rpn_long_f_2ulong,RPN_ul_mod,2,VLNT_Long);
-        SMA("__l&",RPNFT_Long_F_2Long,rpn_long_f_2long,RPN_l_b_and,2,VLNT_Long);
-        SMA("__l|",RPNFT_Long_F_2Long,rpn_long_f_2long,RPN_l_b_or,2,VLNT_Long);
-        SMA("__l~",RPNFT_Long_F_1Long,rpn_long_f_1long,RPN_l_b_not,1,VLNT_Long);
-        SMA("__l^",RPNFT_Long_F_2Long,rpn_long_f_2long,RPN_l_b_xor,2,VLNT_Long);
-        SMA("__l<<",RPNFT_Long_F_2Long,rpn_long_f_2long,RPN_l_bs_l,2,VLNT_Long);
-        SMA("__l<<u",RPNFT_Long_F_2ULong,rpn_long_f_2ulong,RPN_ul_bs_l,2,VLNT_Long);
-        SMA("__l>>",RPNFT_Long_F_2Long,rpn_long_f_2long,RPN_l_bs_r,2,VLNT_Long);
-        SMA("__l>>u",RPNFT_Long_F_2ULong,rpn_long_f_2ulong,RPN_ul_bs_r,2,VLNT_Long);
-        SMA("__l==",RPNFT_Long_F_Cmp,rpn_long_f_cmp,RPN_l_eq,2,VLNT_Int);
-        SMA("__l!=",RPNFT_Long_F_Cmp,rpn_long_f_cmp,RPN_l_neq,2,VLNT_Int);
-        SMA("__l>",RPNFT_Long_F_Cmp,rpn_long_f_cmp,RPN_l_gt,2,VLNT_Int);
-        SMA("__l<",RPNFT_Long_F_Cmp,rpn_long_f_cmp,RPN_l_lt,2,VLNT_Int);
-        SMA("__l>=",RPNFT_Long_F_Cmp,rpn_long_f_cmp,RPN_l_gte,2,VLNT_Int);
-        SMA("__l<=",RPNFT_Long_F_Cmp,rpn_long_f_cmp,RPN_l_lte,2,VLNT_Int);
-        SMA("__l==u",RPNFT_Long_F_UCmp,rpn_long_f_ucmp,RPN_ul_eq,2,VLNT_Int);
-        SMA("__l!=u",RPNFT_Long_F_UCmp,rpn_long_f_ucmp,RPN_ul_neq,2,VLNT_Int);
-        SMA("__l>u",RPNFT_Long_F_UCmp,rpn_long_f_ucmp,RPN_ul_gt,2,VLNT_Int);
-        SMA("__l<u",RPNFT_Long_F_UCmp,rpn_long_f_ucmp,RPN_ul_lt,2,VLNT_Int);
-        SMA("__l>=u",RPNFT_Long_F_UCmp,rpn_long_f_ucmp,RPN_ul_gte,2,VLNT_Int);
-        SMA("__l<=u",RPNFT_Long_F_UCmp,rpn_long_f_ucmp,RPN_ul_lte,2,VLNT_Int);
-        SMA("__labs",RPNFT_Long_F_1Long,rpn_long_f_1long,labs,1,VLNT_Long);
-        SMA("__lmax",RPNFT_Long_F_2Long,rpn_long_f_2long,RPN_l_max,2,VLNT_Long);
-        SMA("__lmin",RPNFT_Long_F_2Long,rpn_long_f_2long,RPN_l_min,2,VLNT_Long);
-        SMA("__lmaxu",RPNFT_Long_F_2ULong,rpn_long_f_2ulong,RPN_ul_max,2,VLNT_Long);
-        SMA("__lminu",RPNFT_Long_F_2ULong,rpn_long_f_2ulong,RPN_ul_min,2,VLNT_Long);
-        SMA("random_l",RPNFT_Long_F_NoArg,rpn_long_f_noarg,random_l,0,VLNT_Long);
-        SMA("as_l",RPNFT_Long_F_1Long,rpn_long_f_1long,castas_l,1,VLNT_Long);
-        SMA("__lb?t:f",RPNFT_Long_F_Ternary,rpn_long_f_ternary,ternary_l,3,VLNT_Long);
+        SMFA("__l+",RPNFT_Long_F_2Long,rpn_long_f_2long,RPN_l_add,2,VLNT_Long);
+        SMFA("__l++",RPNFT_Long_F_1Long,rpn_long_f_1long,RPN_l_inc,1,VLNT_Long);
+        SMFA("__l-",RPNFT_Long_F_2Long,rpn_long_f_2long,RPN_l_sub,2,VLNT_Long);
+        SMFA("__l-m",RPNFT_Long_F_1Long,rpn_long_f_1long,RPN_l_neg,1,VLNT_Long);
+        SMFA("__l--",RPNFT_Long_F_1Long,rpn_long_f_1long,RPN_l_dec,1,VLNT_Long);
+        SMFA("__l*",RPNFT_Long_F_2Long,rpn_long_f_2long,RPN_l_mul,2,VLNT_Long);
+        SMFA("__l/",RPNFT_Long_F_2Long,rpn_long_f_2long,RPN_l_div,2,VLNT_Long);
+        SMFA("__l/u",RPNFT_Long_F_2ULong,rpn_long_f_2ulong,RPN_ul_div,2,VLNT_Long);
+        SMFA("__l%",RPNFT_Long_F_2Long,rpn_long_f_2long,RPN_l_mod,2,VLNT_Long);
+        SMFA("__l%u",RPNFT_Long_F_2ULong,rpn_long_f_2ulong,RPN_ul_mod,2,VLNT_Long);
+        SMFA("__l&",RPNFT_Long_F_2Long,rpn_long_f_2long,RPN_l_b_and,2,VLNT_Long);
+        SMFA("__l|",RPNFT_Long_F_2Long,rpn_long_f_2long,RPN_l_b_or,2,VLNT_Long);
+        SMFA("__l~",RPNFT_Long_F_1Long,rpn_long_f_1long,RPN_l_b_not,1,VLNT_Long);
+        SMFA("__l^",RPNFT_Long_F_2Long,rpn_long_f_2long,RPN_l_b_xor,2,VLNT_Long);
+        SMFA("__l<<",RPNFT_Long_F_2Long,rpn_long_f_2long,RPN_l_bs_l,2,VLNT_Long);
+        SMFA("__l<<u",RPNFT_Long_F_2ULong,rpn_long_f_2ulong,RPN_ul_bs_l,2,VLNT_Long);
+        SMFA("__l>>",RPNFT_Long_F_2Long,rpn_long_f_2long,RPN_l_bs_r,2,VLNT_Long);
+        SMFA("__l>>u",RPNFT_Long_F_2ULong,rpn_long_f_2ulong,RPN_ul_bs_r,2,VLNT_Long);
+        SMFA("__l==",RPNFT_Long_F_Cmp,rpn_long_f_cmp,RPN_l_eq,2,VLNT_Int);
+        SMFA("__l!=",RPNFT_Long_F_Cmp,rpn_long_f_cmp,RPN_l_neq,2,VLNT_Int);
+        SMFA("__l>",RPNFT_Long_F_Cmp,rpn_long_f_cmp,RPN_l_gt,2,VLNT_Int);
+        SMFA("__l<",RPNFT_Long_F_Cmp,rpn_long_f_cmp,RPN_l_lt,2,VLNT_Int);
+        SMFA("__l>=",RPNFT_Long_F_Cmp,rpn_long_f_cmp,RPN_l_gte,2,VLNT_Int);
+        SMFA("__l<=",RPNFT_Long_F_Cmp,rpn_long_f_cmp,RPN_l_lte,2,VLNT_Int);
+        SMFA("__l==u",RPNFT_Long_F_UCmp,rpn_long_f_ucmp,RPN_ul_eq,2,VLNT_Int);
+        SMFA("__l!=u",RPNFT_Long_F_UCmp,rpn_long_f_ucmp,RPN_ul_neq,2,VLNT_Int);
+        SMFA("__l>u",RPNFT_Long_F_UCmp,rpn_long_f_ucmp,RPN_ul_gt,2,VLNT_Int);
+        SMFA("__l<u",RPNFT_Long_F_UCmp,rpn_long_f_ucmp,RPN_ul_lt,2,VLNT_Int);
+        SMFA("__l>=u",RPNFT_Long_F_UCmp,rpn_long_f_ucmp,RPN_ul_gte,2,VLNT_Int);
+        SMFA("__l<=u",RPNFT_Long_F_UCmp,rpn_long_f_ucmp,RPN_ul_lte,2,VLNT_Int);
+        SMFA("__labs",RPNFT_Long_F_1Long,rpn_long_f_1long,labs,1,VLNT_Long);
+        SMFA("__lmax",RPNFT_Long_F_2Long,rpn_long_f_2long,RPN_l_max,2,VLNT_Long);
+        SMFA("__lmin",RPNFT_Long_F_2Long,rpn_long_f_2long,RPN_l_min,2,VLNT_Long);
+        SMFA("__lmaxu",RPNFT_Long_F_2ULong,rpn_long_f_2ulong,RPN_ul_max,2,VLNT_Long);
+        SMFA("__lminu",RPNFT_Long_F_2ULong,rpn_long_f_2ulong,RPN_ul_min,2,VLNT_Long);
+        SMFA("random_l",RPNFT_Long_F_NoArg,rpn_long_f_noarg,random_l,0,VLNT_Long);
+        SMFA("as_l",RPNFT_Long_F_1Long,rpn_long_f_1long,castas_l,1,VLNT_Long);
+        SMFA("__lb?t:f",RPNFT_Long_F_Ternary,rpn_long_f_ternary,ternary_l,3,VLNT_Long);
         
-        SMA("__d+",RPNFT_Double_F_2Double,rpn_double_f_2double,RPN_d_add,2,VLNT_Double);
-        SMA("__d++",RPNFT_Double_F_1Double,rpn_double_f_1double,RPN_d_inc,1,VLNT_Double);
-        SMA("__d-",RPNFT_Double_F_2Double,rpn_double_f_2double,RPN_d_sub,2,VLNT_Double);
-        SMA("__d-m",RPNFT_Double_F_1Double,rpn_double_f_1double,RPN_d_neg,1,VLNT_Double);
-        SMA("__d--",RPNFT_Double_F_1Double,rpn_double_f_1double,RPN_d_dec,1,VLNT_Double);
-        SMA("__d*",RPNFT_Double_F_2Double,rpn_double_f_2double,RPN_d_mul,2,VLNT_Double);
-        SMA("__d/",RPNFT_Double_F_2Double,rpn_double_f_2double,RPN_d_div,2,VLNT_Double);
-        SMA("__d%",RPNFT_Double_F_2Double,rpn_double_f_2double,fmod,2,VLNT_Double);
-        SMA("__d==",RPNFT_Double_F_Cmp,rpn_double_f_cmp,RPN_d_eq,2,VLNT_Int);
-        SMA("__d!=",RPNFT_Double_F_Cmp,rpn_double_f_cmp,RPN_d_neq,2,VLNT_Int);
-        SMA("__d>",RPNFT_Double_F_Cmp,rpn_double_f_cmp,RPN_d_gt,2,VLNT_Int);
-        SMA("__d<",RPNFT_Double_F_Cmp,rpn_double_f_cmp,RPN_d_lt,2,VLNT_Int);
-        SMA("__d>=",RPNFT_Double_F_Cmp,rpn_double_f_cmp,RPN_d_gte,2,VLNT_Int);
-        SMA("__d<=",RPNFT_Double_F_Cmp,rpn_double_f_cmp,RPN_d_lte,2,VLNT_Int);
-        SMA("__dabs",RPNFT_Double_F_1Double,rpn_double_f_1double,fabs,1,VLNT_Double);
-        SMA("__dmax",RPNFT_Double_F_2Double,rpn_double_f_2double,fmax,2,VLNT_Double);
-        SMA("__dmin",RPNFT_Double_F_2Double,rpn_double_f_2double,fmin,2,VLNT_Double);
-        SMA("random_d",RPNFT_Double_F_NoArg,rpn_double_f_noarg,random_d,0,VLNT_Double);
-        SMA("exp",RPNFT_Double_F_1Double,rpn_double_f_1double,exp,1,VLNT_Double);
-        SMA("exp2",RPNFT_Double_F_1Double,rpn_double_f_1double,exp2,1,VLNT_Double);
-        SMA("log",RPNFT_Double_F_1Double,rpn_double_f_1double,log,1,VLNT_Double);
-        SMA("log2",RPNFT_Double_F_1Double,rpn_double_f_1double,log2,1,VLNT_Double);
-        SMA("log10",RPNFT_Double_F_1Double,rpn_double_f_1double,log10,1,VLNT_Double);
-        SMA("pow",RPNFT_Double_F_2Double,rpn_double_f_2double,pow,2,VLNT_Double);
-        SMA("sqrt",RPNFT_Double_F_1Double,rpn_double_f_1double,sqrt,1,VLNT_Double);
-        SMA("cbrt",RPNFT_Double_F_1Double,rpn_double_f_1double,cbrt,1,VLNT_Double);
-        SMA("hypot",RPNFT_Double_F_2Double,rpn_double_f_2double,hypot,2,VLNT_Double);
-        SMA("sin",RPNFT_Double_F_1Double,rpn_double_f_1double,sin,1,VLNT_Double);
-        SMA("cos",RPNFT_Double_F_1Double,rpn_double_f_1double,cos,1,VLNT_Double);
-        SMA("tan",RPNFT_Double_F_1Double,rpn_double_f_1double,tan,1,VLNT_Double);
-        SMA("asin",RPNFT_Double_F_1Double,rpn_double_f_1double,asin,1,VLNT_Double);
-        SMA("acos",RPNFT_Double_F_1Double,rpn_double_f_1double,acos,1,VLNT_Double);
-        SMA("atan",RPNFT_Double_F_1Double,rpn_double_f_1double,atan,1,VLNT_Double);
-        SMA("sind",RPNFT_Double_F_1Double,rpn_double_f_1double,sind,1,VLNT_Double);
-        SMA("cosd",RPNFT_Double_F_1Double,rpn_double_f_1double,cosd,1,VLNT_Double);
-        SMA("tand",RPNFT_Double_F_1Double,rpn_double_f_1double,tand,1,VLNT_Double);
-        SMA("asind",RPNFT_Double_F_1Double,rpn_double_f_1double,asind,1,VLNT_Double);
-        SMA("acosd",RPNFT_Double_F_1Double,rpn_double_f_1double,acosd,1,VLNT_Double);
-        SMA("atand",RPNFT_Double_F_1Double,rpn_double_f_1double,atand,1,VLNT_Double);
-        SMA("ceil",RPNFT_Double_F_1Double,rpn_double_f_1double,ceil,1,VLNT_Double);
-        SMA("floor",RPNFT_Double_F_1Double,rpn_double_f_1double,floor,1,VLNT_Double);
-        SMA("round",RPNFT_Double_F_1Double,rpn_double_f_1double,round,1,VLNT_Double);
-        SMA("trunc",RPNFT_Double_F_1Double,rpn_double_f_1double,trunc,1,VLNT_Double);
-        SMA("as_d",RPNFT_Double_F_1Double,rpn_double_f_1double,castas_d,1,VLNT_Double);
-        SMA("__db?t:f",RPNFT_Double_F_Ternary,rpn_double_f_ternary,ternary_d,3,VLNT_Double);
+        SMFA("__d+",RPNFT_Double_F_2Double,rpn_double_f_2double,RPN_d_add,2,VLNT_Double);
+        SMFA("__d++",RPNFT_Double_F_1Double,rpn_double_f_1double,RPN_d_inc,1,VLNT_Double);
+        SMFA("__d-",RPNFT_Double_F_2Double,rpn_double_f_2double,RPN_d_sub,2,VLNT_Double);
+        SMFA("__d-m",RPNFT_Double_F_1Double,rpn_double_f_1double,RPN_d_neg,1,VLNT_Double);
+        SMFA("__d--",RPNFT_Double_F_1Double,rpn_double_f_1double,RPN_d_dec,1,VLNT_Double);
+        SMFA("__d*",RPNFT_Double_F_2Double,rpn_double_f_2double,RPN_d_mul,2,VLNT_Double);
+        SMFA("__d/",RPNFT_Double_F_2Double,rpn_double_f_2double,RPN_d_div,2,VLNT_Double);
+        SMFA("__d%",RPNFT_Double_F_2Double,rpn_double_f_2double,fmod,2,VLNT_Double);
+        SMFA("__d==",RPNFT_Double_F_Cmp,rpn_double_f_cmp,RPN_d_eq,2,VLNT_Int);
+        SMFA("__d!=",RPNFT_Double_F_Cmp,rpn_double_f_cmp,RPN_d_neq,2,VLNT_Int);
+        SMFA("__d>",RPNFT_Double_F_Cmp,rpn_double_f_cmp,RPN_d_gt,2,VLNT_Int);
+        SMFA("__d<",RPNFT_Double_F_Cmp,rpn_double_f_cmp,RPN_d_lt,2,VLNT_Int);
+        SMFA("__d>=",RPNFT_Double_F_Cmp,rpn_double_f_cmp,RPN_d_gte,2,VLNT_Int);
+        SMFA("__d<=",RPNFT_Double_F_Cmp,rpn_double_f_cmp,RPN_d_lte,2,VLNT_Int);
+        SMFA("__dabs",RPNFT_Double_F_1Double,rpn_double_f_1double,fabs,1,VLNT_Double);
+        SMFA("__dmax",RPNFT_Double_F_2Double,rpn_double_f_2double,fmax,2,VLNT_Double);
+        SMFA("__dmin",RPNFT_Double_F_2Double,rpn_double_f_2double,fmin,2,VLNT_Double);
+        SMFA("random_d",RPNFT_Double_F_NoArg,rpn_double_f_noarg,random_d,0,VLNT_Double);
+        SMFA("exp",RPNFT_Double_F_1Double,rpn_double_f_1double,exp,1,VLNT_Double);
+        SMFA("exp2",RPNFT_Double_F_1Double,rpn_double_f_1double,exp2,1,VLNT_Double);
+        SMFA("log",RPNFT_Double_F_1Double,rpn_double_f_1double,log,1,VLNT_Double);
+        SMFA("log2",RPNFT_Double_F_1Double,rpn_double_f_1double,log2,1,VLNT_Double);
+        SMFA("log10",RPNFT_Double_F_1Double,rpn_double_f_1double,log10,1,VLNT_Double);
+        SMFA("pow",RPNFT_Double_F_2Double,rpn_double_f_2double,pow,2,VLNT_Double);
+        SMFA("sqrt",RPNFT_Double_F_1Double,rpn_double_f_1double,sqrt,1,VLNT_Double);
+        SMFA("cbrt",RPNFT_Double_F_1Double,rpn_double_f_1double,cbrt,1,VLNT_Double);
+        SMFA("hypot",RPNFT_Double_F_2Double,rpn_double_f_2double,hypot,2,VLNT_Double);
+        SMFA("sin",RPNFT_Double_F_1Double,rpn_double_f_1double,sin,1,VLNT_Double);
+        SMFA("cos",RPNFT_Double_F_1Double,rpn_double_f_1double,cos,1,VLNT_Double);
+        SMFA("tan",RPNFT_Double_F_1Double,rpn_double_f_1double,tan,1,VLNT_Double);
+        SMFA("asin",RPNFT_Double_F_1Double,rpn_double_f_1double,asin,1,VLNT_Double);
+        SMFA("acos",RPNFT_Double_F_1Double,rpn_double_f_1double,acos,1,VLNT_Double);
+        SMFA("atan",RPNFT_Double_F_1Double,rpn_double_f_1double,atan,1,VLNT_Double);
+        SMFA("sind",RPNFT_Double_F_1Double,rpn_double_f_1double,sind,1,VLNT_Double);
+        SMFA("cosd",RPNFT_Double_F_1Double,rpn_double_f_1double,cosd,1,VLNT_Double);
+        SMFA("tand",RPNFT_Double_F_1Double,rpn_double_f_1double,tand,1,VLNT_Double);
+        SMFA("asind",RPNFT_Double_F_1Double,rpn_double_f_1double,asind,1,VLNT_Double);
+        SMFA("acosd",RPNFT_Double_F_1Double,rpn_double_f_1double,acosd,1,VLNT_Double);
+        SMFA("atand",RPNFT_Double_F_1Double,rpn_double_f_1double,atand,1,VLNT_Double);
+        SMFA("ceil",RPNFT_Double_F_1Double,rpn_double_f_1double,ceil,1,VLNT_Double);
+        SMFA("floor",RPNFT_Double_F_1Double,rpn_double_f_1double,floor,1,VLNT_Double);
+        SMFA("round",RPNFT_Double_F_1Double,rpn_double_f_1double,round,1,VLNT_Double);
+        SMFA("trunc",RPNFT_Double_F_1Double,rpn_double_f_1double,trunc,1,VLNT_Double);
+        SMFA("as_d",RPNFT_Double_F_1Double,rpn_double_f_1double,castas_d,1,VLNT_Double);
+        SMFA("__db?t:f",RPNFT_Double_F_Ternary,rpn_double_f_ternary,ternary_d,3,VLNT_Double);
 
-        SMA("!",RPNFT_Invert,rpn_invert,bool_invert,1,VLNT_Int);
-        SMA("&&",RPNFT_2_Bools,rpn_f_2_bools,bool_and,2,VLNT_Int);
-        SMA("||",RPNFT_2_Bools,rpn_f_2_bools,bool_or,2,VLNT_Int);
+        SMFA("!",RPNFT_Invert,rpn_invert,bool_invert,1,VLNT_Int);
+        SMFA("&&",RPNFT_2_Bools,rpn_f_2_bools,bool_and,2,VLNT_Int);
+        SMFA("||",RPNFT_2_Bools,rpn_f_2_bools,bool_or,2,VLNT_Int);
         #if 0
         while(true){
             StringMap_rpn_func_call_print_debug(DefaultRPNFunctionMap);
@@ -302,6 +307,7 @@ void RPNEvaluatorInit(void){
             StringMap_rpn_func_call_resize(&DefaultRPNFunctionMap,strtol(buf,0,10));
         }
         #endif
+        #undef SMFA
     }else{
         puts("RPNEvaluatorInit has already been initialized.");
     }
@@ -349,9 +355,9 @@ RPNValidStringE RPNEvaluatorEvaluate(const char* rpn_str,const VariableLoader_t*
 #define DOPARSETOKENROUTINE()\
 if(see_stack) puts(current_token);\
 if((an_opt=String_to_as_number_t(current_token)).exists) Stack_as_number_push(stack_an,an_opt.v);\
-else if((status=_RPNEvaluatorIsVarNameOk(current_token,vl,stack_an,process_num))!=RPNVS_IsVLName&&status!=RPNVS_IsFunction){\
+else if((status=_RPNEvaluatorIsVarNameOk(current_token,vl,stack_an,process_num))!=RPNVS_IsVLName&&status!=RPNVS_IsFunction&&status!=RPNVS_IsRPNVar){\
     switch(status){\
-        case RPNVS_NameCollision:\
+        case RPNVS_NameFunctionCollision:\
             fprintf(stderr,ERR("Name Collision Error: Token '%s' within the program is already a name for an existing function.\n"),current_token);\
             break;\
         case RPNVS_NameUndefined:\
@@ -366,7 +372,7 @@ else if((status=_RPNEvaluatorIsVarNameOk(current_token,vl,stack_an,process_num))
         case RPNVS_NegativeBitShift:\
             fprintf(stderr,ERR("Illegal Operation Error: Bit-shifting using a negative number on the second argument is not supported.\n"));\
             break;\
-        default: exit(EXIT_FAILURE); break;/*Shouldn't be here.*/\
+        default: SHOULD_BE_UNREACHABLE(); break;\
     }\
     free(current_token);\
     free(rpn_str_no_b);\
@@ -395,16 +401,22 @@ free(current_token)
 }
 void RPNEvaluatorFree(void){
     StringMap_rpn_func_call_free(DefaultRPNFunctionMap);
+    StringMap_as_number_free(DefaultRPNVariablesMap);
     DefaultRPNFunctionMap=0;
+    DefaultRPNVariablesMap=0;
 }
 //Check if VariableLoader names doesn't share any names in DefaultRPNFunctionMap.
 RPNValidStringE _RPNEvaluatorIsVarNameOk(const char* token,const VariableLoader_t* vl,Stack_as_number_t* stack_an,bool process_num){
     static const char NumberTypePrefixes[5]={'\0','c','i','l','d'};//Arranged based on the VLNumberType enums.
     bool token_is_var=VL_get_as_number(vl,token).exists;
-    //Keep continuing code as if it were a valid string (pop numbers) until an RPNVS_NameCollision.
+    StringMapOpt_as_number_t smoant;
+    if((smoant=StringMap_as_number_read(DefaultRPNVariablesMap,token)).exists){
+        Stack_as_number_push(stack_an,smoant.value); //Just push since RPNVariables are prefixed with @. User-created variables cannot use @.
+        return RPNVS_IsRPNVar;
+    }
+    //Keep continuing code as if it were a valid string (pop numbers) until an RPNVS_NameFunctionCollision.
     StringMapOpt_rpn_func_call_t smorfc_noprf={0},smorfc_wprf={0};
-    if((smorfc_noprf=StringMap_rpn_func_call_read(DefaultRPNFunctionMap,token)).exists)
-        if(token_is_var) return RPNVS_NameCollision;
+    if((smorfc_noprf=StringMap_rpn_func_call_read(DefaultRPNFunctionMap,token)).exists&&token_is_var) return RPNVS_NameFunctionCollision;
     char* token_with_prefix=malloc(sizeof(char)*(strlen(token)+4));//+4 for "__(char)" and '\0'
     EXIT_IF_NULL(token_with_prefix,char*);
     token_with_prefix[0]='_';
@@ -418,7 +430,7 @@ RPNValidStringE _RPNEvaluatorIsVarNameOk(const char* token,const VariableLoader_
         if((prefix_smorfc=StringMap_rpn_func_call_read(DefaultRPNFunctionMap,token_with_prefix)).exists){
             if(token_is_var){
                 free(token_with_prefix);
-                return RPNVS_NameCollision;
+                return RPNVS_NameFunctionCollision;
             }
             rpn_f_c_array[i]=prefix_smorfc;
             rpn_f_num_args=prefix_smorfc.value.num_args;//To promote any variables to use the proper function.
@@ -489,7 +501,7 @@ bool _ProcessRPNFunctionCall(Stack_as_number_t* stack_an,const rpn_func_call_t* 
         case RPNFT_Double_F_Cmp: result.i=rpn_fu.rpn_double_f_cmp(ARGS_CAST(0),ARGS_CAST(1)); break;
         case RPNFT_Invert: result.i=rpn_fu.rpn_invert(ARGS_CAST(0)); break;
         case RPNFT_2_Bools: result.i=rpn_fu.rpn_f_2_bools(ARGS_CAST(0),ARGS_CAST(1)); break;
-        case RPNFT_Null: free(args); return true; break; //Shouldn't be accessed.
+        case RPNFT_Null: SHOULD_BE_UNREACHABLE(); free(args); return true; break;
     }
     skip_process_num:
     Stack_as_number_push(stack_an,result);

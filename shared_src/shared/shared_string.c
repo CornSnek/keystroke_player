@@ -67,8 +67,7 @@ void SSManager_free_string(shared_string_manager_t* this, const char* str_del){
             return;
         }
     }
-    fprintf(stderr,ERR("String '%s' doesn't exist in SSManager. Program shouldn't execute here."),str_del);
-    exit(EXIT_FAILURE);
+    SHOULD_BE_UNREACHABLE();
 }
 void SSManager_free(shared_string_manager_t* this){
     for(int i=0;i<this->count;i++) free(this->c_strs[i]);
