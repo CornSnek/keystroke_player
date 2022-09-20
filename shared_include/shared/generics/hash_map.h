@@ -6,7 +6,7 @@
 #include <stdbool.h>
 typedef long hash_t;
 typedef enum _ValueAssignE{
-    VA_Full,VA_Written,VA_Rewritten
+    VA_Full,VA_Written,VA_Rewritten,VA_PHCollision
 }ValueAssignE;
 /*To copy string value.*/
 static inline char* _string_copy(const char* key){
@@ -36,14 +36,19 @@ static inline hash_t StringMap_##VName##_SubMod(const StringMap_##VName##_t* thi
 StringMap_##VName##_t* StringMap_##VName##_new(size_t size);\
 ValueAssignE StringMap_##VName##_assign(StringMap_##VName##_t* this,const char* key,ValueType map_value);\
 ValueAssignE StringMap_##VName##_assign_own(StringMap_##VName##_t* this,char* key,ValueType map_value);\
+ValueAssignE StringMap_##VName##_assign_ph(StringMap_##VName##_t* this,const char* key,ValueType map_value);\
+ValueAssignE StringMap_##VName##_assign_ph_own(StringMap_##VName##_t* this,char* key,ValueType map_value);\
 bool StringMap_##VName##_erase(StringMap_##VName##_t* this,const char* key);\
 bool StringMap_##VName##_erase_own(StringMap_##VName##_t* this,char* key);\
 StringMapOpt_##VName##_t StringMap_##VName##_read(const StringMap_##VName##_t* this,const char* key);\
 StringMapOpt_##VName##_t StringMap_##VName##_read_own(const StringMap_##VName##_t* this,char* key);\
+StringMapOpt_##VName##_t StringMap_##VName##_read_ph(const StringMap_##VName##_t* this,const char* key);\
+StringMapOpt_##VName##_t StringMap_##VName##_read_ph_own(const StringMap_##VName##_t* this,char* key);\
 StringMapOpt_##VName##_t StringMap_##VName##_pop(StringMap_##VName##_t* this,const char* key);\
 StringMapOpt_##VName##_t StringMap_##VName##_pop_own(StringMap_##VName##_t* this,char* key);\
 void StringMap_##VName##_print(const StringMap_##VName##_t* this);\
 void StringMap_##VName##_print_debug(const StringMap_##VName##_t* this);\
+bool StringMap_##VName##_has_ph(const StringMap_##VName##_t* this);\
 void StringMap_##VName##_free(StringMap_##VName##_t* this);\
 bool StringMap_##VName##_resize(StringMap_##VName##_t** this,size_t new_size);
 
@@ -148,6 +153,26 @@ ValueAssignE StringMap_##VName##_assign_own(StringMap_##VName##_t* this,char* ke
     free(key_to_add);/*Is full.*/\
     return VA_Full;\
 }\
+ValueAssignE StringMap_##VName##_assign_ph(StringMap_##VName##_t* this,const char* key,ValueType map_value){\
+    return StringMap_##VName##_assign_ph_own(this,_string_copy(key),map_value);\
+}\
+ValueAssignE StringMap_##VName##_assign_ph_own(StringMap_##VName##_t* this,char* key,ValueType map_value){\
+    const hash_t assign_key_hash=StringMap_##VName##_Mod(this,StringMap_##VName##_Hash(key));\
+    const hash_t current_hash_assign=StringMap_##VName##_Mod(this,assign_key_hash);\
+    char* const assign_key=this->keys[current_hash_assign];\
+    if(!assign_key){\
+        this->keys[current_hash_assign]=key;\
+        this->map_values[current_hash_assign]=map_value;\
+        return VA_Written;\
+    }\
+    if(!strcmp(assign_key,key)){/*Same key. Reassignment.*/\
+        free(key);\
+        this->map_values[current_hash_assign]=map_value;\
+        return VA_Rewritten;\
+    }\
+    free(key);/*If not a perfect hash.*/\
+    return VA_PHCollision;\
+}\
 bool StringMap_##VName##_erase_own(StringMap_##VName##_t* this,char* key){\
     bool b=StringMap_##VName##_erase(this,key);\
     free(key);\
@@ -185,6 +210,18 @@ StringMapOpt_##VName##_t StringMap_##VName##_read(const StringMap_##VName##_t* t
         if(!strcmp(next_key,key)){return (StringMapOpt_##VName##_t){.exists=true,.value=next_value};}\
     }\
     return (StringMapOpt_##VName##_t){0}; /*Not in entire array.*/\
+}\
+StringMapOpt_##VName##_t StringMap_##VName##_read_ph_own(const StringMap_##VName##_t* this,char* key){\
+    StringMapOpt_##VName##_t smv=StringMap_##VName##_read_ph(this,key);\
+    free(key);\
+    return smv;\
+}\
+/*Read once if assumed ph or perfect hash*/\
+StringMapOpt_##VName##_t StringMap_##VName##_read_ph(const StringMap_##VName##_t* this,const char* key){\
+    const hash_t search_key_hash=StringMap_##VName##_Mod(this,StringMap_##VName##_Hash(key));\
+    const hash_t current_hash_read=StringMap_##VName##_Mod(this,search_key_hash);\
+    if(this->keys[current_hash_read]&&!strcmp(this->keys[current_hash_read],key)) return (StringMapOpt_##VName##_t){.exists=true,.value=this->map_values[current_hash_read]};\
+    return (StringMapOpt_##VName##_t){0};\
 }\
 /*Same as _erase and _read, but returns the value as well if it exists.*/\
 StringMapOpt_##VName##_t StringMap_##VName##_pop(StringMap_##VName##_t* this,const char* key){\
@@ -237,6 +274,11 @@ void StringMap_##VName##_print_debug(const StringMap_##VName##_t* this){\
     printf("]\nhighest_distance: %ld, Frequency: ",highest_distance);\
     Frequency_print(f);\
     Frequency_free(f);\
+}\
+bool StringMap_##VName##_has_ph(const StringMap_##VName##_t* this){\
+    for(size_t hash_i=0;hash_i<this->MaxSize;hash_i++)\
+        if(this->keys[hash_i]&&StringMap_##VName##_SubMod(this,hash_i-StringMap_##VName##_Mod(this,StringMap_##VName##_Hash(this->keys[hash_i])))) return false;\
+    return true;\
 }\
 void StringMap_##VName##_free(StringMap_##VName##_t* this){\
     for(size_t i=0;i<this->MaxSize;i++){\

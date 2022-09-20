@@ -608,6 +608,7 @@ bool run_program(command_array_t* cmd_arr, const char* file_str, Config config, 
     int LastCommands_i=0;
     timespec_get(&ts_usleep_before,TIME_UTC);
     while(!srs.program_done){
+        RPNEvaluatorAssignVar("@pc_now",(as_number_t){.i=cmd_arr_i,.type=VLNT_Int});
         pthread_mutex_unlock(&input_mutex);
         query_is_true=false;
         command_t this_cmd=cmd_arr->cmds[cmd_arr_i];
@@ -824,6 +825,8 @@ bool run_program(command_array_t* cmd_arr, const char* file_str, Config config, 
                 xdo_get_mouse_location(xdo_obj,&x_mouse_store,&y_mouse_store,0);
                 pthread_mutex_unlock(&input_mutex);
                 cmdprintf(" x: %d y: %d\n",x_mouse_store,y_mouse_store);
+                RPNEvaluatorAssignVar("@mma_x",(as_number_t){.i=x_mouse_store,.type=VLNT_Int});
+                RPNEvaluatorAssignVar("@mma_y",(as_number_t){.i=y_mouse_store,.type=VLNT_Int});
                 PrintLastCommand(LastKey);
                 break;
             case CMD_LoadMouseCoords:

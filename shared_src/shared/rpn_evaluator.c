@@ -119,9 +119,12 @@ void rpn_f_null(void){}
 void RPNEvaluatorInit(void){
     if(!DefaultRPNFunctionMap){
         DefaultRPNVariablesMap=StringMap_as_number_new(10);
-#define SMVA(Str,NumberType,NumberMem) assert(StringMap_as_number_assign(DefaultRPNVariablesMap,Str,(as_number_t){.NumberMem=0,.type=NumberType})==VA_Written)
-        SMVA("@mouse_x",VLNT_Int,i);
-        SMVA("@mouse_y",VLNT_Int,i);
+        ValueAssignE status;
+#define SMVA(Str,NumberType,NumberMem) assert((status=StringMap_as_number_assign_ph(DefaultRPNVariablesMap,Str,(as_number_t){.NumberMem=0,.type=NumberType}))!=VA_PHCollision)
+        SMVA("@mma_x",VLNT_Int,i);//MouseMoveAbsolute x when load_mma is used.
+        SMVA("@mma_y",VLNT_Int,i);
+        SMVA("@pc_now",VLNT_Int,i);//Prints the program counter.
+        SMVA("@pc_last",VLNT_Int,i);
         DefaultRPNFunctionMap=StringMap_rpn_func_call_new(228);
         //Current size: 167
         //228 is [[0]=87,[1]=62,[2]=13,[3]=2,[4]=2,[5]=1] with djb hash
@@ -306,7 +309,15 @@ void RPNEvaluatorInit(void){
             fgets(buf,19,stdin);
             StringMap_rpn_func_call_resize(&DefaultRPNFunctionMap,strtol(buf,0,10));
         }
+        #elif 0
+        while(true){
+            StringMap_as_number_print_debug(DefaultRPNVariablesMap);
+            char buf[20]={0};
+            fgets(buf,19,stdin);
+            StringMap_as_number_resize(&DefaultRPNVariablesMap,strtol(buf,0,10));
+        }
         #endif
+        assert(StringMap_as_number_has_ph(DefaultRPNVariablesMap));
         #undef SMFA
     }else{
         puts("RPNEvaluatorInit has already been initialized.");
@@ -410,7 +421,7 @@ RPNValidStringE _RPNEvaluatorIsVarNameOk(const char* token,const VariableLoader_
     static const char NumberTypePrefixes[5]={'\0','c','i','l','d'};//Arranged based on the VLNumberType enums.
     bool token_is_var=VL_get_as_number(vl,token).exists;
     StringMapOpt_as_number_t smoant;
-    if((smoant=StringMap_as_number_read(DefaultRPNVariablesMap,token)).exists){
+    if((smoant=StringMap_as_number_read_ph(DefaultRPNVariablesMap,token)).exists){
         Stack_as_number_push(stack_an,smoant.value); //Just push since RPNVariables are prefixed with @. User-created variables cannot use @.
         return RPNVS_IsRPNVar;
     }
@@ -528,4 +539,7 @@ void _Stack_as_number_print(const Stack_as_number_t* this){
         fputs(i!=this->size-1?", ":"",stdout);
     }
     printf("]\n");
+}
+void RPNEvaluatorAssignVar(const char* token,as_number_t num){
+    assert(StringMap_as_number_assign_ph(DefaultRPNVariablesMap,token,num)!=VA_PHCollision);
 }
