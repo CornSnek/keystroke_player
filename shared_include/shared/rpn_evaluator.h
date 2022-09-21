@@ -132,5 +132,6 @@ typedef enum _RPNValidStringE{
 }RPNValidStringE;
 RPNValidStringE RPNEvaluatorEvaluate(const char* rpn_str,const VariableLoader_t* vl,as_number_t* get_value,bool see_stack,bool process_num,const char* rpn_start_b,const char* rpn_end_b,char rpn_sep);
 void RPNEvaluatorAssignVar(const char* token,as_number_t num);
+StringMapOpt_as_number_t RPNEvaluatorReadVar(const char* token);
 void RPNEvaluatorFree();
 #endif

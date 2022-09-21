@@ -120,11 +120,23 @@ void RPNEvaluatorInit(void){
     if(!DefaultRPNFunctionMap){
         DefaultRPNVariablesMap=StringMap_as_number_new(10);
         ValueAssignE status;
-#define SMVA(Str,NumberType,NumberMem) assert((status=StringMap_as_number_assign_ph(DefaultRPNVariablesMap,Str,(as_number_t){.NumberMem=0,.type=NumberType}))!=VA_PHCollision)
+        bool is_ph=true;
+#define SMVA(Str,NumberType,NumberMem)\
+status=StringMap_as_number_assign_ph(DefaultRPNVariablesMap,Str,(as_number_t){.NumberMem=0,.type=NumberType});\
+printf("Placing token: "  Str ": ");\
+puts((status==VA_Written)?"OK":ERR("Collision has Occured! Not a Perfect Hash."));\
+if(is_ph) is_ph=(status==VA_Written);
         SMVA("@mma_x",VLNT_Int,i);//MouseMoveAbsolute x when load_mma is used.
         SMVA("@mma_y",VLNT_Int,i);
         SMVA("@pc_now",VLNT_Int,i);//Prints the program counter.
         SMVA("@pc_last",VLNT_Int,i);
+        SMVA("@time_s",VLNT_Long,l);//Time since start of program.
+        SMVA("@time_ns",VLNT_Long,l);
+        StringMap_as_number_print_debug(DefaultRPNVariablesMap);
+        if(!is_ph){
+            fprintf(stderr,ERR("DefaultRPNVariablesMap should be a perfect hash. Exiting program.\n"));
+            exit(EXIT_FAILURE);
+        }
         DefaultRPNFunctionMap=StringMap_rpn_func_call_new(228);
         //Current size: 167
         //228 is [[0]=87,[1]=62,[2]=13,[3]=2,[4]=2,[5]=1] with djb hash
@@ -317,7 +329,6 @@ void RPNEvaluatorInit(void){
             StringMap_as_number_resize(&DefaultRPNVariablesMap,strtol(buf,0,10));
         }
         #endif
-        assert(StringMap_as_number_has_ph(DefaultRPNVariablesMap));
         #undef SMFA
     }else{
         puts("RPNEvaluatorInit has already been initialized.");
@@ -541,5 +552,8 @@ void _Stack_as_number_print(const Stack_as_number_t* this){
     printf("]\n");
 }
 void RPNEvaluatorAssignVar(const char* token,as_number_t num){
-    assert(StringMap_as_number_assign_ph(DefaultRPNVariablesMap,token,num)!=VA_PHCollision);
+    assert(StringMap_as_number_assign_ph(DefaultRPNVariablesMap,token,num)==VA_Rewritten);
+}
+StringMapOpt_as_number_t RPNEvaluatorReadVar(const char* token){
+    return StringMap_as_number_read_ph(DefaultRPNVariablesMap,token);
 }

@@ -170,6 +170,16 @@ Some differences when using these functions, compared to C, are listed below.
 - Using a negative signed number for the second operation in `>> >>u` and `<< <<u` also terminates the macro.
 Note that it does not abort the program in C, but mixed signedness is not implemented in this program.
 
+# Reserved Variables
+There are also reserved variable names that can be used in RPN strings. The variable names are prefixed with `@`. Here are the current list of defined reserved variables.
+
+- `@mma_x` and `@mma_y` - When using save_mma, it also saves the x and y coordinates respectively to these names.
+
+- `@pc_now` - This is the current index, or the "program counter" of the command when used. Note that it starts from 0 to (Number of Total Commands-1) rather than from 1 to (Number of Total Commands) when debug_commands is set to 1 or `PRINT>>` command is appended. `@pc_last` is the last index that was counted in the program.
+
+- `@time_s` and `@time_ns` - These count the current time since the macro began, where _s counts the seconds and _ns counts the remaining nanoseconds.
+
+
 # Commands with Variables 
 
 Here are commands that uses RPN notation to load/save/manipulate variables.

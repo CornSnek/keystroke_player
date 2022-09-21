@@ -608,6 +608,10 @@ bool run_program(command_array_t* cmd_arr, const char* file_str, Config config, 
     int LastCommands_i=0;
     timespec_get(&ts_usleep_before,TIME_UTC);
     while(!srs.program_done){
+        timespec_diff(&ts_begin,NULL,&ts_diff);
+        RPNEvaluatorAssignVar("@time_s",(as_number_t){.l=ts_diff.tv_sec,.type=VLNT_Long});
+        RPNEvaluatorAssignVar("@time_ns",(as_number_t){.l=ts_diff.tv_nsec,.type=VLNT_Long});
+        RPNEvaluatorAssignVar("@pc_last",RPNEvaluatorReadVar("@pc_now").value);
         RPNEvaluatorAssignVar("@pc_now",(as_number_t){.i=cmd_arr_i,.type=VLNT_Int});
         pthread_mutex_unlock(&input_mutex);
         query_is_true=false;
@@ -616,7 +620,6 @@ bool run_program(command_array_t* cmd_arr, const char* file_str, Config config, 
         CommandType cmd_type=cmd_arr->cmds[cmd_arr_i].type;
         int* rst_counter=0;
         if(config.debug_print_type>DBP_None||this_cmd.print_cmd){
-            timespec_diff(&ts_begin,NULL,&ts_diff);
             printf("%s[%ld.%09ld] Command #%d/%d%s",config.debug_print_type==DBP_CommandNumber?CLEAR_TERM:"",ts_diff.tv_sec,ts_diff.tv_nsec,cmd_arr_i+1,cmd_arr->size,config.debug_print_type==DBP_CommandNumber?"":"\n");
         }
         if(config.debug_print_type==DBP_CommandNumber){
