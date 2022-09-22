@@ -607,12 +607,13 @@ bool run_program(command_array_t* cmd_arr, const char* file_str, Config config, 
     int LastCommands[LAST_COMMANDS_LEN]={0}; //Counting indices as +1 so that 0 means nothing to print.
     int LastCommands_i=0;
     timespec_get(&ts_usleep_before,TIME_UTC);
+    RPNEvaluatorAssignVar("@ci_last",(as_number_t){.i=cmd_arr_len-1,.type=VLNT_Int});
     while(!srs.program_done){
         timespec_diff(&ts_begin,NULL,&ts_diff);
         RPNEvaluatorAssignVar("@time_s",(as_number_t){.l=ts_diff.tv_sec,.type=VLNT_Long});
         RPNEvaluatorAssignVar("@time_ns",(as_number_t){.l=ts_diff.tv_nsec,.type=VLNT_Long});
-        RPNEvaluatorAssignVar("@pc_last",RPNEvaluatorReadVar("@pc_now").value);
-        RPNEvaluatorAssignVar("@pc_now",(as_number_t){.i=cmd_arr_i,.type=VLNT_Int});
+        RPNEvaluatorAssignVar("@ci_prev",RPNEvaluatorReadVar("@ci_now").value);
+        RPNEvaluatorAssignVar("@ci_now",(as_number_t){.i=cmd_arr_i,.type=VLNT_Int});
         pthread_mutex_unlock(&input_mutex);
         query_is_true=false;
         command_t this_cmd=cmd_arr->cmds[cmd_arr_i];
@@ -665,7 +666,7 @@ bool run_program(command_array_t* cmd_arr, const char* file_str, Config config, 
         }
         #define cmdprintf(...) if((config.debug_print_type==DBP_AllCommands||this_cmd.print_cmd)) printf(__VA_ARGS__)
         #define PrintLastCommand(ToArray) if(config.debug_print_type==DBP_CommandNumber){ToArray##_n=0;memset(ToArray,0,LAST_CMD_BUFFER_LEN);strncpy(ToArray,this_cmd.start_cmd_p,(this_cmd.end_cmd_p-this_cmd.start_cmd_p+1<LAST_CMD_BUFFER_LEN)?(this_cmd.end_cmd_p-this_cmd.start_cmd_p+1):LAST_CMD_BUFFER_LEN);}
-        #define ExitIfProcessVLFalse(F)\
+        #define RuntimeExitIfProcessVLFalse(F)\
         if(!F){\
             pthread_mutex_lock(&input_mutex);\
             srs.program_done=true;\
@@ -673,6 +674,12 @@ bool run_program(command_array_t* cmd_arr, const char* file_str, Config config, 
             pthread_mutex_unlock(&input_mutex);\
             break;\
         } (void)0
+        #define DoRuntimeError()\
+        pthread_mutex_lock(&input_mutex);\
+        srs.program_done=true;\
+        pthread_mutex_unlock(&input_mutex);\
+        no_error=false;\
+        (void)0
         LastJump_n++;
         LastRepeat_n++;
         LastQuery_n++;
@@ -701,7 +708,7 @@ bool run_program(command_array_t* cmd_arr, const char* file_str, Config config, 
                 PrintLastCommand(LastKey);
                 break;
             case CMD_Delay://Using timespec_get and timespec_diff (custom function) to try to get "precise delays"
-                ExitIfProcessVLFalse(ProcessVLCallback(vl,cmd_u.delay.callback,&an_output[0]));
+                RuntimeExitIfProcessVLFalse(ProcessVLCallback(vl,cmd_u.delay.callback,&an_output[0]));
                 an_output[0]=VLNumberCast(an_output[0],VLNT_Long);
                 timespec_diff(&ts_usleep_before,&ts_usleep_before_adj,&ts_diff);
                 time_after_last_usleep=ts_diff.tv_sec*NSEC_TO_SEC+ts_diff.tv_nsec;
@@ -724,7 +731,7 @@ bool run_program(command_array_t* cmd_arr, const char* file_str, Config config, 
                 real_delay-=ts_diff.tv_sec*NSEC_TO_SEC+ts_diff.tv_nsec;
                 break;
             case CMD_RepeatEnd:
-                ExitIfProcessVLFalse(ProcessVLCallback(vl,cmd_u.repeat_end.counter,&an_output[0]));
+                RuntimeExitIfProcessVLFalse(ProcessVLCallback(vl,cmd_u.repeat_end.counter,&an_output[0]));
                 an_output[0]=VLNumberCast(an_output[0],VLNT_Int);
                 if(an_output[0].i){//Max counter non-zero.
                     rst_counter=&(cmd_arr->cmds[cmd_u.repeat_end.cmd_index].cmd_u.repeat_start.counter);
@@ -769,9 +776,9 @@ bool run_program(command_array_t* cmd_arr, const char* file_str, Config config, 
                 PrintLastCommand(LastKey);
                 break;
             case CMD_MoveMouse:
-                ExitIfProcessVLFalse(ProcessVLCallback(vl,cmd_u.mouse_move.x_cb,&an_output[0]));
+                RuntimeExitIfProcessVLFalse(ProcessVLCallback(vl,cmd_u.mouse_move.x_cb,&an_output[0]));
                 an_output[0]=VLNumberCast(an_output[0],VLNT_Int);
-                ExitIfProcessVLFalse(ProcessVLCallback(vl,cmd_u.mouse_move.y_cb,&an_output[1]));
+                RuntimeExitIfProcessVLFalse(ProcessVLCallback(vl,cmd_u.mouse_move.y_cb,&an_output[1]));
                 an_output[1]=VLNumberCast(an_output[1],VLNT_Int);
                 cmdprintf("Mouse move at (%d,%d) (%s).",an_output[0].i,an_output[1].i,cmd_u.mouse_move.is_absolute?"absolute":"relative");
                 pthread_mutex_lock(&input_mutex);
@@ -803,6 +810,19 @@ bool run_program(command_array_t* cmd_arr, const char* file_str, Config config, 
                 cmd_arr_i=cmd_u.jump_to.cmd_index;
                 PrintLastCommand(LastJump);
                 break;
+            case CMD_JumpToIndex:
+                RuntimeExitIfProcessVLFalse(ProcessVLCallback(vl,cmd_u.jump_to_index,&an_output[0]));
+                an_output[0]=VLNumberCast(an_output[0],VLNT_Int);
+                cmdprintf("Jump to Command Index #%d\n",an_output[0].i-1);
+                //Check bounds of index.
+                if(an_output[0].i<0||an_output[0].i>=cmd_arr_len){
+                    fprintf(stderr,ERR("Command Index (%d) is out of bounds from 0 to %d. Exiting Program!\n"),an_output[0].i,cmd_arr_len-1);
+                    DoRuntimeError();
+                    break;
+                }
+                cmd_arr_i=an_output[0].i-1; //-1 because of cmd_arr_i++
+                PrintLastCommand(LastJump);
+                break;
             case CMD_JumpFrom:
                 cmdprintf("Jump from command String ID#%d.\n",cmd_u.jump_from.str_index);
                 break;
@@ -815,10 +835,8 @@ bool run_program(command_array_t* cmd_arr, const char* file_str, Config config, 
                 }
                 if(!not_empty){
                     fprintf(stderr,ERR("Stack is empty! Aborting program."));
-                    pthread_mutex_lock(&input_mutex);
-                    srs.program_done=true;
-                    no_error=false;
-                    pthread_mutex_unlock(&input_mutex);
+                    DoRuntimeError();
+                    break;
                 }
                 PrintLastCommand(LastJump);
                 break;
@@ -841,13 +859,13 @@ bool run_program(command_array_t* cmd_arr, const char* file_str, Config config, 
                 break;
             case CMD_QueryComparePixel:
                 pixel_compare=cmd_u.pixel_compare;
-                ExitIfProcessVLFalse(ProcessVLCallback(vl,pixel_compare.r_cb,&an_output[0]));
+                RuntimeExitIfProcessVLFalse(ProcessVLCallback(vl,pixel_compare.r_cb,&an_output[0]));
                 an_output[0]=VLNumberCast(an_output[0],VLNT_Char);
-                ExitIfProcessVLFalse(ProcessVLCallback(vl,pixel_compare.g_cb,&an_output[1]));
+                RuntimeExitIfProcessVLFalse(ProcessVLCallback(vl,pixel_compare.g_cb,&an_output[1]));
                 an_output[1]=VLNumberCast(an_output[1],VLNT_Char);
-                ExitIfProcessVLFalse(ProcessVLCallback(vl,pixel_compare.b_cb,&an_output[2]));
+                RuntimeExitIfProcessVLFalse(ProcessVLCallback(vl,pixel_compare.b_cb,&an_output[2]));
                 an_output[2]=VLNumberCast(an_output[2],VLNT_Char);
-                ExitIfProcessVLFalse(ProcessVLCallback(vl,pixel_compare.thr_cb,&an_output[3]));
+                RuntimeExitIfProcessVLFalse(ProcessVLCallback(vl,pixel_compare.thr_cb,&an_output[3]));
                 an_output[3]=VLNumberCast(an_output[3],VLNT_Char);
                 cmdprintf("%s next command if pixel at mouse matches r,g,b=%d,%d,%d with threshold of %d. ",this_cmd.invert_query?"Skip":"Don't skip",an_output[0].i,an_output[1].i,an_output[2].i,an_output[3].i);
                 pthread_mutex_lock(&input_mutex);
@@ -863,7 +881,7 @@ bool run_program(command_array_t* cmd_arr, const char* file_str, Config config, 
                 break;
             case CMD_QueryCompareCoords:
                 {
-                    ExitIfProcessVLFalse(ProcessVLCallback(vl,cmd_u.compare_coords.var_callback,&an_output[0]));
+                    RuntimeExitIfProcessVLFalse(ProcessVLCallback(vl,cmd_u.compare_coords.var_callback,&an_output[0]));
                     an_output[0]=VLNumberCast(an_output[0],VLNT_Int);
                     const CompareCoords cc=cmd_u.compare_coords.cmp_flags;
                     cmdprintf("%s next command if mouse coordinate %c%c%s%d. ",this_cmd.invert_query?"Skip":"Don't skip",(cc&CMP_Y)==CMP_Y?'y':'x',(cc&CMP_GT)==CMP_GT?'>':'<',(cc&CMP_W_EQ)==CMP_W_EQ?"=":"",an_output[0].i);
@@ -879,13 +897,13 @@ bool run_program(command_array_t* cmd_arr, const char* file_str, Config config, 
                 }
             case CMD_QueryCoordsWithin:
                 coords_within=cmd_u.coords_within;
-                ExitIfProcessVLFalse(ProcessVLCallback(vl,coords_within.xl_cb,&an_output[0]));
+                RuntimeExitIfProcessVLFalse(ProcessVLCallback(vl,coords_within.xl_cb,&an_output[0]));
                 an_output[0]=VLNumberCast(an_output[0],VLNT_Int);
-                ExitIfProcessVLFalse(ProcessVLCallback(vl,coords_within.yl_cb,&an_output[1]));
+                RuntimeExitIfProcessVLFalse(ProcessVLCallback(vl,coords_within.yl_cb,&an_output[1]));
                 an_output[1]=VLNumberCast(an_output[1],VLNT_Int);
-                ExitIfProcessVLFalse(ProcessVLCallback(vl,coords_within.xh_cb,&an_output[2]));
+                RuntimeExitIfProcessVLFalse(ProcessVLCallback(vl,coords_within.xh_cb,&an_output[2]));
                 an_output[2]=VLNumberCast(an_output[2],VLNT_Int);
-                ExitIfProcessVLFalse(ProcessVLCallback(vl,coords_within.yh_cb,&an_output[3]));
+                RuntimeExitIfProcessVLFalse(ProcessVLCallback(vl,coords_within.yh_cb,&an_output[3]));
                 an_output[3]=VLNumberCast(an_output[3],VLNT_Int);
                 cmdprintf("%s next command if mouse is within Top Left x:%d y:%d Bottom Right x:%d y:%d. ",this_cmd.invert_query?"Skip":"Don't skip",an_output[0].i,an_output[1].i,an_output[2].i,an_output[3].i);
                 pthread_mutex_lock(&input_mutex);
@@ -896,7 +914,7 @@ bool run_program(command_array_t* cmd_arr, const char* file_str, Config config, 
                 PrintLastCommand(LastQuery);
                 break;
             case CMD_QueryRPNEval:
-                ExitIfProcessVLFalse(ProcessVLCallback(vl,cmd_u.rpn_eval,&an_output[0]));
+                RuntimeExitIfProcessVLFalse(ProcessVLCallback(vl,cmd_u.rpn_eval,&an_output[0]));
                 an_output[0]=VLNumberCast(an_output[0],VLNT_Int);
                 cmdprintf("%s next command if RPN string '%s' is non-zero. ",this_cmd.invert_query?"Skip":"Don't skip",VL_get_callback(vl,cmd_u.rpn_eval)->args.an_rpn.rpn_str);
                 query_is_true=an_output[0].i;
@@ -912,7 +930,7 @@ bool run_program(command_array_t* cmd_arr, const char* file_str, Config config, 
                 break;
             case CMD_EditVar:
                 cmdprintf("Editing variable string name '%s' with RPN string '%s'\n",VL_get_callback(vl,cmd_u.edit_var)->args.rpn.variable,VL_get_callback(vl,cmd_u.edit_var)->args.rpn.rpn_str);
-                ExitIfProcessVLFalse(ProcessVLCallback(vl,cmd_u.edit_var,0));
+                RuntimeExitIfProcessVLFalse(ProcessVLCallback(vl,cmd_u.edit_var,0));
                 if((config.debug_print_type==DBP_AllCommands||this_cmd.print_cmd)){
                     const char* var=VL_get_callback(vl,cmd_u.edit_var)->args.rpn.variable;
                     StringMapOpt_as_number_t an=StringMap_as_number_read(vl->sman,var);
@@ -930,9 +948,7 @@ bool run_program(command_array_t* cmd_arr, const char* file_str, Config config, 
                 cmd_arr_i++;
             }else cmd_arr_i+=this_cmd.query_jump_ne;//Skip next command. If chained, skip more than 1.
         }
-        if(cmd_arr_i==cmd_arr_len){
-            srs.program_done=true;//To end the mouse_input_t thread loop as well.
-        }
+        if(cmd_arr_i==cmd_arr_len) srs.program_done=true;//To end the mouse_input_t thread loop as well.
     }
     empty_cmd_index();
     timespec_diff(&ts_begin,NULL,&ts_diff);

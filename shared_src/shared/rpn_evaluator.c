@@ -118,7 +118,7 @@ void rpn_f_null(void){}
 //To make the default StringMap before calling rpn_evaluator_new.
 void RPNEvaluatorInit(void){
     if(!DefaultRPNFunctionMap){
-        DefaultRPNVariablesMap=StringMap_as_number_new(10);
+        DefaultRPNVariablesMap=StringMap_as_number_new(15);
         ValueAssignE status;
         bool is_ph=true;
 #define SMVA(Str,NumberType,NumberMem)\
@@ -128,8 +128,9 @@ puts((status==VA_Written)?"OK":ERR("Collision has Occured! Not a Perfect Hash.")
 if(is_ph) is_ph=(status==VA_Written);
         SMVA("@mma_x",VLNT_Int,i);//MouseMoveAbsolute x when load_mma is used.
         SMVA("@mma_y",VLNT_Int,i);
-        SMVA("@pc_now",VLNT_Int,i);//Prints the program counter.
-        SMVA("@pc_last",VLNT_Int,i);
+        SMVA("@ci_now",VLNT_Int,i);//Prints the program counter.
+        SMVA("@ci_prev",VLNT_Int,i);
+        SMVA("@ci_last",VLNT_Int,i);//Last command number.
         SMVA("@time_s",VLNT_Long,l);//Time since start of program.
         SMVA("@time_ns",VLNT_Long,l);
         StringMap_as_number_print_debug(DefaultRPNVariablesMap);

@@ -129,6 +129,12 @@ bool macro_buffer_process_next(macro_buffer_t* this,bool print_debug){//Returns 
                     key_processed=true;
                     break;
                 }
+                if(!strncmp(current_char_p,"JTI>",4)){
+                    read_i+=4;
+                    read_offset_i=-1;
+                    read_state=RS_JumpToIndex;
+                    break;
+                }
                 if(!strncmp(current_char_p,"JT>",3)){
                     read_i+=3;
                     read_offset_i=-1;
@@ -596,6 +602,48 @@ bool macro_buffer_process_next(macro_buffer_t* this,bool print_debug){//Returns 
                     }
                     fprintf(stderr,ERR("Unexpected character '%c' at line %lu char %lu state %s.\n"),current_char,line_num,char_num,ReadStateStrings[read_state]);
                    DO_ERROR();
+                    break;
+                }
+                fprintf(stderr,ERR("Unexpected character '%c' at line %lu char %lu state %s.\n"),current_char,line_num,char_num,ReadStateStrings[read_state]);
+                DO_ERROR();
+                break;
+            case RS_JumpToIndex:
+                //TODO: Check if it works
+                if(isdigit(current_char)){
+                    begin_p=current_char_p;
+                    while(*(end_p=++current_char_p)!=';'&&isdigit(*end_p)&&*end_p){}
+                    if(*end_p!=';'){
+                        fprintf(stderr,ERR("Semicolon not found or non-number found at line %lu char %lu state %s.\n"),line_num,char_num,ReadStateStrings[read_state]);
+                        DO_ERROR();
+                        break;
+                    }
+                    num_str_arr[0]=char_string_slice(begin_p,end_p-1);//-1 to exclude ;
+                    command_array_add(this->cmd_arr,
+                        (command_t){.type=CMD_JumpToIndex,.subtype=CMDST_Jump,.print_cmd=print_cmd,
+                            .cmd_u.jump_to_index=VL_new_callback_int(this->vl,strtol(num_str_arr[0],NULL,10))
+                        }
+                    );
+                    free(num_str_arr[0]);
+                    read_offset_i+=end_p-begin_p;
+                    key_processed=true;
+                    break;
+                }
+                if(current_char=='('){
+                    begin_p=current_char_p;
+                    while(*(end_p=++current_char_p)!=')'&&*end_p!=';'&&*end_p){}
+                    if(*end_p!=')'||*(end_p+1)!=';'){
+                        fprintf(stderr,ERR("RPN string doesn't terminate with ');' at line %lu char %lu state %s.\n"),line_num,char_num,ReadStateStrings[read_state]);
+                        DO_ERROR();
+                        break;   
+                    }
+                    rpn_str_arr[0]=char_string_slice(begin_p,end_p);
+                    command_array_add(this->cmd_arr,
+                        (command_t){.type=CMD_JumpToIndex,.subtype=CMDST_Jump,.print_cmd=print_cmd,
+                            .cmd_u.jump_to_index=VL_new_callback_number_rpn(this->vl,rpn_str_arr[0],print_debug)
+                        }
+                    );
+                    read_offset_i+=end_p-begin_p+1;//+1 to read past semicolon.
+                    key_processed=true;
                     break;
                 }
                 fprintf(stderr,ERR("Unexpected character '%c' at line %lu char %lu state %s.\n"),current_char,line_num,char_num,ReadStateStrings[read_state]);
@@ -1430,6 +1478,19 @@ void command_array_print(const command_array_t* this,const VariableLoader_t* vl,
                 break;
             case CMD_JumpTo:
                 printf("JumpTo cmd_i: %d str_i: %d store_i: %d\n",cmd.jump_to.cmd_index,cmd.jump_to.str_index,cmd.jump_to.store_index);
+                break;
+            case CMD_JumpToIndex:
+                printf("JumpToIndex value");
+                vlct=VL_get_callback(vl,cmd.jump_to_index);
+                switch(vlct->callback_type){
+                    case VLCallback_Int:
+                        printf(": %d\n",(int)vlct->args.number);
+                        break;
+                    case VLCallback_NumberRPN:
+                        printf("(RPN): '%s'\n",vlct->args.an_rpn.rpn_str);
+                        break;
+                    default: SHOULD_BE_UNREACHABLE(); break;
+                }
                 break;
             case CMD_JumpFrom:
                 printf("JumpFrom str_i: %d\n",cmd.jump_from.str_index);
