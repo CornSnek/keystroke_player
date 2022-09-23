@@ -607,13 +607,13 @@ bool run_program(command_array_t* cmd_arr, const char* file_str, Config config, 
     int LastCommands[LAST_COMMANDS_LEN]={0}; //Counting indices as +1 so that 0 means nothing to print.
     int LastCommands_i=0;
     timespec_get(&ts_usleep_before,TIME_UTC);
-    RPNEvaluatorAssignVar("@ci_last",(as_number_t){.i=cmd_arr_len-1,.type=VLNT_Int});
+    RPNEvaluatorAssignVar("@ci_last",(as_number_t){.i=cmd_arr_len,.type=VLNT_Int});
     while(!srs.program_done){
         timespec_diff(&ts_begin,NULL,&ts_diff);
         RPNEvaluatorAssignVar("@time_s",(as_number_t){.l=ts_diff.tv_sec,.type=VLNT_Long});
         RPNEvaluatorAssignVar("@time_ns",(as_number_t){.l=ts_diff.tv_nsec,.type=VLNT_Long});
         RPNEvaluatorAssignVar("@ci_prev",RPNEvaluatorReadVar("@ci_now").value);
-        RPNEvaluatorAssignVar("@ci_now",(as_number_t){.i=cmd_arr_i,.type=VLNT_Int});
+        RPNEvaluatorAssignVar("@ci_now",(as_number_t){.i=cmd_arr_i+1,.type=VLNT_Int});
         pthread_mutex_unlock(&input_mutex);
         query_is_true=false;
         command_t this_cmd=cmd_arr->cmds[cmd_arr_i];
@@ -811,16 +811,17 @@ bool run_program(command_array_t* cmd_arr, const char* file_str, Config config, 
                 PrintLastCommand(LastJump);
                 break;
             case CMD_JumpToIndex:
-                RuntimeExitIfProcessVLFalse(ProcessVLCallback(vl,cmd_u.jump_to_index,&an_output[0]));
+                RuntimeExitIfProcessVLFalse(ProcessVLCallback(vl,cmd_u.jump_to_index.jump_cb,&an_output[0]));
                 an_output[0]=VLNumberCast(an_output[0],VLNT_Int);
-                cmdprintf("Jump to Command Index #%d\n",an_output[0].i-1);
+                cmdprintf("Jump to Command Index (%s) by %d\n",cmd_u.jump_to_index.is_absolute?"absolute":"relative",an_output[0].i);
+                an_output[0].i=cmd_u.jump_to_index.is_absolute?an_output[0].i:(cmd_arr_i+an_output[0].i);
                 //Check bounds of index.
-                if(an_output[0].i<0||an_output[0].i>=cmd_arr_len){
-                    fprintf(stderr,ERR("Command Index (%d) is out of bounds from 0 to %d. Exiting Program!\n"),an_output[0].i,cmd_arr_len-1);
+                if(an_output[0].i<1||an_output[0].i>cmd_arr_len){
+                    fprintf(stderr,ERR("Command Index (%d) is out of bounds from 1 to %d. Exiting Program!\n"),an_output[0].i,cmd_arr_len);
                     DoRuntimeError();
                     break;
                 }
-                cmd_arr_i=an_output[0].i-1; //-1 because of cmd_arr_i++
+                cmd_arr_i=an_output[0].i-2; //-2 because of cmd_arr_i++ and the program parses from 1 to cmd_arr_len. 
                 PrintLastCommand(LastJump);
                 break;
             case CMD_JumpFrom:

@@ -74,6 +74,13 @@ JumpTo command = `JT>[A-Za-z0-9\+\_]+;`
     There can be more than one JumpTo and it can be before and/or after
     a JumpFrom.
 
+JumpToIndex command = `JTI[AR]>[0-9\-];`
+
+    Will jump based based on (A)bsolute or (R)elative position.
+    Negative numbers are used for relative positions. The program will throw
+    and error if numbers are out of bounds (It should be from 1 to the maximum number
+    of commands currently in the program).
+
 JumpFrom command = `JF>[A-Za-z0-9\+\_]+;`
 
     A JumpTo will jump to this command. There can be one and only one JumpFrom.
@@ -170,12 +177,13 @@ Some differences when using these functions, compared to C, are listed below.
 - Using a negative signed number for the second operation in `>> >>u` and `<< <<u` also terminates the macro.
 Note that it does not abort the program in C, but mixed signedness is not implemented in this program.
 
-# Reserved Variables
-There are also reserved variable names that can be used in RPN strings. The variable names are prefixed with `@`. Here are the current list of defined reserved variables.
+# RPN Reserved Variables
+There are also reserved variable names that can be used in RPN strings. The variable names are prefixed with `@`.
+These should generally be used when starting the macro and not from testing equations from the program main menu. Here are the current list of defined reserved variables.
 
 - `@mma_x` and `@mma_y` - When using the command `save_mma;`, it also saves the x and y coordinates respectively to these names.
 
-- `@ci_now` - This is the current index, or the "program counter" of the command when used. Note that it starts from 0 to (Number of Total Commands-1) rather than from 1 to (Number of Total Commands) when debug_commands is set to 1 or `PRINT>>` command is appended. `@ci_prev` is the last index that was counted in the program. `@ci_last` is the last index of the last command in the program.
+- `@ci_now` - This is the current index, or the "program counter" of the command when used. Note that it starts from 1 to (Number of Total Commands). `@ci_prev` is the last index that was counted in the program. `@ci_last` is the last index of the last command in the program.
 
 - `@time_s` and `@time_ns` - These count the current time since the macro program began, where _s counts the seconds and _ns counts the remaining nanoseconds.
 

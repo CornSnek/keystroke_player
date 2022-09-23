@@ -133,6 +133,10 @@ typedef struct delay_s{
     vlcallback_info callback;
     long delay_mult;
 }delay_t;
+typedef struct jump_to_index_s{
+    vlcallback_info jump_cb;
+    bool is_absolute;
+}jump_to_index_t;
 typedef union command_union{
     keystroke_t ks;
     delay_t delay;
@@ -143,7 +147,7 @@ typedef union command_union{
     mouse_click_t mouse_click;
     mouse_move_t mouse_move;
     jump_to_t jump_to;
-    vlcallback_info jump_to_index;
+    jump_to_index_t jump_to_index;
     jump_from_t jump_from;
     pixel_compare_t pixel_compare;
     compare_coords_t compare_coords;

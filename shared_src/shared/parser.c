@@ -47,7 +47,7 @@ bool macro_buffer_process_next(macro_buffer_t* this,bool print_debug){//Returns 
     bool invert_query=false;
     CompareCoords cmp_flags=CMP_NULL;
     VLCallbackType vct;
-    bool mouse_absolute;
+    bool is_absolute;
     #define DO_ERROR()\
     print_where_error_is(this->contents,this->token_i,read_i+read_offset_i);\
     this->token_i+=error_move_offset(this->contents+this->token_i+read_i+read_offset_i);\
@@ -129,8 +129,16 @@ bool macro_buffer_process_next(macro_buffer_t* this,bool print_debug){//Returns 
                     key_processed=true;
                     break;
                 }
-                if(!strncmp(current_char_p,"JTI>",4)){
-                    read_i+=4;
+                if(!strncmp(current_char_p,"JTIA>",5)){
+                    is_absolute=true;
+                    read_i+=5;
+                    read_offset_i=-1;
+                    read_state=RS_JumpToIndex;
+                    break;
+                }
+                if(!strncmp(current_char_p,"JTIR>",5)){
+                    is_absolute=false;
+                    read_i+=5;
                     read_offset_i=-1;
                     read_state=RS_JumpToIndex;
                     break;
@@ -167,14 +175,14 @@ bool macro_buffer_process_next(macro_buffer_t* this,bool print_debug){//Returns 
                 if(!strncmp(current_char_p,"mma=",4)){
                     read_i+=4;
                     read_offset_i=-1;
-                    mouse_absolute=true;
+                    is_absolute=true;
                     read_state=RS_MoveMouse;
                     break;
                 }
                 if(!strncmp(current_char_p,"mmr=",4)){
                     read_i+=4;
                     read_offset_i=-1;
-                    mouse_absolute=false;
+                    is_absolute=false;
                     read_state=RS_MoveMouse;
                     break;
                 }
@@ -559,7 +567,7 @@ bool macro_buffer_process_next(macro_buffer_t* this,bool print_debug){//Returns 
                 command_array_add(this->cmd_arr,
                 (command_t){.type=CMD_MoveMouse,.subtype=CMDST_Command,.print_cmd=print_cmd,
                         .cmd_u.mouse_move=(mouse_move_t){
-                            .x_cb=vlci[0],.y_cb=vlci[1],.is_absolute=mouse_absolute
+                            .x_cb=vlci[0],.y_cb=vlci[1],.is_absolute=is_absolute
                         }
                     }
                 );
@@ -608,8 +616,7 @@ bool macro_buffer_process_next(macro_buffer_t* this,bool print_debug){//Returns 
                 DO_ERROR();
                 break;
             case RS_JumpToIndex:
-                //TODO: Check if it works
-                if(isdigit(current_char)){
+                if(isdigit(current_char)||current_char=='-'){
                     begin_p=current_char_p;
                     while(*(end_p=++current_char_p)!=';'&&isdigit(*end_p)&&*end_p){}
                     if(*end_p!=';'){
@@ -620,7 +627,11 @@ bool macro_buffer_process_next(macro_buffer_t* this,bool print_debug){//Returns 
                     num_str_arr[0]=char_string_slice(begin_p,end_p-1);//-1 to exclude ;
                     command_array_add(this->cmd_arr,
                         (command_t){.type=CMD_JumpToIndex,.subtype=CMDST_Jump,.print_cmd=print_cmd,
-                            .cmd_u.jump_to_index=VL_new_callback_int(this->vl,strtol(num_str_arr[0],NULL,10))
+                            .cmd_u.jump_to_index=(jump_to_index_t){
+                                .jump_cb=VL_new_callback_int(this->vl,strtol(num_str_arr[0],NULL,10)),
+                                .is_absolute=is_absolute
+                            }
+                            
                         }
                     );
                     free(num_str_arr[0]);
@@ -639,7 +650,10 @@ bool macro_buffer_process_next(macro_buffer_t* this,bool print_debug){//Returns 
                     rpn_str_arr[0]=char_string_slice(begin_p,end_p);
                     command_array_add(this->cmd_arr,
                         (command_t){.type=CMD_JumpToIndex,.subtype=CMDST_Jump,.print_cmd=print_cmd,
-                            .cmd_u.jump_to_index=VL_new_callback_number_rpn(this->vl,rpn_str_arr[0],print_debug)
+                            .cmd_u.jump_to_index=(jump_to_index_t){
+                                .jump_cb=VL_new_callback_number_rpn(this->vl,rpn_str_arr[0],print_debug),
+                                .is_absolute=is_absolute
+                            }
                         }
                     );
                     read_offset_i+=end_p-begin_p+1;//+1 to read past semicolon.
@@ -1480,8 +1494,8 @@ void command_array_print(const command_array_t* this,const VariableLoader_t* vl,
                 printf("JumpTo cmd_i: %d str_i: %d store_i: %d\n",cmd.jump_to.cmd_index,cmd.jump_to.str_index,cmd.jump_to.store_index);
                 break;
             case CMD_JumpToIndex:
-                printf("JumpToIndex value");
-                vlct=VL_get_callback(vl,cmd.jump_to_index);
+                printf("JumpToIndex(%s) value",cmd.jump_to_index.is_absolute?"absolute":"relative");
+                vlct=VL_get_callback(vl,cmd.jump_to_index.jump_cb);
                 switch(vlct->callback_type){
                     case VLCallback_Int:
                         printf(": %d\n",(int)vlct->args.number);
