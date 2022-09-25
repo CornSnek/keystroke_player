@@ -27,7 +27,7 @@ typedef struct{
     unsigned char decimals;
 }Config;
 const Config InitConfig={
-    .init_delay=2000000,.key_check_delay=100000,.debug_print_type=DBP_AllCommands,.decimals=10
+    .init_delay=2000000,.key_check_delay=1000,.debug_print_type=DBP_AllCommands,.decimals=10
 };
 inline static bool fgets_change(char* str,int buffer_len);
 inline static bool write_to_config(const Config config);
@@ -479,7 +479,6 @@ void* keyboard_check_listener(void* srs_v){
     Display* xdpy=((shared_rs*)srs_v)->xdo_obj->xdpy;
     int scr=DefaultScreen(xdpy);
     XGrabKey(xdpy,XKeysymToKeycode(xdpy,XK_Escape),None,RootWindow(xdpy,scr),False,GrabModeAsync,GrabModeAsync);
-    XFlush(xdpy);
     XEvent e={0};
     while(!srs_p->program_done){
         pthread_mutex_unlock(&input_mutex);
@@ -494,16 +493,16 @@ void* keyboard_check_listener(void* srs_v){
         }
     }
     XUngrabKey(xdpy,XKeysymToKeycode(xdpy,XK_Escape),None,RootWindow(xdpy,scr));
-    XFlush(xdpy);
     pthread_mutex_unlock(&input_mutex);
     pthread_exit(NULL);
 }
-//Get time elapsed since ts_begin after calling this function. Assuming ts_begin was before ts_end. Returns time to ts_diff.
-//ts_end_clone for another timespec_get from ts_end.
+//Get time elapsed since ts_begin after calling this function. Assuming ts_begin was before ts_end. Returns time to ts_diff (optional).
+//ts_end_clone (optional) for another timespec_get from ts_end.
 void timespec_diff(const struct timespec* ts_begin,struct timespec* ts_end_clone,struct timespec* ts_diff){
     struct timespec ts_end;
     timespec_get(&ts_end,TIME_UTC);
     if(ts_end_clone) *ts_end_clone=ts_end;
+    if(!ts_diff) return;
     const long nsec_diff=ts_end.tv_nsec-ts_begin->tv_nsec;
     *ts_diff=(struct timespec){//Ternary operators: If ts_end has less nanoseconds, decrease by 1 sec and add NSEC_TO_SEC to nsec.
         .tv_sec=ts_end.tv_sec-ts_begin->tv_sec-(nsec_diff<0l?1l:0l),
@@ -541,6 +540,7 @@ void empty_cmd_index(void){//If macro ends while having stack.
     cmd_i_stack=0;
     cmd_i_size=0;
 }
+
 #include <X11/extensions/XTest.h>
 //Based from xdo.c file using xdo_move_mouse_relative's functions, as XWarpPointer makes the mouse not click properly.
 int custom_xdo_move_mouse_absolute(const xdo_t *xdo,int x,int y){
@@ -589,10 +589,9 @@ bool run_program(command_array_t* cmd_arr, const char* file_str, Config config, 
         xdo_free(xdo_obj);
         return false;
     }
-    struct timespec ts_begin,ts_diff,ts_usleep_before,ts_usleep_before_adj;
+    struct timespec ts_begin,ts_diff,ts_usleep_before,ts_usleep_before_adj,ts_rm_delay;
     timespec_get(&ts_begin,TIME_UTC);
-    pthread_mutex_lock(&input_mutex);
-    bool query_is_true,not_empty,no_error=true;
+    bool query_is_true,not_empty,no_error=true,key_loop=false;
     typedef long nano_sec;
     nano_sec time_after_last_usleep;
     nano_sec real_delay=0;//Adjust delay depending on time after commands and after sleeping.
@@ -608,13 +607,16 @@ bool run_program(command_array_t* cmd_arr, const char* file_str, Config config, 
     int LastCommands_i=0;
     timespec_get(&ts_usleep_before,TIME_UTC);
     RPNEvaluatorAssignVar("@ci_last",(as_number_t){.i=cmd_arr_len,.type=VLNT_Int});
+    pthread_mutex_lock(&input_mutex);
+    Display* xdpy=srs.xdo_obj->xdpy;
+    int scr=DefaultScreen(xdpy);
     while(!srs.program_done){
+        pthread_mutex_unlock(&input_mutex);
         timespec_diff(&ts_begin,NULL,&ts_diff);
         RPNEvaluatorAssignVar("@time_s",(as_number_t){.l=ts_diff.tv_sec,.type=VLNT_Long});
         RPNEvaluatorAssignVar("@time_ns",(as_number_t){.l=ts_diff.tv_nsec,.type=VLNT_Long});
         RPNEvaluatorAssignVar("@ci_prev",RPNEvaluatorReadVar("@ci_now").value);
         RPNEvaluatorAssignVar("@ci_now",(as_number_t){.i=cmd_arr_i+1,.type=VLNT_Int});
-        pthread_mutex_unlock(&input_mutex);
         query_is_true=false;
         command_t this_cmd=cmd_arr->cmds[cmd_arr_i];
         command_union_t cmd_u=cmd_arr->cmds[cmd_arr_i].cmd_u;
@@ -686,23 +688,23 @@ bool run_program(command_array_t* cmd_arr, const char* file_str, Config config, 
         LastKey_n++;
         switch(cmd_type){
             case CMD_KeyStroke:
-                switch(cmd_u.ks.key_state){
+                switch(cmd_u.auto_ks.key_state){
                     case IS_Down:
-                        cmdprintf("Key down for %s\n",cmd_u.ks.key);
+                        cmdprintf("Key down for %s\n",cmd_u.auto_ks.key);
                         pthread_mutex_lock(&input_mutex);
-                        xdo_send_keysequence_window_down(xdo_obj,CURRENTWINDOW,cmd_u.ks.key,0);
-                        key_down_check_add(kdc,cmd_u.ks.key);
+                        xdo_send_keysequence_window_down(xdo_obj,CURRENTWINDOW,cmd_u.auto_ks.key,0);
+                        key_down_check_add(kdc,cmd_u.auto_ks.key);
                         break;
                     case IS_Up:
-                        cmdprintf("Key up for %s\n",cmd_u.ks.key);
+                        cmdprintf("Key up for %s\n",cmd_u.auto_ks.key);
                         pthread_mutex_lock(&input_mutex);
-                        xdo_send_keysequence_window_up(xdo_obj,CURRENTWINDOW,cmd_u.ks.key,0);
-                        key_down_check_remove(kdc,cmd_u.ks.key);
+                        xdo_send_keysequence_window_up(xdo_obj,CURRENTWINDOW,cmd_u.auto_ks.key,0);
+                        key_down_check_remove(kdc,cmd_u.auto_ks.key);
                         break;
                     case IS_Click:
-                        cmdprintf("Key click for %s\n",cmd_u.ks.key);
+                        cmdprintf("Key click for %s\n",cmd_u.auto_ks.key);
                         pthread_mutex_lock(&input_mutex);
-                        xdo_send_keysequence_window(xdo_obj,CURRENTWINDOW,cmd_u.ks.key,0);
+                        xdo_send_keysequence_window(xdo_obj,CURRENTWINDOW,cmd_u.auto_ks.key,0);
                 }
                 pthread_mutex_unlock(&input_mutex);
                 PrintLastCommand(LastKey);
@@ -814,7 +816,7 @@ bool run_program(command_array_t* cmd_arr, const char* file_str, Config config, 
                 RuntimeExitIfProcessVLFalse(ProcessVLCallback(vl,cmd_u.jump_to_index.jump_cb,&an_output[0]));
                 an_output[0]=VLNumberCast(an_output[0],VLNT_Int);
                 cmdprintf("Jump to Command Index (%s) by %d\n",cmd_u.jump_to_index.is_absolute?"absolute":"relative",an_output[0].i);
-                an_output[0].i=cmd_u.jump_to_index.is_absolute?an_output[0].i:(cmd_arr_i+an_output[0].i);
+                an_output[0].i=cmd_u.jump_to_index.is_absolute?an_output[0].i:(cmd_arr_i+an_output[0].i+1);
                 //Check bounds of index.
                 if(an_output[0].i<1||an_output[0].i>cmd_arr_len){
                     fprintf(stderr,ERR("Command Index (%d) is out of bounds from 1 to %d. Exiting Program!\n"),an_output[0].i,cmd_arr_len);
@@ -922,6 +924,24 @@ bool run_program(command_array_t* cmd_arr, const char* file_str, Config config, 
                 cmdprintf("It is %szero.\n",query_is_true?"non-":"");
                 PrintLastCommand(LastQuery);
                 break;
+            case CMD_QueryKeyPress:
+                cmdprintf("%s next command if key %s is pressed. ",this_cmd.invert_query?"Skip":"Don't skip",cmd_u.key_pressed.key);
+                query_is_true=false;
+                pthread_mutex_lock(&input_mutex);
+                XGrabKey(xdpy,XKeysymToKeycode(xdpy,cmd_u.wait_until_key.keysym),None,RootWindow(xdpy,scr),False,GrabModeAsync,GrabModeAsync);
+                {
+                    XEvent e;
+                    while(XPending(xdpy)){
+                        XNextEvent(xdpy,&e);
+                        if(e.type==KeyPress&&e.xkey.keycode==XKeysymToKeycode(xdpy,cmd_u.wait_until_key.keysym))
+                            query_is_true=true;
+                    }
+                }
+                XUngrabKey(xdpy,XKeysymToKeycode(xdpy,cmd_u.wait_until_key.keysym),None,RootWindow(xdpy,scr));
+                pthread_mutex_unlock(&input_mutex);
+                cmdprintf("It is %spressed.\n",query_is_true?"":"not ");
+                PrintLastCommand(LastQuery);
+                break;
             case CMD_InitVar:
                 cmdprintf("Initialized variable string name '%s' of type %s of value '",cmd_u.init_var.variable,VLNumberTypeStr(cmd_u.init_var.as_number.type));
                 if((config.debug_print_type==DBP_AllCommands||this_cmd.print_cmd)){
@@ -940,8 +960,29 @@ bool run_program(command_array_t* cmd_arr, const char* file_str, Config config, 
                     puts("'");
                 }
                 break;
+            case CMD_WaitUntilKey:
+                cmdprintf("Waiting until keypress '%s'\n",cmd_u.wait_until_key.key);
+                pthread_mutex_lock(&input_mutex);
+                XGrabKey(xdpy,XKeysymToKeycode(xdpy,cmd_u.wait_until_key.keysym),None,RootWindow(xdpy,scr),False,GrabModeAsync,GrabModeAsync);
+                key_loop=true;
+                while(key_loop&&!srs.program_done){
+                    pthread_mutex_unlock(&input_mutex);
+                    usleep(500);
+                    pthread_mutex_lock(&input_mutex);
+                    XEvent e;
+                    while(XPending(xdpy)){
+                        XNextEvent(xdpy,&e); 
+                        if(e.type==KeyPress&&e.xkey.keycode==XKeysymToKeycode(xdpy,cmd_u.wait_until_key.keysym))
+                            key_loop=false;
+                    }
+                }
+                XUngrabKey(xdpy,XKeysymToKeycode(xdpy,cmd_u.wait_until_key.keysym),None,RootWindow(xdpy,scr));
+                pthread_mutex_unlock(&input_mutex);
+                timespec_get(&ts_rm_delay,TIME_UTC);//To remove delay adjustments for CMD_Delay below.
+                ts_usleep_before=ts_rm_delay;
+                ts_usleep_before_adj=ts_rm_delay;
+                break;
         }
-        pthread_mutex_lock(&input_mutex);
         if(this_cmd.subtype!=CMDST_Query) ++cmd_arr_i;
         else{
             if(query_is_true^this_cmd.invert_query){//xor
@@ -949,6 +990,7 @@ bool run_program(command_array_t* cmd_arr, const char* file_str, Config config, 
                 cmd_arr_i++;
             }else cmd_arr_i+=this_cmd.query_jump_ne;//Skip next command. If chained, skip more than 1.
         }
+        pthread_mutex_lock(&input_mutex);
         if(cmd_arr_i==cmd_arr_len) srs.program_done=true;//To end the mouse_input_t thread loop as well.
     }
     empty_cmd_index();

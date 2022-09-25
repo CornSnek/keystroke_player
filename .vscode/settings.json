@@ -92,7 +92,8 @@
         "rpn_evaluator.h": "c",
         "stack_generic.h": "c",
         "frequency.h": "c",
-        "stdint.h": "c"
+        "stdint.h": "c",
+        "keysymdef.h": "c"
     },
     //"editor.autoClosingBrackets": "never",
     //"editor.autoClosingDelete": "never",

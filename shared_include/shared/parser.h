@@ -6,9 +6,10 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdbool.h>
+#include <X11/Xlib.h>
 //Sringifying enums separately. Add e(number) and #e(number) for a new enum and string.
-#define __STR_READ_ENUMS(e1,e2,e3,e4,e5,e6,e7,e8,e9,e10,e11,e12,e13,e14,e15,e16,e17,e18,e19,e20,e21,e22,e23,e24,e25,e26,ecount)\
-#e1,#e2,#e3,#e4,#e5,#e6,#e7,#e8,#e9,#e10,#e11,#e12,#e13,#e14,#e15,#e16,#e17,#e18,#e19,#e20,#e21,#e22,#e23,#e24,#e25,#e26
+#define __STR_READ_ENUMS(e1,e2,e3,e4,e5,e6,e7,e8,e9,e10,e11,e12,e13,e14,e15,e16,e17,e18,e19,e20,e21,e22,e23,e24,e25,e26,e27,e28,ecount)\
+#e1,#e2,#e3,#e4,#e5,#e6,#e7,#e8,#e9,#e10,#e11,#e12,#e13,#e14,#e15,#e16,#e17,#e18,#e19,#e20,#e21,#e22,#e23,#e24,#e25,#e26,#e27,#e28
 //For .h file.
 #define __ReadStateWithStringDec(...) typedef enum _ReadState{__VA_ARGS__}ReadState;\
 extern const char* ReadStateStrings[RS_Count];
@@ -37,11 +38,13 @@ extern const char* ReadStateStrings[RS_Count];
     RS_QueryCoordsVarValue,\
     RS_QueryCoordsWithin,\
     RS_QueryRPNEval,\
+    RS_QueryKeyPress,\
     RS_InitVarType,\
     RS_InitVarName,\
     RS_InitVarValue,\
     RS_EditVarName,\
     RS_EditVarValue,\
+    RS_WaitUntilKey,\
     RS_Count
 __ReadStateWithStringDec(__ReadStateEnums)
 typedef enum _InputState{
@@ -60,10 +63,10 @@ typedef struct macro_buffer_s{
     VariableLoader_t* vl;
     bool parse_error;
 }macro_buffer_t;
-typedef struct keystroke_s{
+typedef struct auto_keystroke_s{
     InputState key_state;
-    char* key;
-}keystroke_t;
+    const char* key;
+}auto_keystroke_t;
 typedef struct repeat_id_manager_s{//Get ids from created names.
     int size;
     char** names;
@@ -137,8 +140,12 @@ typedef struct jump_to_index_s{
     vlcallback_info jump_cb;
     bool is_absolute;
 }jump_to_index_t;
+typedef struct keystroke_s{
+    KeySym keysym;
+    const char* key;
+}keystroke_t;
 typedef union command_union{
-    keystroke_t ks;
+    auto_keystroke_t auto_ks;
     delay_t delay;
     init_var_t init_var;
     vlcallback_info edit_var;
@@ -153,6 +160,8 @@ typedef union command_union{
     compare_coords_t compare_coords;
     coords_within_t coords_within;
     vlcallback_info rpn_eval;
+    keystroke_t key_pressed;
+    keystroke_t wait_until_key;
 }command_union_t;
 typedef enum _CommandType{
     CMD_KeyStroke,
@@ -174,8 +183,10 @@ typedef enum _CommandType{
     CMD_QueryCompareCoords,
     CMD_QueryCoordsWithin,
     CMD_QueryRPNEval,
+    CMD_QueryKeyPress,
     CMD_InitVar,
-    CMD_EditVar
+    CMD_EditVar,
+    CMD_WaitUntilKey
 }CommandType;
 typedef enum _CommandSubType{
     CMDST_Command,

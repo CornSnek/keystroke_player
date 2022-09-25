@@ -51,7 +51,6 @@ void _GlobalKeybindDisable(Display* xdpy,int scr,bool d,const callback_t* cb_lis
     _KeybindDisable=d;
     puts(_KeybindDisable?"Escape key pressed. Keybinds are currently disabled. To reenable, press Escape key again.":"Escape key pressed. Keybinds are currently enabled.");
     for(size_t i=0;i<cb_list_len;i++) d?XUngrabKey(xdpy,XKeysymToKeycode(xdpy,cb_list[i].ks),None,RootWindow(xdpy,scr)):XGrabKey(xdpy,XKeysymToKeycode(xdpy,cb_list[i].ks),None,RootWindow(xdpy,scr),False,GrabModeAsync,GrabModeAsync);
-    XFlush(xdpy);
 }
 void wait_for_keypress(Display* xdpy,KeySym ks){
     const callback_t to_disable={.ks=ks};
@@ -60,7 +59,6 @@ void wait_for_keypress(Display* xdpy,KeySym ks){
     bool finished=false;
     XGrabKey(xdpy,XKeysymToKeycode(xdpy,ks),None,RootWindow(xdpy,scr),False,GrabModeAsync,GrabModeAsync);
     XGrabKey(xdpy,XKeysymToKeycode(xdpy,XK_Escape),None,RootWindow(xdpy,scr),False,GrabModeAsync,GrabModeAsync);
-    XFlush(xdpy);
     while(!finished){
         usleep(100000);
         while(XPending(xdpy)){
@@ -73,7 +71,6 @@ void wait_for_keypress(Display* xdpy,KeySym ks){
     }
     XUngrabKey(xdpy,XKeysymToKeycode(xdpy,ks),None,RootWindow(xdpy,scr));
     XUngrabKey(xdpy,XKeysymToKeycode(xdpy,XK_Escape),None,RootWindow(xdpy,scr));
-    XFlush(xdpy);
 }
 void keypress_loop(Display* xdpy,const callback_t* cb_list,size_t cb_list_len){
     int scr=DefaultScreen(xdpy);
@@ -81,7 +78,6 @@ void keypress_loop(Display* xdpy,const callback_t* cb_list,size_t cb_list_len){
     bool keep_looping=true;
     for(size_t i=0;i<cb_list_len;i++) XGrabKey(xdpy,XKeysymToKeycode(xdpy,cb_list[i].ks),None,RootWindow(xdpy,scr),False,GrabModeAsync,GrabModeAsync);
     XGrabKey(xdpy,XKeysymToKeycode(xdpy,XK_Escape),None,RootWindow(xdpy,scr),False,GrabModeAsync,GrabModeAsync);
-    XFlush(xdpy);
     while(keep_looping){
         usleep(100000);
         while(XPending(xdpy)){
@@ -104,7 +100,6 @@ void keypress_loop(Display* xdpy,const callback_t* cb_list,size_t cb_list_len){
     }
     for(size_t i=0;i<cb_list_len;i++) XUngrabKey(xdpy,XKeysymToKeycode(xdpy,cb_list[i].ks),None,RootWindow(xdpy,scr));
     XUngrabKey(xdpy,XKeysymToKeycode(xdpy,XK_Escape),None,RootWindow(xdpy,scr));
-    XFlush(xdpy);
 }
 bool CallbackEndLoop(void* v){
     (void)v;
