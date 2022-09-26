@@ -535,7 +535,7 @@ void replace_str(char** strptr, const char* replace, const char* with){
         new_strptr_i+=non_match_len;
         strptr_i+=non_match_len;
         if(strncmp(*strptr+strptr_i,replace,replace_len)){//First letter may not match the same word (!=0)
-            new_strptr=realloc(new_strptr,(sizeof(char)*new_strptr_i+1));//To stop strchr from looping, add first character.
+            new_strptr=realloc(new_strptr,(sizeof(char)*(new_strptr_i+1)));//To stop strchr from looping, add first character.
             EXIT_IF_NULL(new_strptr,char*);
             new_strptr[new_strptr_i++]=(*strptr)[strptr_i++];
             continue; 
@@ -575,7 +575,7 @@ void replace_str_at(char** strptr_owner, const char* replace, const char* with,c
         }
         new_strptr[new_strptr_i++]=current_char;
         strptr_i++;
-        new_strptr=(realloc(new_strptr,sizeof(char)*new_strptr_i+1));
+        new_strptr=(realloc(new_strptr,sizeof(char)*(new_strptr_i+1)));
         EXIT_IF_NULL(new_strptr,char*);
     }
     new_strptr[new_strptr_i]='\0';//Null-terminate.
@@ -613,7 +613,7 @@ void replace_str_list(char** strptr_owner,replace_node_t* rep_list,size_t rep_li
         }
         new_strptr[new_strptr_i++]=current_char;
         strptr_i++;
-        new_strptr=(realloc(new_strptr,sizeof(char)*new_strptr_i+1));
+        new_strptr=(realloc(new_strptr,sizeof(char)*(new_strptr_i+1)));
         EXIT_IF_NULL(new_strptr,char*);
         do_next_char: continue;
     }

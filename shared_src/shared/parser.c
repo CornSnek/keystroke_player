@@ -415,7 +415,7 @@ bool macro_buffer_process_next(macro_buffer_t* this,bool print_debug){//Returns 
                     added_keystate=true;
                     break;
                 }else if(added_keystate&&current_char==';'){
-                    str_name=malloc(sizeof(char)*read_offset_i-1);//-2 to exclude RS_KeyState modifiers, but -1 because null terminator.
+                    str_name=malloc(sizeof(char)*(read_offset_i-1));//-2 to exclude RS_KeyState modifiers, but -1 because null terminator.
                     EXIT_IF_NULL(str_name,char*);
                     strncpy(str_name,this->contents+this->token_i+read_i,read_offset_i-2);
                     str_name[read_offset_i-2]='\0';
@@ -598,7 +598,7 @@ bool macro_buffer_process_next(macro_buffer_t* this,bool print_debug){//Returns 
             case RS_JumpTo:
                 if(char_is_key(current_char)) break;
                 if(current_char==';'){
-                    str_name=malloc(sizeof(char)*read_offset_i+1);
+                    str_name=malloc(sizeof(char)*(read_offset_i+1));
                     EXIT_IF_NULL(str_name,char*);
                     strncpy(str_name,this->contents+this->token_i+read_i,read_offset_i);
                     str_name[read_offset_i]='\0';
@@ -688,7 +688,7 @@ bool macro_buffer_process_next(macro_buffer_t* this,bool print_debug){//Returns 
             case RS_JumpFrom:
                 if(char_is_key(current_char)) break;
                 if(current_char==';'){
-                    str_name=malloc(sizeof(char)*read_offset_i+1);
+                    str_name=malloc(sizeof(char)*(read_offset_i+1));
                     EXIT_IF_NULL(str_name,char*);
                     strncpy(str_name,this->contents+this->token_i+read_i,read_offset_i);
                     str_name[read_offset_i]='\0';
@@ -968,7 +968,7 @@ bool macro_buffer_process_next(macro_buffer_t* this,bool print_debug){//Returns 
             case RS_QueryKeyPress:
                 if(char_is_key(current_char)) break;
                 if(current_char=='?'){
-                    str_name=malloc(sizeof(char)*read_offset_i+1);
+                    str_name=malloc(sizeof(char)*(read_offset_i+1));
                     EXIT_IF_NULL(str_name,char*);
                     strncpy(str_name,this->contents+this->token_i+read_i,read_offset_i);
                     str_name[read_offset_i]='\0';
@@ -1017,7 +1017,7 @@ bool macro_buffer_process_next(macro_buffer_t* this,bool print_debug){//Returns 
             case RS_InitVarName:
                 if(char_is_key(current_char)) break;
                 if(current_char=='='){
-                    str_name=malloc(sizeof(char)*read_offset_i+1);
+                    str_name=malloc(sizeof(char)*(read_offset_i+1));
                     EXIT_IF_NULL(str_name,char*);
                     strncpy(str_name,this->contents+this->token_i+read_i,read_offset_i);
                     str_name[read_offset_i]='\0';
@@ -1124,7 +1124,7 @@ bool macro_buffer_process_next(macro_buffer_t* this,bool print_debug){//Returns 
                 }
                 if(isdigit(current_char)||current_char=='.'||current_char=='-') break;
                 if(current_char==';'){
-                    num_str_arr[0]=malloc(sizeof(char)*read_offset_i+1);
+                    num_str_arr[0]=malloc(sizeof(char)*(read_offset_i+1));
                     EXIT_IF_NULL(num_str_arr[0],char*);
                     strncpy(num_str_arr[0],this->contents+this->token_i+read_i,read_offset_i);
                     num_str_arr[0][read_offset_i]='\0';
@@ -1214,7 +1214,7 @@ bool macro_buffer_process_next(macro_buffer_t* this,bool print_debug){//Returns 
             case RS_EditVarName:
                 if(char_is_key(current_char)) break;
                 if(current_char=='='){
-                    str_name=malloc(sizeof(char)*read_offset_i+1);
+                    str_name=malloc(sizeof(char)*(read_offset_i+1));
                     EXIT_IF_NULL(str_name,char*);
                     strncpy(str_name,this->contents+this->token_i+read_i,read_offset_i);
                     str_name[read_offset_i]='\0';
@@ -1258,7 +1258,7 @@ bool macro_buffer_process_next(macro_buffer_t* this,bool print_debug){//Returns 
             case RS_WaitUntilKey:
                 if(char_is_key(current_char)) break;
                 if(current_char==';'){
-                    str_name=malloc(sizeof(char)*read_offset_i+1);
+                    str_name=malloc(sizeof(char)*(read_offset_i+1));
                     EXIT_IF_NULL(str_name,char*);
                     strncpy(str_name,this->contents+this->token_i+read_i,read_offset_i);
                     str_name[read_offset_i]='\0';
@@ -1287,7 +1287,7 @@ bool macro_buffer_process_next(macro_buffer_t* this,bool print_debug){//Returns 
             case RS_GrabKey:
                 if(char_is_key(current_char)) break;
                 if(current_char==';'){
-                    str_name=malloc(sizeof(char)*read_offset_i+1);
+                    str_name=malloc(sizeof(char)*(read_offset_i+1));
                     EXIT_IF_NULL(str_name,char*);
                     strncpy(str_name,this->contents+this->token_i+read_i,read_offset_i);
                     str_name[read_offset_i]='\0';

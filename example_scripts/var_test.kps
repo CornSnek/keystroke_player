@@ -5,10 +5,9 @@ init,r,tri_h=i(tri_f,2,/);
 save_mma;
 wait_key=a;
 grab_key=a;
-.m5;
 ?key_press=a?
 exit;
-JTIR>-3;
+JTIR>-2;
 ungrab_keys;
 (A;
 edit,deg_n=(deg_n,++);

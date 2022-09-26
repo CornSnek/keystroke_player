@@ -10,7 +10,7 @@ typedef enum _ValueAssignE{
 }ValueAssignE;
 /*To copy string value.*/
 static inline char* _string_copy(const char* key){
-    char* this=malloc(sizeof(char)*strlen(key)+1);
+    char* this=malloc(sizeof(char)*(strlen(key)+1));
     strcpy(this,key);
     EXIT_IF_NULL(this,char*);
     return this;
