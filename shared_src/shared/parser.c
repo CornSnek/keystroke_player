@@ -99,6 +99,16 @@ bool macro_buffer_process_next(macro_buffer_t* this,bool print_debug){//Returns 
                     key_processed=true;
                     break;
                 }
+                if(!strncmp(current_char_p,"ungrab_keys;",12)){
+                    command_array_add(this->cmd_arr,
+                        (command_t){.type=CMD_UngrabKeyAll,.subtype=CMDST_Command,.print_cmd=print_cmd,
+                            .cmd_u={{0}}
+                        }
+                    );
+                    read_i+=11;
+                    key_processed=true;
+                    break;
+                }
                 if(!strncmp(current_char_p,"save_mma;",9)){
                     command_array_add(this->cmd_arr,
                         (command_t){.type=CMD_SaveMouseCoords,.subtype=CMDST_Command,.print_cmd=print_cmd,
@@ -190,6 +200,12 @@ bool macro_buffer_process_next(macro_buffer_t* this,bool print_debug){//Returns 
                     read_i+=9;
                     read_offset_i=-1;
                     read_state=RS_WaitUntilKey;
+                    break;
+                }
+                if(!strncmp(current_char_p,"grab_key=",9)){
+                    read_i+=9;
+                    read_offset_i=-1;
+                    read_state=RS_GrabKey;
                     break;
                 }
                 if(char_is_key(current_char)){
@@ -1268,6 +1284,35 @@ bool macro_buffer_process_next(macro_buffer_t* this,bool print_debug){//Returns 
                 fprintf(stderr,ERR("Invalid variable character '%c' at line %lu char %lu state %s.\n"),current_char,line_num,char_num,ReadStateStrings[read_state]);
                 DO_ERROR();
                 break;
+            case RS_GrabKey:
+                if(char_is_key(current_char)) break;
+                if(current_char==';'){
+                    str_name=malloc(sizeof(char)*read_offset_i+1);
+                    EXIT_IF_NULL(str_name,char*);
+                    strncpy(str_name,this->contents+this->token_i+read_i,read_offset_i);
+                    str_name[read_offset_i]='\0';
+                    KeySym keysym=XStringToKeysym(str_name);
+                    if(keysym){
+                        command_array_add(this->cmd_arr,
+                            (command_t){.type=CMD_GrabKey,.subtype=CMDST_Command,.print_cmd=print_cmd,
+                                .cmd_u.grab_key=(keystroke_t){
+                                    .keysym=keysym,
+                                    .key=str_name
+                                }
+                            }
+                        );
+                        key_processed=true;
+                        break;
+                    }else{
+                        fprintf(stderr,ERR("Key %s does not contain a valid KeySym number.\n"),str_name);
+                        free(str_name);
+                        DO_ERROR();
+                        break;
+                    }
+                }
+                fprintf(stderr,ERR("Invalid variable character '%c' at line %lu char %lu state %s.\n"),current_char,line_num,char_num,ReadStateStrings[read_state]);
+                DO_ERROR();
+                break;
             case RS_Count://Nothing (Shouldn't be used).
                 break;
         }
@@ -1478,9 +1523,13 @@ void command_array_add(command_array_t* this, command_t cmd){
     if(this->cmds) this->cmds=realloc(this->cmds,sizeof(command_t)*(this->size));
     else this->cmds=malloc(sizeof(command_t));
     EXIT_IF_NULL(this->cmds,command_t*);
-    if(cmd.type==CMD_KeyStroke) SSManager_add_string(this->SSM,(char**)&cmd.cmd_u.auto_ks.key);//Edit pointer for any shared strings first before placing in array.
-    else if(cmd.type==CMD_WaitUntilKey) SSManager_add_string(this->SSM,(char**)&cmd.cmd_u.wait_until_key.key);
-    else if(cmd.type==CMD_QueryKeyPress) SSManager_add_string(this->SSM,(char**)&cmd.cmd_u.key_pressed.key);
+    switch(cmd.type){//Edit pointer for any shared strings and take ownership.
+        case CMD_KeyStroke: SSManager_add_string(this->SSM,(char**)&cmd.cmd_u.auto_ks.key); break;
+        case CMD_WaitUntilKey: SSManager_add_string(this->SSM,(char**)&cmd.cmd_u.wait_until_key.key); break;
+        case CMD_QueryKeyPress: SSManager_add_string(this->SSM,(char**)&cmd.cmd_u.key_pressed.key); break;
+        case CMD_GrabKey: SSManager_add_string(this->SSM,(char**)&cmd.cmd_u.grab_key.key); break;
+        default: break;
+    }
     this->cmds[this->size-1]=cmd;
 }
 int command_array_count(const command_array_t* this){
@@ -1562,6 +1611,9 @@ void command_array_print(const command_array_t* this,const VariableLoader_t* vl,
                 break;
             case CMD_Pass:
                 puts("Pass");
+                break;
+            case CMD_UngrabKeyAll:
+                puts("UngrabKeyAll");
                 break;
             case CMD_JumpTo:
                 printf("JumpTo cmd_i: %d str_i: %d store_i: %d\n",cmd.jump_to.cmd_index,cmd.jump_to.str_index,cmd.jump_to.store_index);
@@ -1713,6 +1765,9 @@ void command_array_print(const command_array_t* this,const VariableLoader_t* vl,
                 break;
             case CMD_WaitUntilKey:
                 printf("WaitUntilKey Key: '%s' KeySym: '%lu'\n",cmd.wait_until_key.key,cmd.wait_until_key.keysym);
+                break;
+            case CMD_GrabKey:
+                printf("GrabKey Key: '%s' KeySym: '%lu'\n",cmd.grab_key.key,cmd.grab_key.keysym);
                 break;
         }
     }

@@ -8,11 +8,11 @@
             "name": "(gdb) Launch",
             "type": "cppdbg",
             "request": "launch",
-            "program": "${workspaceFolder}/bin/keystroke_player_tests/keystroke_player_tests",
+            "program": "${workspaceFolder}/bin/keystroke_player/keystroke_player",
             "customLaunchSetupCommands": [],
             "args": [],
             "stopAtEntry": false,
-            "cwd": "${workspaceFolder}/bin/keystroke_player_tests",
+            "cwd": "${workspaceFolder}/bin/keystroke_player",
             "environment": [],
             "externalConsole": false,
             "MIMode": "gdb",
@@ -23,7 +23,7 @@
                     "ignoreFailures": false
                 }
             ],
-            "preLaunchTask": "pre-build test"
+            //"preLaunchTask": "source tasks.conf"
         }
     ]
 }

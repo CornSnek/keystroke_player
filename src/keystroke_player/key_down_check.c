@@ -59,6 +59,7 @@ void wait_for_keypress(Display* xdpy,KeySym ks){
     bool finished=false;
     XGrabKey(xdpy,XKeysymToKeycode(xdpy,ks),None,RootWindow(xdpy,scr),False,GrabModeAsync,GrabModeAsync);
     XGrabKey(xdpy,XKeysymToKeycode(xdpy,XK_Escape),None,RootWindow(xdpy,scr),False,GrabModeAsync,GrabModeAsync);
+    XFlush(xdpy);
     while(!finished){
         usleep(100000);
         while(XPending(xdpy)){
@@ -71,6 +72,7 @@ void wait_for_keypress(Display* xdpy,KeySym ks){
     }
     XUngrabKey(xdpy,XKeysymToKeycode(xdpy,ks),None,RootWindow(xdpy,scr));
     XUngrabKey(xdpy,XKeysymToKeycode(xdpy,XK_Escape),None,RootWindow(xdpy,scr));
+    XFlush(xdpy);
 }
 void keypress_loop(Display* xdpy,const callback_t* cb_list,size_t cb_list_len){
     int scr=DefaultScreen(xdpy);
@@ -78,6 +80,7 @@ void keypress_loop(Display* xdpy,const callback_t* cb_list,size_t cb_list_len){
     bool keep_looping=true;
     for(size_t i=0;i<cb_list_len;i++) XGrabKey(xdpy,XKeysymToKeycode(xdpy,cb_list[i].ks),None,RootWindow(xdpy,scr),False,GrabModeAsync,GrabModeAsync);
     XGrabKey(xdpy,XKeysymToKeycode(xdpy,XK_Escape),None,RootWindow(xdpy,scr),False,GrabModeAsync,GrabModeAsync);
+    XFlush(xdpy);
     while(keep_looping){
         usleep(100000);
         while(XPending(xdpy)){
@@ -100,6 +103,7 @@ void keypress_loop(Display* xdpy,const callback_t* cb_list,size_t cb_list_len){
     }
     for(size_t i=0;i<cb_list_len;i++) XUngrabKey(xdpy,XKeysymToKeycode(xdpy,cb_list[i].ks),None,RootWindow(xdpy,scr));
     XUngrabKey(xdpy,XKeysymToKeycode(xdpy,XK_Escape),None,RootWindow(xdpy,scr));
+    XFlush(xdpy);
 }
 bool CallbackEndLoop(void* v){
     (void)v;
@@ -108,4 +112,78 @@ bool CallbackEndLoop(void* v){
 bool _boolean_edit_func(void* b_v){
     *(((_boolean_edit_t*)b_v)->p)=((_boolean_edit_t*)b_v)->v;
     return false;
+}
+key_grabs_t* key_grabs_new(xdo_t* xdo_obj){
+    key_grabs_t* this=malloc(sizeof(key_grabs_t));
+    EXIT_IF_NULL(this,key_grabs_t*);
+    *this=(key_grabs_t){.xdo_obj=xdo_obj,.ks_arr=0,.ks_pressed=0,.size=0};
+    return this;
+}
+void key_grabs_add(key_grabs_t* this,keystroke_t ks_add){
+    for(int i=0;i<this->size;i++)//Skip duplicates with same key keysym.
+        if(this->ks_arr[i].keysym==ks_add.keysym) return;
+    this->ks_arr=this->size++?realloc(this->ks_arr,sizeof(keystroke_t)*sizeof(this->size)):malloc(sizeof(keystroke_t));
+    this->ks_pressed=this->size?realloc(this->ks_pressed,sizeof(bool)*sizeof(this->size)):malloc(sizeof(bool));
+    EXIT_IF_NULL(this->ks_arr,keystroke_t*);
+    EXIT_IF_NULL(this->ks_pressed,bool*);
+    this->ks_arr[this->size-1]=ks_add;
+    this->ks_pressed[this->size-1]=false;
+    XGrabKey(this->xdo_obj->xdpy,XKeysymToKeycode(this->xdo_obj->xdpy,ks_add.keysym),None,RootWindow(this->xdo_obj->xdpy,DefaultScreen(this->xdo_obj->xdpy)),False,GrabModeAsync,GrabModeAsync);
+    XFlush(this->xdo_obj->xdpy);
+}
+bool key_grabs_grab_exist(const key_grabs_t* this,keystroke_t ks){
+    for(int i=0;i<this->size;i++)
+        if(this->ks_arr[i].keysym==ks.keysym) return true;
+    return false;
+}
+void key_grabs_set_pressed(key_grabs_t* this,keystroke_t ks,bool pressed){
+    for(int i=0;i<this->size;i++){
+        if(this->ks_arr[i].keysym==ks.keysym){
+            this->ks_pressed[i]=pressed;
+            break;
+        }
+    }
+}
+kg_bool_t key_grabs_get_pressed(const key_grabs_t* this,keystroke_t ks){
+    for(int i=0;i<this->size;i++){
+        if(this->ks_arr[i].keysym==ks.keysym){
+            return (kg_bool_t){.exist=true,.pressed=this->ks_pressed[i]};
+        }
+    }
+    return (kg_bool_t){0};
+}
+void key_grabs_remove(key_grabs_t* this,keystroke_t ks_rm){
+    for(int i=0;i<this->size;i++){
+        if(this->ks_arr[i].keysym==ks_rm.keysym){
+            XUngrabKey(this->xdo_obj->xdpy,XKeysymToKeycode(this->xdo_obj->xdpy,ks_rm.keysym),None,RootWindow(this->xdo_obj->xdpy,DefaultScreen(this->xdo_obj->xdpy)));
+            this->ks_arr[i]=this->ks_arr[--this->size];//Move the last to the deleted index.
+            this->ks_pressed[i]=this->ks_pressed[this->size];
+            if(this->size){
+                this->ks_arr=realloc(this->ks_arr,sizeof(keystroke_t)*sizeof(this->size));
+                this->ks_pressed=realloc(this->ks_pressed,sizeof(bool)*sizeof(this->size));
+                EXIT_IF_NULL(this->ks_arr,keystroke_t*);
+                EXIT_IF_NULL(this->ks_pressed,bool*);
+            }else{
+                free(this->ks_arr);
+                this->ks_arr=0;
+                free(this->ks_pressed);
+                this->ks_pressed=0;
+            }
+        }
+    }
+}
+void key_grabs_remove_all(key_grabs_t* this){
+    for(int i=0;i<this->size;i++)
+        XUngrabKey(this->xdo_obj->xdpy,XKeysymToKeycode(this->xdo_obj->xdpy,this->ks_arr[i].keysym),None,RootWindow(this->xdo_obj->xdpy,DefaultScreen(this->xdo_obj->xdpy)));
+    free(this->ks_arr);
+    free(this->ks_pressed);
+    this->size=0;
+    this->ks_arr=0;
+}
+void key_grabs_free(key_grabs_t* this){
+    for(int i=0;i<this->size;i++)
+        XUngrabKey(this->xdo_obj->xdpy,XKeysymToKeycode(this->xdo_obj->xdpy,this->ks_arr[i].keysym),None,RootWindow(this->xdo_obj->xdpy,DefaultScreen(this->xdo_obj->xdpy)));
+    free(this->ks_arr);
+    free(this->ks_pressed);
+    free(this);
 }

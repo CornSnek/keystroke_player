@@ -479,6 +479,7 @@ void* keyboard_check_listener(void* srs_v){
     Display* xdpy=((shared_rs*)srs_v)->xdo_obj->xdpy;
     int scr=DefaultScreen(xdpy);
     XGrabKey(xdpy,XKeysymToKeycode(xdpy,XK_Escape),None,RootWindow(xdpy,scr),False,GrabModeAsync,GrabModeAsync);
+    XFlush(xdpy);
     XEvent e={0};
     while(!srs_p->program_done){
         pthread_mutex_unlock(&input_mutex);
@@ -493,7 +494,12 @@ void* keyboard_check_listener(void* srs_v){
         }
     }
     XUngrabKey(xdpy,XKeysymToKeycode(xdpy,XK_Escape),None,RootWindow(xdpy,scr));
+    XFlush(xdpy);
     pthread_mutex_unlock(&input_mutex);
+    pthread_exit(NULL);
+}
+void* keyboard_check_listener2(void* srs_v){
+    (void)srs_v;
     pthread_exit(NULL);
 }
 //Get time elapsed since ts_begin after calling this function. Assuming ts_begin was before ts_end. Returns time to ts_diff (optional).
@@ -610,6 +616,7 @@ bool run_program(command_array_t* cmd_arr, const char* file_str, Config config, 
     pthread_mutex_lock(&input_mutex);
     Display* xdpy=srs.xdo_obj->xdpy;
     int scr=DefaultScreen(xdpy);
+    key_grabs_t* kg=key_grabs_new(xdo_obj);
     while(!srs.program_done){
         pthread_mutex_unlock(&input_mutex);
         timespec_diff(&ts_begin,NULL,&ts_diff);
@@ -927,17 +934,15 @@ bool run_program(command_array_t* cmd_arr, const char* file_str, Config config, 
             case CMD_QueryKeyPress:
                 cmdprintf("%s next command if key %s is pressed. ",this_cmd.invert_query?"Skip":"Don't skip",cmd_u.key_pressed.key);
                 query_is_true=false;
-                pthread_mutex_lock(&input_mutex);
-                XGrabKey(xdpy,XKeysymToKeycode(xdpy,cmd_u.wait_until_key.keysym),None,RootWindow(xdpy,scr),False,GrabModeAsync,GrabModeAsync);
-                {
+                pthread_mutex_lock(&input_mutex);//TODO. Add new thread to check for key presses.
+                if(key_grabs_grab_exist(kg,cmd_u.key_pressed)){
                     XEvent e;
                     while(XPending(xdpy)){
                         XNextEvent(xdpy,&e);
-                        if(e.type==KeyPress&&e.xkey.keycode==XKeysymToKeycode(xdpy,cmd_u.wait_until_key.keysym))
+                        if(e.type==KeyPress&&e.xkey.keycode==XKeysymToKeycode(xdpy,cmd_u.key_pressed.keysym))
                             query_is_true=true;
                     }
-                }
-                XUngrabKey(xdpy,XKeysymToKeycode(xdpy,cmd_u.wait_until_key.keysym),None,RootWindow(xdpy,scr));
+                }else printf(ERR("\nWARNING: Command QueryKeyPress requires the command GrabKey for key %s.\n"),cmd_u.key_pressed.key);
                 pthread_mutex_unlock(&input_mutex);
                 cmdprintf("It is %spressed.\n",query_is_true?"":"not ");
                 PrintLastCommand(LastQuery);
@@ -964,6 +969,7 @@ bool run_program(command_array_t* cmd_arr, const char* file_str, Config config, 
                 cmdprintf("Waiting until keypress '%s'\n",cmd_u.wait_until_key.key);
                 pthread_mutex_lock(&input_mutex);
                 XGrabKey(xdpy,XKeysymToKeycode(xdpy,cmd_u.wait_until_key.keysym),None,RootWindow(xdpy,scr),False,GrabModeAsync,GrabModeAsync);
+                XFlush(xdpy);
                 key_loop=true;
                 while(key_loop&&!srs.program_done){
                     pthread_mutex_unlock(&input_mutex);
@@ -977,10 +983,23 @@ bool run_program(command_array_t* cmd_arr, const char* file_str, Config config, 
                     }
                 }
                 XUngrabKey(xdpy,XKeysymToKeycode(xdpy,cmd_u.wait_until_key.keysym),None,RootWindow(xdpy,scr));
+                XFlush(xdpy);
                 pthread_mutex_unlock(&input_mutex);
                 timespec_get(&ts_rm_delay,TIME_UTC);//To remove delay adjustments for CMD_Delay below.
                 ts_usleep_before=ts_rm_delay;
                 ts_usleep_before_adj=ts_rm_delay;
+                break;
+            case CMD_GrabKey:
+                cmdprintf("Adding key grabs for key '%s'",cmd_u.grab_key.key);
+                pthread_mutex_lock(&input_mutex);
+                key_grabs_add(kg,cmd_u.grab_key);
+                pthread_mutex_unlock(&input_mutex);
+                break;
+            case CMD_UngrabKeyAll:
+                cmdprintf("Removing any key grabs.");
+                pthread_mutex_lock(&input_mutex);
+                key_grabs_remove_all(kg);
+                pthread_mutex_unlock(&input_mutex);
                 break;
         }
         if(this_cmd.subtype!=CMDST_Query) ++cmd_arr_i;
@@ -998,6 +1017,7 @@ bool run_program(command_array_t* cmd_arr, const char* file_str, Config config, 
     printf("%ld.%09ld seconds since macro script ran.\n",ts_diff.tv_sec,ts_diff.tv_nsec);
     pthread_mutex_unlock(&input_mutex);
     pthread_join(keyboard_input_t,NULL);
+    key_grabs_free(kg);
     key_down_check_key_up(kdc,xdo_obj,CURRENTWINDOW);
     key_down_check_free(kdc);
     return no_error;
