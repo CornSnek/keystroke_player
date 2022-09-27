@@ -972,8 +972,14 @@ bool macro_buffer_process_next(macro_buffer_t* this,bool print_debug){//Returns 
                     EXIT_IF_NULL(str_name,char*);
                     strncpy(str_name,this->contents+this->token_i+read_i,read_offset_i);
                     str_name[read_offset_i]='\0';
-                    KeySym keysym=XStringToKeysym(str_name);
-                    if(keysym){
+                    KeySym keysym;
+                    if(!strcmp(str_name,"escape")){
+                        fprintf(stderr,ERR("Key 'escape' cannot be used, because it is already used to quit the macro.\n"));
+                        free(str_name);
+                        DO_ERROR();
+                        break;
+                    }
+                    if((keysym=XStringToKeysym(str_name))){
                         command_array_add(this->cmd_arr,
                             (command_t){.type=CMD_QueryKeyPress,.subtype=CMDST_Query,.print_cmd=print_cmd,
                                 .cmd_u.key_pressed=(keystroke_t){
@@ -985,7 +991,7 @@ bool macro_buffer_process_next(macro_buffer_t* this,bool print_debug){//Returns 
                         key_processed=true;
                         break;
                     }else{
-                        fprintf(stderr,ERR("Key %s does not contain a valid KeySym number.\n"),str_name);
+                        fprintf(stderr,ERR("Key '%s' does not contain a valid KeySym number.\n"),str_name);
                         free(str_name);
                         DO_ERROR();
                         break;
@@ -1263,8 +1269,14 @@ bool macro_buffer_process_next(macro_buffer_t* this,bool print_debug){//Returns 
                     EXIT_IF_NULL(str_name,char*);
                     strncpy(str_name,this->contents+this->token_i+read_i,read_offset_i);
                     str_name[read_offset_i]='\0';
-                    KeySym keysym=XStringToKeysym(str_name);
-                    if(keysym){
+                    KeySym keysym;
+                    if(!strcmp(str_name,"escape")){
+                        fprintf(stderr,ERR("Key 'escape' cannot be used, because it is already used to quit the macro.\n"));
+                        free(str_name);
+                        DO_ERROR();
+                        break;
+                    }
+                    if((keysym=XStringToKeysym(str_name))){
                         command_array_add(this->cmd_arr,
                             (command_t){.type=CMD_WaitUntilKey,.subtype=CMDST_Command,.print_cmd=print_cmd,
                                 .cmd_u.wait_until_key=(keystroke_t){
@@ -1276,7 +1288,7 @@ bool macro_buffer_process_next(macro_buffer_t* this,bool print_debug){//Returns 
                         key_processed=true;
                         break;
                     }else{
-                        fprintf(stderr,ERR("Key %s does not contain a valid KeySym number.\n"),str_name);
+                        fprintf(stderr,ERR("Key '%s' does not contain a valid KeySym number.\n"),str_name);
                         free(str_name);
                         DO_ERROR();
                         break;
@@ -1292,8 +1304,14 @@ bool macro_buffer_process_next(macro_buffer_t* this,bool print_debug){//Returns 
                     EXIT_IF_NULL(str_name,char*);
                     strncpy(str_name,this->contents+this->token_i+read_i,read_offset_i);
                     str_name[read_offset_i]='\0';
-                    KeySym keysym=XStringToKeysym(str_name);
-                    if(keysym){
+                    KeySym keysym;
+                    if(!strcmp(str_name,"escape")){
+                        fprintf(stderr,ERR("Key 'escape' cannot be used, because it is already used to quit the macro.\n"));
+                        free(str_name);
+                        DO_ERROR();
+                        break;
+                    }
+                    if((keysym=XStringToKeysym(str_name))){
                         command_array_add(this->cmd_arr,
                             (command_t){.type=CMD_GrabKey,.subtype=CMDST_Command,.print_cmd=print_cmd,
                                 .cmd_u.grab_key=(keystroke_t){
@@ -1305,7 +1323,7 @@ bool macro_buffer_process_next(macro_buffer_t* this,bool print_debug){//Returns 
                         key_processed=true;
                         break;
                     }else{
-                        fprintf(stderr,ERR("Key %s does not contain a valid KeySym number.\n"),str_name);
+                        fprintf(stderr,ERR("Key '%s' does not contain a valid KeySym number.\n"),str_name);
                         free(str_name);
                         DO_ERROR();
                         break;
@@ -1546,7 +1564,7 @@ void command_array_print(const command_array_t* this,const VariableLoader_t* vl,
         free(cmd_str);
         switch(this->cmds[i].type){
             case CMD_KeyStroke:
-                printf("Key %s KeyState: %u\n",cmd.auto_ks.key,cmd.auto_ks.key_state);
+                printf("Key '%s' KeyState: %u\n",cmd.auto_ks.key,cmd.auto_ks.key_state);
                 break;
             case CMD_Delay:
                 vlct=VL_get_callback(vl,cmd.delay.callback);

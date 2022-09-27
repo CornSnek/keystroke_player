@@ -93,6 +93,26 @@ JumpBack command = `JB>;`
     JumpBack command pops any index stored in the stack.
     Will throw an error if the stack is empty.
 
+WaitUntilKey command = `wait_key=[A-Za-z0-9_];`
+
+    This command blocks the macro program until the key has been held down.
+    The key is based on the X11 KeySym names. 
+    You cannot use this with GrabKey commands, as the macro will throw a runtime error.
+    You cannot use the key 'escape' as that is the key to quit the macro.
+    Note: This command slows down loops. It is advised to use these outside loops.
+
+GrabKey command = `grab_key=[A-Za-z0-9_];`
+
+UngrabKeyAll command = `ungrab_keys;`
+
+    This command listens for key presses and releases,
+    but also prevents future key presses from this key to be used normally.
+    To undo this, or to ungrab all keys, use the UngrabKeyAll command.
+    This is paired with the QueryKeyPress command. 
+    The key is based on the X11 KeySym names.
+    You cannot use the key 'escape' as that is the key to quit the macro.
+
+
 PRINT command = `PRINT>>(Command)`
 
     This prints any command prefixed with PRINT>>. Prints similar to setting debug_print_type=1 in configs.
@@ -133,6 +153,13 @@ QueryCoordsWithin command = `\?!?within=[0-9]+,[0-9]+,[0-9]+,[0-9]+\?`
 QueryRPNEval command = `\?!?eval=\(RPN\)\?`
 
     For more information, see header Commands with Variable Loading and Manipulation
+
+QueryKeyPress command = `\?!?key_press=[A-Za-z0-9_]\?`
+
+    This query checks if a key has been held down.
+    The key is based on the X11 KeySym names.
+    The GrabKey command for the key is required here to function, otherwise the command will warn that the key has not been initialized yet.
+    You cannot use the key 'escape' as that is the key to quit the macro.
 
 Comments/Tabs/Spaces/Newlines can be added after a semi-colon has been added to a command.
 

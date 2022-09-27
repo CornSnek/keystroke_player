@@ -121,11 +121,20 @@ void RPNEvaluatorInit(void){
         DefaultRPNVariablesMap=StringMap_as_number_new(15);
         ValueAssignE status;
         bool is_ph=true;
-#define SMVA(Str,NumberType,NumberMem,InitVar)\
-status=StringMap_as_number_assign_ph(DefaultRPNVariablesMap,Str,(as_number_t){.NumberMem=InitVar,.type=NumberType});\
-printf("Placing token: "  Str ": ");\
-puts((status==VA_Written)?"OK":ERR("Collision has Occured! Not a Perfect Hash."));\
-if(is_ph) is_ph=(status==VA_Written);
+#define SMVA_DEBUG 0
+#if SMVA_DEBUG==1
+    #define SMVA(Str,NumberType,NumberMem,InitVar)\
+    status=StringMap_as_number_assign_ph(DefaultRPNVariablesMap,Str,(as_number_t){.NumberMem=InitVar,.type=NumberType});\
+    printf("Placing token: "  Str ": ");\
+    puts((status==VA_Written)?"OK":ERR("Collision has Occured! Not a Perfect Hash."));\
+    if(is_ph) is_ph=(status==VA_Written);\
+    (void)0
+#else
+    #define SMVA(Str,NumberType,NumberMem,InitVar)\
+    status=StringMap_as_number_assign_ph(DefaultRPNVariablesMap,Str,(as_number_t){.NumberMem=InitVar,.type=NumberType});\
+    if(is_ph) is_ph=(status==VA_Written);\
+    (void)0
+#endif
         SMVA("@mma_x",VLNT_Int,i,0);//MouseMoveAbsolute x when load_mma is used.
         SMVA("@mma_y",VLNT_Int,i,0);
         SMVA("@ci_now",VLNT_Int,i,1);//Prints the program counter.
@@ -133,7 +142,8 @@ if(is_ph) is_ph=(status==VA_Written);
         SMVA("@ci_last",VLNT_Int,i,1);//Last command number.
         SMVA("@time_s",VLNT_Long,l,0);//Time since start of program.
         SMVA("@time_ns",VLNT_Long,l,0);
-        StringMap_as_number_print_debug(DefaultRPNVariablesMap);
+#undef SMVA
+        //StringMap_as_number_print_debug(DefaultRPNVariablesMap);
         if(!is_ph){
             fprintf(stderr,ERR("DefaultRPNVariablesMap should be a perfect hash. Exiting program.\n"));
             exit(EXIT_FAILURE);
@@ -330,7 +340,7 @@ if(is_ph) is_ph=(status==VA_Written);
             StringMap_as_number_resize(&DefaultRPNVariablesMap,strtol(buf,0,10));
         }
         #endif
-        #undef SMFA
+#undef SMFA
     }else{
         puts("RPNEvaluatorInit has already been initialized.");
     }

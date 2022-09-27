@@ -939,7 +939,7 @@ bool run_program(command_array_t* cmd_arr, const char* file_str, Config config, 
                 PrintLastCommand(LastQuery);
                 break;
             case CMD_QueryKeyPress:
-                cmdprintf("%s next command if key %s is pressed. ",this_cmd.invert_query?"Skip":"Don't skip",cmd_u.key_pressed.key);
+                cmdprintf("%s next command if Key '%s' is pressed. ",this_cmd.invert_query?"Skip":"Don't skip",cmd_u.key_pressed.key);
                 query_is_true=false;
                 pthread_mutex_lock(&input_mutex);
                 query_is_true=key_grabs_get_pressed(srs.kg,cmd_u.grab_key).pressed;
@@ -970,7 +970,7 @@ bool run_program(command_array_t* cmd_arr, const char* file_str, Config config, 
                 pthread_mutex_lock(&input_mutex);
                 if(key_grabs_get_pressed(srs.kg,cmd_u.wait_until_key).exist){
                     pthread_mutex_unlock(&input_mutex);//DoRuntimeError macro will relock.
-                    fprintf(stderr,ERR("Key %s has been previously grabbed by a GrabKey command. Exiting program!\n"),cmd_u.wait_until_key.key);
+                    fprintf(stderr,ERR("Key '%s' has been previously grabbed by a GrabKey command. Exiting program!\n"),cmd_u.wait_until_key.key);
                     DoRuntimeError();
                     break;
                 }
