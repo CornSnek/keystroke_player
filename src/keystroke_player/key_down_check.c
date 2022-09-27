@@ -49,7 +49,7 @@ bool _KeybindDisable=false;
 //Removes keybinds except for escape key.
 void _GlobalKeybindDisable(Display* xdpy,int scr,bool d,const callback_t* cb_list,size_t cb_list_len){
     _KeybindDisable=d;
-    puts(_KeybindDisable?"Escape key pressed. Keybinds are currently disabled. To reenable, press Escape key again.":"Escape key pressed. Keybinds are currently enabled.");
+    printf("\x1b[1F\x1b[K%s\x1b[0m\n",_KeybindDisable?"Escape key pressed. Keybinds are currently disabled. To reenable, press Escape key again.":"Escape key pressed. Keybinds are currently enabled.");
     for(size_t i=0;i<cb_list_len;i++) d?XUngrabKey(xdpy,XKeysymToKeycode(xdpy,cb_list[i].ks),None,RootWindow(xdpy,scr)):XGrabKey(xdpy,XKeysymToKeycode(xdpy,cb_list[i].ks),None,RootWindow(xdpy,scr),False,GrabModeAsync,GrabModeAsync);
 }
 void wait_for_keypress(Display* xdpy,KeySym ks){

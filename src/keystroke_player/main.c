@@ -87,7 +87,7 @@ int main(void){
                     "Press t to Test coordinates of mouse and color\n"
                     "Press e to Test equations in Reverse Polish Notation (RPN)\n"
                     "Press q to Quit\n"
-                    "Escape key toggles enabling/disabling keybinds outside of macro scripts\n"
+                    "Escape key toggles enabling/disabling keybinds outside of macro scripts\n\n"
                 );
                 keypress_loop(xdo_obj->xdpy,(callback_t[6]){{
                     .func=_input_state_func,
@@ -186,7 +186,7 @@ int main(void){
                     case PS_ProgramError: puts("Macro script failed (Runtime program errors)."); break;
                     case PS_MacroError: puts("Macro script failed (Macro expansion errors or cancelled).");
                 }
-                puts("Press y to build/run again or q to return to menu.");
+                puts("Press y to build/run again or q to return to menu.\n");
                 keypress_loop(xdo_obj->xdpy,(callback_t[2]){{
                     .func=_input_state_func,
                     .arg=&(ms_cont_t){.ms=&menu_state,.v=MS_Start},
@@ -198,7 +198,7 @@ int main(void){
                 }},2);
                 break;
             case MS_MouseCoords:
-                puts("Press t to test mouse/color coordinates. Press q to quit.");
+                puts("Press t to test mouse/color coordinates. Press q to quit.\n");
                 keypress_loop(xdo_obj->xdpy,(callback_t[2]){{
                     .func=test_mouse_func,
                     .arg=xdo_obj,
@@ -222,7 +222,7 @@ int main(void){
                 "Press a to add custom variables.\n"
                 "Press s to see the number stack when processing RPN notation. Currently set to %s.\n"
                 "Press l to see the list of variable/functions used.\n"
-                "Press q to quit.\n",rpn_see_stack?"on":"off");
+                "Press q to quit.\n\n",rpn_see_stack?"on":"off");
                 keypress_loop(xdo_obj->xdpy,(callback_t[5]){{
                     .func=_boolean_edit_func,
                     .arg=&(_boolean_edit_t){.p=&do_rpn,.v=true},
@@ -258,7 +258,7 @@ int main(void){
                     printf("--------------------\n"
                     "Press a to add variable name with number.\n"
                     "Press r to remove variable name.\n"
-                    "Press d to return go back.\n");
+                    "Press q to return go back.\n\n");
                     keypress_loop(xdo_obj->xdpy,(callback_t[3]){{
                         .func=_boolean_edit_func,
                         .arg=&(_boolean_edit_t){.p=&add_var,.v=true},
@@ -270,7 +270,7 @@ int main(void){
                     },{
                         .func=_boolean_edit_func,
                         .arg=&(_boolean_edit_t){.p=&var_menu,.v=false},
-                        .ks=XK_D
+                        .ks=XK_Q
                     }},3);
                     if(add_var){
                         input_str_end=0;
@@ -475,7 +475,8 @@ typedef struct{
 pthread_mutex_t input_mutex=PTHREAD_MUTEX_INITIALIZER;
 void* keyboard_check_listener(shared_rs* srs_p){
     pthread_mutex_lock(&input_mutex);
-    delay_ns_t key_check_delay=srs_p->key_check_delay;
+    const delay_ns_t key_check_delay=srs_p->key_check_delay;
+    key_grabs_t* kg=srs_p->kg;
     Display* xdpy=srs_p->xdo_obj->xdpy;
     int scr=DefaultScreen(xdpy);
     XGrabKey(xdpy,XKeysymToKeycode(xdpy,XK_Escape),None,RootWindow(xdpy,scr),False,GrabModeAsync,GrabModeAsync);
@@ -486,39 +487,24 @@ void* keyboard_check_listener(shared_rs* srs_p){
         usleep(key_check_delay);
         pthread_mutex_lock(&input_mutex);
         while(XPending(xdpy)){ //XPending doesn't make XNextEvent block if 0 events.
-            XNextEvent(xdpy,&e); 
-            if(e.type==KeyPress&&e.xkey.keycode==XKeysymToKeycode(xdpy,XK_Escape)){
-                puts("Escape key pressed. Stopping macro script.");
-                srs_p->program_done=true;
+            XNextEvent(xdpy,&e);
+            if(e.type==KeyPress||e.type==KeyRelease){
+                const KeyCode this_keycode=e.xkey.keycode;
+                for(int i=0;i<kg->size;i++){
+                    if(this_keycode==XKeysymToKeycode(xdpy,kg->ks_arr[i].keysym)){
+                        key_grabs_set_pressed(kg,kg->ks_arr[i],e.type==KeyPress);
+                    }
+                }
+                if(this_keycode==XKeysymToKeycode(xdpy,XK_Escape)){
+                    puts("Escape key pressed. Stopping macro script.");
+                    srs_p->program_done=true;
+                    break;
+                }
             }
         }
     }
     XUngrabKey(xdpy,XKeysymToKeycode(xdpy,XK_Escape),None,RootWindow(xdpy,scr));
     XFlush(xdpy);
-    pthread_mutex_unlock(&input_mutex);
-    pthread_exit(NULL);
-}
-void* keyboard_check_listener2(shared_rs* srs_p){//New thread for command QueryKeyPress and WaitForKey because sleeping in the main thread would block events.
-    Display* xdpy=srs_p->xdo_obj->xdpy;
-    key_grabs_t* kg=srs_p->kg;
-    XEvent e={0};
-    while(!srs_p->program_done){
-        pthread_mutex_unlock(&input_mutex);
-        usleep(500);
-        pthread_mutex_lock(&input_mutex);
-        while(XPending(xdpy)){
-            XNextEvent(xdpy,&e);
-            if(e.type==KeyPress||e.type==KeyRelease){
-                const KeyCode this_keycode=e.xkey.keycode;
-                for(int i=0;i<kg->size;i++){
-                    if(XKeysymToKeycode(xdpy,kg->ks_arr[i].keysym)==this_keycode){
-                        key_grabs_set_pressed(kg,kg->ks_arr[i],e.type==KeyPress);
-                        break;
-                    }
-                }
-            }
-        }
-    }
     pthread_mutex_unlock(&input_mutex);
     pthread_exit(NULL);
 }
@@ -577,7 +563,7 @@ int custom_xdo_move_mouse_absolute(const xdo_t *xdo,int x,int y){
     return ret==0;
 }
 bool run_program(command_array_t* cmd_arr, const char* file_str, Config config, xdo_t* xdo_obj, VariableLoader_t* vl){
-    puts("Press s to execute the macro. Press c to cancel.");
+    puts("Press s to execute the macro. Press c to cancel.\n");
     {
         bool start_program;
         keypress_loop(xdo_obj->xdpy,(callback_t[2]){{
@@ -601,7 +587,6 @@ bool run_program(command_array_t* cmd_arr, const char* file_str, Config config, 
     puts("Press Escape Key to stop the macro.");
     usleep(config.init_delay);
     pthread_t keyboard_input_t;
-    pthread_t keyboard_input_t2;
     int ret=pthread_mutex_init(&input_mutex,PTHREAD_MUTEX_TIMED_NP);
     if(ret){
         fprintf(stderr,ERR("Unable to create thread. Exiting program.\n"));
@@ -611,14 +596,6 @@ bool run_program(command_array_t* cmd_arr, const char* file_str, Config config, 
         return false;
     }
     ret=pthread_create(&keyboard_input_t,NULL,(void*(*)(void*))keyboard_check_listener,&srs);
-    if(ret){
-        fprintf(stderr,ERR("Unable to create thread. Exiting program.\n"));
-        key_down_check_free(kdc);
-        xdo_free(xdo_obj);
-        key_grabs_free(srs.kg);
-        return false;
-    }
-    ret=pthread_create(&keyboard_input_t2,NULL,(void*(*)(void*))keyboard_check_listener2,&srs);
     if(ret){
         fprintf(stderr,ERR("Unable to create thread. Exiting program.\n"));
         key_down_check_free(kdc);
@@ -1046,7 +1023,6 @@ bool run_program(command_array_t* cmd_arr, const char* file_str, Config config, 
     printf("%ld.%09ld seconds since macro script ran.\n",ts_diff.tv_sec,ts_diff.tv_nsec);
     pthread_mutex_unlock(&input_mutex);
     pthread_join(keyboard_input_t,NULL);
-    pthread_join(keyboard_input_t2,NULL);
     key_grabs_free(srs.kg);
     key_down_check_key_up(kdc,xdo_obj,CURRENTWINDOW);
     key_down_check_free(kdc);

@@ -1,16 +1,16 @@
 init,i,deg_n=0;
 init,d,tri_w=0;#Triangle wave from 0 to 1 back to 0 linearly
-init,i,tri_f=2880;
+init,d,radius=100;
+init,i,tri_f=720;
 init,r,tri_h=i(tri_f,2,/);
 save_mma;
-grab_key=a;
-?key_press=a?
-exit;
-JTIR>-2;
-ungrab_keys;
+grab_key=a;grab_key=d;grab_key=w;grab_key=s;
 (A;
-edit,deg_n=(deg_n,++);
+?key_press=a?edit,deg_n=(deg_n,++);
+?key_press=d?edit,deg_n=(deg_n,--,0,max); #No negative modulo
+?key_press=w?edit,radius=(radius,++);
+?key_press=s?edit,radius=(radius,--,0,max); #No negative radius
 edit,tri_w=(deg_n,tri_f,%,tri_h,/,0,==,deg_n,tri_h,%,tri_h,deg_n,tri_h,%,-,b?t:f,tri_h,as_d,/);#0 to tri_h back to 0
 .m5;
-mmr=(deg_n,cosd,8,tri_w,*,*),(deg_n,sind,8,tri_w,*,*);
+mma=(@mma_x,deg_n,cosd,radius,tri_w,*,*,+),(@mma_y,deg_n,sind,radius,tri_w,*,*,+);
 )A;
