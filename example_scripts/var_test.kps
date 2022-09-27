@@ -3,7 +3,6 @@ init,d,tri_w=0;#Triangle wave from 0 to 1 back to 0 linearly
 init,i,tri_f=2880;
 init,r,tri_h=i(tri_f,2,/);
 save_mma;
-wait_key=a;
 grab_key=a;
 ?key_press=a?
 exit;
