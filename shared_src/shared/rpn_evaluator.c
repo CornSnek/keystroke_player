@@ -143,7 +143,9 @@ void RPNEvaluatorInit(void){
         SMVA("@time_s",VLNT_Long,l,0);//Time since start of program.
         SMVA("@time_ns",VLNT_Long,l,0);
 #undef SMVA
-        //StringMap_as_number_print_debug(DefaultRPNVariablesMap);
+#if SMVA_DEBUG==1
+        StringMap_as_number_print_debug(DefaultRPNVariablesMap);
+#endif
         if(!is_ph){
             fprintf(stderr,ERR("DefaultRPNVariablesMap should be a perfect hash. Exiting program.\n"));
             exit(EXIT_FAILURE);
