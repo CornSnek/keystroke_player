@@ -122,8 +122,8 @@ key_grabs_t* key_grabs_new(xdo_t* xdo_obj){
 void key_grabs_add(key_grabs_t* this,keystroke_t ks_add){
     for(int i=0;i<this->size;i++)//Skip duplicates with same key keysym.
         if(this->ks_arr[i].keysym==ks_add.keysym) return;
-    this->ks_arr=this->size++?realloc(this->ks_arr,sizeof(keystroke_t)*sizeof(this->size)):malloc(sizeof(keystroke_t));
-    this->ks_pressed=this->size?realloc(this->ks_pressed,sizeof(bool)*sizeof(this->size)):malloc(sizeof(bool));
+    this->ks_arr=this->size++?realloc(this->ks_arr,sizeof(keystroke_t[this->size])):malloc(sizeof(keystroke_t));
+    this->ks_pressed=this->size?realloc(this->ks_pressed,sizeof(bool[this->size])):malloc(sizeof(bool));
     EXIT_IF_NULL(this->ks_arr,keystroke_t*);
     EXIT_IF_NULL(this->ks_pressed,bool*);
     this->ks_arr[this->size-1]=ks_add;
@@ -159,8 +159,8 @@ void key_grabs_remove(key_grabs_t* this,keystroke_t ks_rm){
             this->ks_arr[i]=this->ks_arr[--this->size];//Move the last to the deleted index.
             this->ks_pressed[i]=this->ks_pressed[this->size];
             if(this->size){
-                this->ks_arr=realloc(this->ks_arr,sizeof(keystroke_t)*sizeof(this->size));
-                this->ks_pressed=realloc(this->ks_pressed,sizeof(bool)*sizeof(this->size));
+                this->ks_arr=realloc(this->ks_arr,sizeof(keystroke_t[this->size]));
+                this->ks_pressed=realloc(this->ks_pressed,sizeof(bool[this->size]));
                 EXIT_IF_NULL(this->ks_arr,keystroke_t*);
                 EXIT_IF_NULL(this->ks_pressed,bool*);
             }else{
