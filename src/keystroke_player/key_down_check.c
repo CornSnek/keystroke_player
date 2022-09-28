@@ -136,21 +136,13 @@ bool key_grabs_grab_exist(const key_grabs_t* this,keystroke_t ks){
         if(this->ks_arr[i].keysym==ks.keysym) return true;
     return false;
 }
-void key_grabs_set_pressed(key_grabs_t* this,keystroke_t ks,bool pressed){
+bool key_grabs_get_pressed(const key_grabs_t* this,keystroke_t ks){
     for(int i=0;i<this->size;i++){
         if(this->ks_arr[i].keysym==ks.keysym){
-            this->ks_pressed[i]=pressed;
-            break;
+            return this->ks_pressed[i];
         }
     }
-}
-kg_bool_t key_grabs_get_pressed(const key_grabs_t* this,keystroke_t ks){
-    for(int i=0;i<this->size;i++){
-        if(this->ks_arr[i].keysym==ks.keysym){
-            return (kg_bool_t){.exist=true,.pressed=this->ks_pressed[i]};
-        }
-    }
-    return (kg_bool_t){0};
+    return false;
 }
 void key_grabs_remove(key_grabs_t* this,keystroke_t ks_rm){
     for(int i=0;i<this->size;i++){

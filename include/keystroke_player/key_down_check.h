@@ -45,15 +45,10 @@ typedef struct key_grabs_s{//To use XGrabKey/XUngrabKey and check if key was pre
     bool* ks_pressed;
     int size;
 }key_grabs_t;
-typedef struct kg_bool_s{//key may not exist.
-    bool exist:1;
-    bool pressed:1;
-}kg_bool_t;
 key_grabs_t* key_grabs_new(xdo_t* xdo_obj);
 void key_grabs_add(key_grabs_t* this,keystroke_t ks_add);
 bool key_grabs_grab_exist(const key_grabs_t* this,keystroke_t ks);
-void key_grabs_set_pressed(key_grabs_t* this,keystroke_t ks,bool pressed);
-kg_bool_t key_grabs_get_pressed(const key_grabs_t* this,keystroke_t ks);
+bool key_grabs_get_pressed(const key_grabs_t* this,keystroke_t ks);
 void key_grabs_remove(key_grabs_t* this,keystroke_t ks_rm);
 void key_grabs_remove_all(key_grabs_t* this);
 void key_grabs_free(key_grabs_t* this);

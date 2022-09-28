@@ -471,7 +471,6 @@ typedef struct{
     key_grabs_t* kg;
     bool program_done;
     bool do_wait_cond;
-    KeyCode kc_check_wait_cond;
     delay_ns_t key_check_delay;
 }shared_rs;
 pthread_mutex_t input_mutex=PTHREAD_MUTEX_INITIALIZER;
@@ -493,6 +492,7 @@ void* keyboard_check_listener(shared_rs* srs_p){
             XNextEvent(xdpy,&e);
             if(e.type==KeyPress||e.type==KeyRelease){
                 const KeyCode this_keycode=e.xkey.keycode;
+                const bool is_pressed=(e.type==KeyPress);
                 if(this_keycode==XKeysymToKeycode(xdpy,XK_Escape)){
                     puts("Escape key pressed. Stopping macro script.");
                     srs_p->program_done=true;
@@ -500,15 +500,11 @@ void* keyboard_check_listener(shared_rs* srs_p){
                         pthread_cond_signal(&wait_cond);
                     break;
                 }
-                for(int i=0;i<kg->size;i++){
-                    KeyCode kc_check;
-                    if((kc_check=XKeysymToKeycode(xdpy,kg->ks_arr[i].keysym))==this_keycode){
-                        const bool is_pressed=(e.type==KeyPress);
-                        key_grabs_set_pressed(kg,kg->ks_arr[i],is_pressed);
-                        if(srs_p->do_wait_cond&&is_pressed&&kc_check==srs_p->kc_check_wait_cond)
-                            pthread_cond_signal(&wait_cond);
-                    }
-                }
+                for(int i=0;i<kg->size;i++)
+                    if(XKeysymToKeycode(xdpy,kg->ks_arr[i].keysym)==this_keycode)
+                        kg->ks_pressed[i]=is_pressed;
+                if(srs_p->do_wait_cond&&kg->ks_pressed[kg->size-1])
+                    pthread_cond_signal(&wait_cond); //Last key would be from CMD_WaitUntilKey if do_wait_cond is set.
             }
         }
     }
@@ -591,7 +587,7 @@ bool run_program(command_array_t* cmd_arr, const char* file_str, Config config, 
     }
     int cmd_arr_len=command_array_count(cmd_arr),cmd_arr_i=0,stack_cmd_i;
     key_down_check_t* kdc=key_down_check_new();
-    shared_rs srs=(shared_rs){.xdo_obj=xdo_obj,.program_done=false,.do_wait_cond=false,.kc_check_wait_cond=0,.key_check_delay=config.key_check_delay,.kg=key_grabs_new(xdo_obj)};
+    shared_rs srs=(shared_rs){.xdo_obj=xdo_obj,.program_done=false,.do_wait_cond=false,.key_check_delay=config.key_check_delay,.kg=key_grabs_new(xdo_obj)};
     printf("Starting script in %ld microseconds (%f seconds)\n",config.init_delay,(float)config.init_delay/1000000);
     puts("Press Escape Key to stop the macro.");
     usleep(config.init_delay);
@@ -631,7 +627,6 @@ bool run_program(command_array_t* cmd_arr, const char* file_str, Config config, 
     timespec_get(&ts_usleep_before,TIME_UTC);
     RPNEvaluatorAssignVar("@ci_last",(as_number_t){.i=cmd_arr_len,.type=VLNT_Int});
     pthread_mutex_lock(&input_mutex);
-    Display* xdpy=srs.xdo_obj->xdpy;
     while(!srs.program_done){
         pthread_mutex_unlock(&input_mutex);
         timespec_diff(&ts_begin,NULL,&ts_diff);
@@ -950,7 +945,7 @@ bool run_program(command_array_t* cmd_arr, const char* file_str, Config config, 
                 cmdprintf("%s next command if Key '%s' is pressed. ",this_cmd.invert_query?"Skip":"Don't skip",cmd_u.key_pressed.key);
                 query_is_true=false;
                 pthread_mutex_lock(&input_mutex);
-                query_is_true=key_grabs_get_pressed(srs.kg,cmd_u.grab_key).pressed;
+                query_is_true=key_grabs_get_pressed(srs.kg,cmd_u.grab_key);
                 pthread_mutex_unlock(&input_mutex);
                 cmdprintf("It is %spressed.\n",query_is_true?"":"not ");
                 PrintLastCommand(LastQuery);
@@ -976,15 +971,13 @@ bool run_program(command_array_t* cmd_arr, const char* file_str, Config config, 
             case CMD_WaitUntilKey://Todo Grab key with conditional variable probably.
                 cmdprintf("Waiting until keypress '%s'\n",cmd_u.wait_until_key.key);
                 pthread_mutex_lock(&input_mutex);
-                if(key_grabs_get_pressed(srs.kg,cmd_u.wait_until_key).exist){
+                if(key_grabs_grab_exist(srs.kg,cmd_u.wait_until_key)){
                     pthread_mutex_unlock(&input_mutex);//DoRuntimeError macro will relock.
                     fprintf(stderr,ERR("Key '%s' has been previously grabbed by a GrabKey command. Exiting program!\n"),cmd_u.wait_until_key.key);
                     DoRuntimeError();
                     break;
                 }
                 key_grabs_add(srs.kg,cmd_u.wait_until_key);
-                key_grabs_set_pressed(srs.kg,cmd_u.wait_until_key,true);
-                srs.kc_check_wait_cond=XKeysymToKeycode(xdpy,cmd_u.wait_until_key.keysym);//Add key grab to keyboard input thread so that when this key is pressed, unblock main thread.
                 srs.do_wait_cond=true;
                 pthread_cond_wait(&wait_cond,&input_mutex);
                 srs.do_wait_cond=false;
