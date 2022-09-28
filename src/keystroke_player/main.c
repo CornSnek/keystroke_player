@@ -493,25 +493,21 @@ void* keyboard_check_listener(shared_rs* srs_p){
             XNextEvent(xdpy,&e);
             if(e.type==KeyPress||e.type==KeyRelease){
                 const KeyCode this_keycode=e.xkey.keycode;
+                if(this_keycode==XKeysymToKeycode(xdpy,XK_Escape)){
+                    puts("Escape key pressed. Stopping macro script.");
+                    srs_p->program_done=true;
+                    if(srs_p->do_wait_cond)//If exiting while wait condition was active in the main thread.
+                        pthread_cond_signal(&wait_cond);
+                    break;
+                }
                 for(int i=0;i<kg->size;i++){
                     KeyCode kc_check;
                     if((kc_check=XKeysymToKeycode(xdpy,kg->ks_arr[i].keysym))==this_keycode){
                         const bool is_pressed=(e.type==KeyPress);
                         key_grabs_set_pressed(kg,kg->ks_arr[i],is_pressed);
-                        if(srs_p->do_wait_cond&&is_pressed&&kc_check==srs_p->kc_check_wait_cond){
-                            srs_p->do_wait_cond=false;
+                        if(srs_p->do_wait_cond&&is_pressed&&kc_check==srs_p->kc_check_wait_cond)
                             pthread_cond_signal(&wait_cond);
-                        }
                     }
-                }
-                if(this_keycode==XKeysymToKeycode(xdpy,XK_Escape)){
-                    puts("Escape key pressed. Stopping macro script.");
-                    srs_p->program_done=true;
-                    if(srs_p->do_wait_cond){//If exiting while wait condition was active.
-                        srs_p->do_wait_cond=false;
-                        pthread_cond_signal(&wait_cond);
-                    }
-                    break;
                 }
             }
         }
