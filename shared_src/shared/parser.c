@@ -33,6 +33,8 @@ bool macro_buffer_process_next(macro_buffer_t* this,bool print_debug){//Returns 
     bool key_processed=false;
     InputState input_state=IS_Down;
     char* str_name=0,* num_str_arr[4]={0},* rpn_str_arr[4]={0},* parse_start_p=this->contents+this->token_i;
+    int print_str_len=0;
+    char esc_seq;
     vlcallback_info vlci[4];
     const char* begin_p,* end_p;
     long delay_mult=0;
@@ -41,13 +43,9 @@ bool macro_buffer_process_next(macro_buffer_t* this,bool print_debug){//Returns 
     bool added_keystate=false;
     int read_i=0; //Index to read.
     int read_offset_i=0; //Last character to read by offset of read_i.
-    bool first_number_parsed=false;
-    bool print_cmd=false;
-    bool store_index=false;
-    bool invert_query=false;
+    bool first_number_parsed=false, print_cmd=false, store_index=false, invert_query=false, print_newline, is_absolute;
     CompareCoords cmp_flags=CMP_NULL;
     VLCallbackType vct;
-    bool is_absolute;
     #define DO_ERROR()\
     print_where_error_is(this->contents,this->token_i,read_i+read_offset_i);\
     this->token_i+=error_move_offset(this->contents+this->token_i+read_i+read_offset_i);\
@@ -206,6 +204,24 @@ bool macro_buffer_process_next(macro_buffer_t* this,bool print_debug){//Returns 
                     read_i+=9;
                     read_offset_i=-1;
                     read_state=RS_GrabKey;
+                    break;
+                }
+                if(!strncmp(current_char_p,"print=",6)){
+                    read_i+=6;
+                    read_offset_i=-1;
+                    read_state=RS_PrintString;
+                    print_newline=false;
+                    str_name=malloc(0);
+                    EXIT_IF_NULL(str_name,char*);
+                    break;
+                }
+                if(!strncmp(current_char_p,"println=",8)){
+                    read_i+=8;
+                    read_offset_i=-1;
+                    read_state=RS_PrintString;
+                    print_newline=true;
+                    str_name=malloc(0);
+                    EXIT_IF_NULL(str_name,char*);
                     break;
                 }
                 if(char_is_key(current_char)){
@@ -1332,6 +1348,67 @@ bool macro_buffer_process_next(macro_buffer_t* this,bool print_debug){//Returns 
                 fprintf(stderr,ERR("Invalid variable character '%c' at line %lu char %lu state %s.\n"),current_char,line_num,char_num,ReadStateStrings[read_state]);
                 DO_ERROR();
                 break;
+            case RS_PrintString:
+                #if 0
+                if(current_char=='('){
+                    free(str_name);
+                    fprintf(stderr,ERR("TODO RPN implementation\n"));
+                    DO_ERROR();
+                    break;
+                }
+                #endif
+                if(current_char==';'&&current_char_p[1]==';'){
+                    if(print_newline){
+                        str_name=realloc(str_name,sizeof(char[++print_str_len]));
+                        str_name[print_str_len-1]='\n';
+                    }
+                    str_name=realloc(str_name,sizeof(char[++print_str_len]));
+                    str_name[print_str_len-1]='\0';
+                    command_array_add(this->cmd_arr,
+                        (command_t){.type=CMD_PrintString,.subtype=CMDST_Command,.print_cmd=print_cmd,
+                            .cmd_u.print_string=(print_string_t){
+                                .str=str_name,
+                                .newline=print_newline
+                            }
+                        }
+                    );
+                    read_offset_i+=1; //+1 to count for ;;.
+                    key_processed=true;
+                    break;
+                }
+                if(current_char=='\\'){
+                    switch(current_char_p[1]){
+                        case 'a': esc_seq='\a'; goto valid_esc_seq;
+                        case 'b': esc_seq='\b'; goto valid_esc_seq;
+                        case 'e': esc_seq='\x1b'; goto valid_esc_seq;
+                        case 'f': esc_seq='\f'; goto valid_esc_seq;
+                        case 'n': esc_seq='\n'; goto valid_esc_seq;
+                        case 'r': esc_seq='\r'; goto valid_esc_seq;
+                        case 't': esc_seq='\t'; goto valid_esc_seq;
+                        case 'v': esc_seq='\v'; goto valid_esc_seq;
+                        case '(': esc_seq='('; goto valid_esc_seq;
+                        default: goto invalid_esc_seq;
+                    }
+                    valid_esc_seq:
+                    str_name=realloc(str_name,sizeof(char[++print_str_len]));
+                    str_name[print_str_len-1]=esc_seq;
+                    read_offset_i+=1;
+                    break;
+                    invalid_esc_seq:
+                    free(str_name);
+                    fprintf(stderr,ERR("Invalid escape sequence \\%c found at line %lu char %lu state %s.\n"),current_char_p[1],line_num,char_num,ReadStateStrings[read_state]);
+                    DO_ERROR();
+                    break;
+                }
+                if(current_char=='\0'){
+                    free(str_name);
+                    fprintf(stderr,ERR("No ';;' found at line %lu char %lu state %s.\n"),line_num,char_num,ReadStateStrings[read_state]);
+                    DO_ERROR();
+                    break;
+                }
+                str_name=realloc(str_name,sizeof(char[++print_str_len]));
+                str_name[print_str_len-1]=current_char;
+                break;
             case RS_Count://Nothing (Shouldn't be used).
                 break;
         }
@@ -1547,6 +1624,7 @@ void command_array_add(command_array_t* this, command_t cmd){
         case CMD_WaitUntilKey: SSManager_add_string(this->SSM,(char**)&cmd.cmd_u.wait_until_key.key); break;
         case CMD_QueryKeyPress: SSManager_add_string(this->SSM,(char**)&cmd.cmd_u.key_pressed.key); break;
         case CMD_GrabKey: SSManager_add_string(this->SSM,(char**)&cmd.cmd_u.grab_key.key); break;
+        case CMD_PrintString: SSManager_add_string(this->SSM,(char**)&cmd.cmd_u.print_string.str); break;
         default: break;
     }
     this->cmds[this->size-1]=cmd;
@@ -1787,6 +1865,9 @@ void command_array_print(const command_array_t* this,const VariableLoader_t* vl,
                 break;
             case CMD_GrabKey:
                 printf("GrabKey Key: '%s' KeySym: '%lu'\n",cmd.grab_key.key,cmd.grab_key.keysym);
+                break;
+            case CMD_PrintString:
+                printf("PrintString '%s' NewLine: %d\n",cmd.print_string.str,cmd.print_string.newline);
                 break;
         }
     }

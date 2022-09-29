@@ -5,8 +5,8 @@ init,i,tri_f=720;
 init,r,tri_h=i(tri_f,2,/);
 save_mma;
 grab_key=a;grab_key=d;grab_key=w;grab_key=s;
+print=\e[1;34maaa\nbbb;\(\e[0m;;
 (A;
-wait_key=q;
 ?key_press=a?edit,deg_n=(deg_n,++);
 ?key_press=d?edit,deg_n=(deg_n,--,0,max); #No negative modulo
 ?key_press=w?edit,radius=(radius,++);

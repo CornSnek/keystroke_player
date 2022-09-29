@@ -27,7 +27,7 @@ typedef struct{
     unsigned char decimals;
 }Config;
 const Config InitConfig={
-    .init_delay=2000000,.key_check_delay=1000,.debug_print_type=DBP_AllCommands,.decimals=10
+    .init_delay=2000000,.key_check_delay=1000,.debug_print_type=DBP_None,.decimals=10
 };
 inline static bool fgets_change(char* str,int buffer_len);
 inline static bool write_to_config(const Config config);
@@ -568,7 +568,7 @@ int custom_xdo_move_mouse_absolute(const xdo_t *xdo,int x,int y){
     return ret==0;
 }
 bool run_program(command_array_t* cmd_arr, const char* file_str, Config config, xdo_t* xdo_obj, VariableLoader_t* vl){
-    puts("Press s to execute the macro. Press c to cancel.\n");
+    puts("Press s to execute the macro. Press q to cancel.\n");
     {
         bool start_program;
         keypress_loop(xdo_obj->xdpy,(callback_t[2]){{
@@ -578,7 +578,7 @@ bool run_program(command_array_t* cmd_arr, const char* file_str, Config config, 
         },{
             .func=_boolean_edit_func,
             .arg=&(_boolean_edit_t){.p=&start_program,.v=false},
-            .ks=XK_C
+            .ks=XK_Q
         }},2);
         if(!start_program){
             puts("Cancelling starting macro.");
@@ -988,16 +988,22 @@ bool run_program(command_array_t* cmd_arr, const char* file_str, Config config, 
                 ts_usleep_before_adj=ts_rm_delay;
                 break;
             case CMD_GrabKey:
-                cmdprintf("Adding key grabs for key '%s'",cmd_u.grab_key.key);
+                cmdprintf("Adding key grabs for key '%s'\n",cmd_u.grab_key.key);
                 pthread_mutex_lock(&input_mutex);
                 key_grabs_add(srs.kg,cmd_u.grab_key);
                 pthread_mutex_unlock(&input_mutex);
                 break;
             case CMD_UngrabKeyAll:
-                cmdprintf("Removing any key grabs.");
+                cmdprintf("Removing any key grabs.\n");
                 pthread_mutex_lock(&input_mutex);
                 key_grabs_remove_all(srs.kg);
                 pthread_mutex_unlock(&input_mutex);
+                break;
+            case CMD_PrintString:
+                cmdprintf(ERR("Warning: Debug printing should be off when using PrintString command.\n"));
+                printf(cmd_u.print_string.str);
+                fflush(stdout);
+                cmdprintf("\n");
                 break;
         }
         if(this_cmd.subtype!=CMDST_Query) ++cmd_arr_i;
