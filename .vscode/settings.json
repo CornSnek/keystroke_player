@@ -93,7 +93,8 @@
         "stack_generic.h": "c",
         "frequency.h": "c",
         "stdint.h": "c",
-        "keysymdef.h": "c"
+        "keysymdef.h": "c",
+        "stdarg.h": "c"
     },
     //"editor.autoClosingBrackets": "never",
     //"editor.autoClosingDelete": "never",

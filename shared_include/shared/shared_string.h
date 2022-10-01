@@ -49,6 +49,7 @@ size_t trim_whitespace(char** strptr);
 size_t trim_comments(char** strptr);
 int replace_node_biggest_first(const void* lhs_v,const void* rhs_v);
 void replace_str(char** strptr, const char* replace, const char* with);
+char* replace_str_array(const char* str, const char* replace,int n,const char** with_arr);
 void replace_str_at(char** strptr_owner, const char* replace, const char* with,const char* begin,const char* end);
 void replace_str_list(char** strptr_owner,replace_node_t* rep_list,size_t rep_list_size);
 static inline bool char_is_x11_key(char c){

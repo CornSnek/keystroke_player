@@ -627,6 +627,7 @@ bool run_program(command_array_t* cmd_arr, const char* file_str, Config config, 
     timespec_get(&ts_usleep_before,TIME_UTC);
     RPNEvaluatorAssignVar("@ci_last",(as_number_t){.i=cmd_arr_len,.type=VLNT_Int});
     pthread_mutex_lock(&input_mutex);
+    char* print_string_copy,** print_string_rpn_results;
     while(!srs.program_done){
         pthread_mutex_unlock(&input_mutex);
         timespec_diff(&ts_begin,NULL,&ts_diff);
@@ -1000,10 +1001,21 @@ bool run_program(command_array_t* cmd_arr, const char* file_str, Config config, 
                 pthread_mutex_unlock(&input_mutex);
                 break;
             case CMD_PrintString:
-                cmdprintf(ERR("Warning: Debug printing should be off when using PrintString command.\n"));
-                printf(cmd_u.print_string.str);
+                if(!cmd_u.print_string.newline)
+                    cmdprintf(ERR("Warning: Debug printing should be off when using PrintString command.\n"));
+                print_string_rpn_results=malloc(sizeof(char*)*cmd_u.print_string.rpn_strs_len);
+                EXIT_IF_NULL(print_string_rpn_results,char*);
+                for(int i=0;i<cmd_u.print_string.rpn_strs_len;i++){
+                    RPNEvaluatorEvaluate(cmd_u.print_string.rpn_strs[i],vl,&an_output[0],config.debug_print_type==DBP_AllCommands,true,RPN_EVAL_START_B,RPN_EVAL_END_B,RPN_EVAL_SEP);
+                    print_string_rpn_results[i]=VLNumberGetNumberString(an_output[0],config.decimals);
+                }
+                print_string_copy=replace_str_array(cmd_u.print_string.str,"%_rpn",cmd_u.print_string.rpn_strs_len,(const char**)print_string_rpn_results);
+                fputs(print_string_copy,stdout);//printf but without using format strings.
                 fflush(stdout);
-                cmdprintf("\n");
+                for(int i=0;i<cmd_u.print_string.rpn_strs_len;i++)
+                    free(print_string_rpn_results[i]);
+                free(print_string_rpn_results);
+                free(print_string_copy);
                 break;
         }
         if(this_cmd.subtype!=CMDST_Query) ++cmd_arr_i;

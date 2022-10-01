@@ -10,7 +10,7 @@ const int JumpFromNotConnected=-2;
 macro_buffer_t* macro_buffer_new(char* str_owned, command_array_t* cmd_arr){
     macro_buffer_t* this=(malloc(sizeof(macro_buffer_t)));
     EXIT_IF_NULL(this,macro_buffer_t);
-    *this=(macro_buffer_t){.token_i=0,.str_size=strlen(str_owned),.contents=str_owned,.cmd_arr=cmd_arr,.rim=repeat_id_manager_new(),.jim=jump_id_manager_new(),.vl=VL_new(400),.parse_error=false};
+    *this=(macro_buffer_t){.token_i=0,.str_size=strlen(str_owned),.contents=str_owned,.cmd_arr=cmd_arr,.rim=repeat_id_manager_new(),.jim=jump_id_manager_new(),.vl=VL_new(400),.vpa=vp_array_new(),.parse_error=false};
     return this;
 }
 void print_where_error_is(const char* contents,int begin_error,int end_error){
@@ -34,6 +34,8 @@ bool macro_buffer_process_next(macro_buffer_t* this,bool print_debug){//Returns 
     InputState input_state=IS_Down;
     char* str_name=0,* num_str_arr[4]={0},* rpn_str_arr[4]={0},* parse_start_p=this->contents+this->token_i;
     int print_str_len=0;
+    char** print_rpn_strs;
+    int print_rpn_strs_len=0;
     char esc_seq;
     vlcallback_info vlci[4];
     const char* begin_p,* end_p;
@@ -212,7 +214,9 @@ bool macro_buffer_process_next(macro_buffer_t* this,bool print_debug){//Returns 
                     read_state=RS_PrintString;
                     print_newline=false;
                     str_name=malloc(0);
+                    print_rpn_strs=malloc(0);
                     EXIT_IF_NULL(str_name,char*);
+                    EXIT_IF_NULL(print_rpn_strs,char**);
                     break;
                 }
                 if(!strncmp(current_char_p,"println=",8)){
@@ -221,7 +225,9 @@ bool macro_buffer_process_next(macro_buffer_t* this,bool print_debug){//Returns 
                     read_state=RS_PrintString;
                     print_newline=true;
                     str_name=malloc(0);
+                    print_rpn_strs=malloc(0);
                     EXIT_IF_NULL(str_name,char*);
+                    EXIT_IF_NULL(print_rpn_strs,char**);
                     break;
                 }
                 if(char_is_key(current_char)){
@@ -1349,14 +1355,34 @@ bool macro_buffer_process_next(macro_buffer_t* this,bool print_debug){//Returns 
                 DO_ERROR();
                 break;
             case RS_PrintString:
-                #if 0
                 if(current_char=='('){
+                    begin_p=current_char_p;
+                    while(*(end_p=++current_char_p)!=')'&&*end_p)
+                        if(*end_p==';') goto print_string_rpn_semicolon;
+                    if(*end_p=='\0'){
+                        free(str_name);
+                        free(print_rpn_strs);
+                        fprintf(stderr,ERR("Print command probably doesn't end with ';;' at line %lu char %lu state %s.\n"),line_num,char_num,ReadStateStrings[read_state]);
+                        DO_ERROR();
+                        break;   
+                    }
+                    rpn_str_arr[0]=char_string_slice(begin_p,end_p);
+                    read_offset_i+=end_p-begin_p;
+                    SSManager_add_string(this->cmd_arr->SSM,&rpn_str_arr[0]);//Add rpn string to free later.
+                    str_name=realloc(str_name,sizeof(char[(print_str_len=print_str_len+5)]));
+                    EXIT_IF_NULL(str_name,char*);
+                    print_rpn_strs=realloc(print_rpn_strs,sizeof(char*)*++print_rpn_strs_len);
+                    EXIT_IF_NULL(print_rpn_strs,char**);
+                    print_rpn_strs[print_rpn_strs_len-1]=rpn_str_arr[0];//Add to array for command.
+                    memcpy(str_name+print_str_len-5,"%_rpn",sizeof(char[5]));
+                    break;
+                    print_string_rpn_semicolon:
                     free(str_name);
-                    fprintf(stderr,ERR("TODO RPN implementation\n"));
+                    free(print_rpn_strs);
+                    fprintf(stderr,ERR("Print command probably doesn't end with ';;' at line %lu char %lu state %s.\n"),line_num,char_num,ReadStateStrings[read_state]);
                     DO_ERROR();
                     break;
                 }
-                #endif
                 if(current_char==';'&&current_char_p[1]==';'){
                     if(print_newline){
                         str_name=realloc(str_name,sizeof(char[++print_str_len]));
@@ -1364,11 +1390,14 @@ bool macro_buffer_process_next(macro_buffer_t* this,bool print_debug){//Returns 
                     }
                     str_name=realloc(str_name,sizeof(char[++print_str_len]));
                     str_name[print_str_len-1]='\0';
+                    vp_array_add(this->vpa,print_rpn_strs);
                     command_array_add(this->cmd_arr,
                         (command_t){.type=CMD_PrintString,.subtype=CMDST_Command,.print_cmd=print_cmd,
                             .cmd_u.print_string=(print_string_t){
                                 .str=str_name,
-                                .newline=print_newline
+                                .newline=print_newline,
+                                .rpn_strs=(const char**)print_rpn_strs,
+                                .rpn_strs_len=print_rpn_strs_len
                             }
                         }
                     );
@@ -1387,6 +1416,7 @@ bool macro_buffer_process_next(macro_buffer_t* this,bool print_debug){//Returns 
                         case 't': esc_seq='\t'; goto valid_esc_seq;
                         case 'v': esc_seq='\v'; goto valid_esc_seq;
                         case '(': esc_seq='('; goto valid_esc_seq;
+                        case ';': esc_seq=';'; goto valid_esc_seq;
                         default: goto invalid_esc_seq;
                     }
                     valid_esc_seq:
@@ -1396,13 +1426,15 @@ bool macro_buffer_process_next(macro_buffer_t* this,bool print_debug){//Returns 
                     break;
                     invalid_esc_seq:
                     free(str_name);
+                    free(print_rpn_strs);
                     fprintf(stderr,ERR("Invalid escape sequence \\%c found at line %lu char %lu state %s.\n"),current_char_p[1],line_num,char_num,ReadStateStrings[read_state]);
                     DO_ERROR();
                     break;
                 }
                 if(current_char=='\0'){
                     free(str_name);
-                    fprintf(stderr,ERR("No ';;' found at line %lu char %lu state %s.\n"),line_num,char_num,ReadStateStrings[read_state]);
+                    free(print_rpn_strs);
+                    fprintf(stderr,ERR("Print command probably doesn't end with ';;' at line %lu char %lu state %s.\n"),line_num,char_num,ReadStateStrings[read_state]);
                     DO_ERROR();
                     break;
                 }
@@ -1494,7 +1526,7 @@ void macro_buffer_str_id_check(macro_buffer_t* this,const VariableLoader_t* vl){
         if(*(rpn_str=vl->ssm->c_strs[rpn_i])=='('){//Exclude variables without '()'.
             printf("Checking RPN string '%s'. ",rpn_str);
             RPNValidStringE status=RPNEvaluatorEvaluate(rpn_str,vl,&(as_number_t){0},false,false,RPN_EVAL_START_B,RPN_EVAL_END_B,RPN_EVAL_SEP);
-            if(status!=RPNVS_Ok&&!(this->parse_error)){ this->parse_error=true;}else{ puts("Valid string.");}
+            if(status!=RPNVS_Ok&&!(this->parse_error)){this->parse_error=true;}else{ puts("Valid string.");}
         }
     }
 }
@@ -1502,6 +1534,7 @@ void macro_buffer_free(macro_buffer_t* this){
     repeat_id_manager_free(this->rim);
     jump_id_manager_free(this->jim);
     VL_free(this->vl);
+    vp_array_free(this->vpa);
     free(this->contents);
     free(this);
 }
@@ -1867,7 +1900,14 @@ void command_array_print(const command_array_t* this,const VariableLoader_t* vl,
                 printf("GrabKey Key: '%s' KeySym: '%lu'\n",cmd.grab_key.key,cmd.grab_key.keysym);
                 break;
             case CMD_PrintString:
-                printf("PrintString '%s' NewLine: %d\n",cmd.print_string.str,cmd.print_string.newline);
+                printf("PrintString '%s' NewLine: %d",cmd.print_string.str,cmd.print_string.newline);
+                if(cmd.print_string.rpn_strs_len){
+                    printf(" RPN Strings: ");
+                    for(int i=0;i<cmd.print_string.rpn_strs_len;i++){
+                        printf("'%s'%s",cmd.print_string.rpn_strs[i],i!=cmd.print_string.rpn_strs_len?", ":"");
+                    }
+                }
+                putchar('\n');
                 break;
         }
     }
@@ -1875,5 +1915,22 @@ void command_array_print(const command_array_t* this,const VariableLoader_t* vl,
 void command_array_free(command_array_t* this){
     SSManager_free(this->SSM);
     free(this->cmds);
+    free(this);
+}
+vp_array_t* vp_array_new(void){
+    vp_array_t* this=malloc(sizeof(vp_array_t));
+    EXIT_IF_NULL(this,vp_array_t*);
+    *this=(vp_array_t){.vp_arr=malloc(0),.size=0};
+    EXIT_IF_NULL(this->vp_arr,void**);
+    return this;
+}
+void vp_array_add(vp_array_t* this,void* p){
+    this->vp_arr=realloc(this->vp_arr,sizeof(void*)*(++this->size));
+    EXIT_IF_NULL(this->vp_arr,void**);
+    this->vp_arr[this->size-1]=p;
+}
+void vp_array_free(vp_array_t* this){
+    for(int i=0;i<this->size;i++) free(this->vp_arr[i]);
+    free(this->vp_arr);
     free(this);
 }

@@ -515,8 +515,6 @@ size_t trim_comments(char** strptr){//Same as above, but with comments until new
     (*strptr)[str_i-comment_count]='\0';
     return str_i-comment_count;
 }
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wstringop-truncation"
 void replace_str(char** strptr, const char* replace, const char* with){
     char* new_strptr=(malloc(sizeof(char)));
     EXIT_IF_NULL(new_strptr,char*);
@@ -527,18 +525,14 @@ void replace_str(char** strptr, const char* replace, const char* with){
     char current_char;
     char* replace_p;
     while((current_char=*(*strptr+strptr_i))){
-        if(!(replace_p=strchr(*strptr+strptr_i,*replace))) break;
+        if(!(replace_p=strstr(*strptr+strptr_i,replace))) break;
         const size_t non_match_len=replace_p-*strptr-strptr_i;
-        new_strptr=realloc(new_strptr,sizeof(char)*(new_strptr_i+non_match_len));//Strings that don't match replace.
-        EXIT_IF_NULL(new_strptr,char*);
-        strncpy(new_strptr+new_strptr_i,*strptr+strptr_i,non_match_len);
-        new_strptr_i+=non_match_len;
-        strptr_i+=non_match_len;
-        if(strncmp(*strptr+strptr_i,replace,replace_len)){//First letter may not match the same word (!=0)
-            new_strptr=realloc(new_strptr,(sizeof(char)*(new_strptr_i+1)));//To stop strchr from looping, add first character.
+        if(new_strptr_i+non_match_len){ //String might be replaced at the beginning. realloc:=0 is UB
+            new_strptr=realloc(new_strptr,sizeof(char)*(new_strptr_i+non_match_len));//Strings that don't match replace.
             EXIT_IF_NULL(new_strptr,char*);
-            new_strptr[new_strptr_i++]=(*strptr)[strptr_i++];
-            continue; 
+            strncpy(new_strptr+new_strptr_i,*strptr+strptr_i,non_match_len);
+            new_strptr_i+=non_match_len;
+            strptr_i+=non_match_len;
         }
         new_strptr=realloc(new_strptr,sizeof(char)*(new_strptr_i+with_len));
         EXIT_IF_NULL(new_strptr,char*);
@@ -553,6 +547,42 @@ void replace_str(char** strptr, const char* replace, const char* with){
     free(*strptr);
     *strptr=new_strptr;//Change freed pointer to new pointer.
 }
+//replace string is replaced with each string in with_arr (only once). Same function as replace_str.
+char* replace_str_array(const char* str, const char* replace,int n,const char** with_arr){
+    int with_arr_i=0;
+    char* new_str=(malloc(sizeof(char)));
+    EXIT_IF_NULL(new_str,char*);
+    size_t str_i=0;
+    size_t new_str_i=0;
+    const size_t replace_len=strlen(replace);
+    char current_char;
+    char* replace_p;
+    while(with_arr_i<n&&(current_char=*(str+str_i))){
+        if(!(replace_p=strstr(str+str_i,replace))) break;
+        const size_t non_match_len=replace_p-str-str_i;
+        if(new_str_i+non_match_len){
+            new_str=realloc(new_str,sizeof(char)*(new_str_i+non_match_len));
+            EXIT_IF_NULL(new_str,char*);
+            strncpy(new_str+new_str_i,str+str_i,non_match_len);
+            new_str_i+=non_match_len;
+            str_i+=non_match_len;
+        }
+        const size_t with_len=strlen(with_arr[with_arr_i]);
+        new_str=realloc(new_str,sizeof(char)*(new_str_i+with_len));
+        EXIT_IF_NULL(new_str,char*);
+        strncpy(new_str+new_str_i,with_arr[with_arr_i],with_len);
+        new_str_i+=with_len;
+        str_i+=replace_len;
+        with_arr_i++;
+    }
+    const size_t last_chars_len=strchr(str+str_i,'\0')-str-str_i;
+    new_str=realloc(new_str,sizeof(char)*(new_str_i+last_chars_len+1));
+    EXIT_IF_NULL(new_str,char*);
+    strcpy(new_str+new_str_i,str+str_i);//Null-terminate with strcpy.
+    return new_str;
+}
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wstringop-truncation"
 //Only replaces within range of pointers begin/end (inclusive).
 //Will invalidate begin/end pointers after this call.
 void replace_str_at(char** strptr_owner, const char* replace, const char* with,const char* begin,const char* end){

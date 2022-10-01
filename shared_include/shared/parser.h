@@ -55,6 +55,7 @@ typedef enum _InputState{
 typedef struct repeat_id_manager_s repeat_id_manager_t;
 typedef struct jump_id_manager_s jump_id_manager_t;
 typedef struct command_array_s command_array_t;
+typedef struct vp_array_s vp_array_t;
 typedef struct macro_buffer_s{
     int token_i;
     int str_size;
@@ -63,6 +64,7 @@ typedef struct macro_buffer_s{
     repeat_id_manager_t* rim;
     jump_id_manager_t* jim;
     VariableLoader_t* vl;
+    vp_array_t* vpa;
     bool parse_error;
 }macro_buffer_t;
 typedef struct auto_keystroke_s{
@@ -149,6 +151,8 @@ typedef struct keystroke_s{
 typedef struct print_string_s{
     const char* str;
     bool newline;
+    const char** rpn_strs;
+    int rpn_strs_len;
 }print_string_t;
 typedef union command_union{
     auto_keystroke_t auto_ks;
@@ -220,6 +224,10 @@ typedef struct command_array_s{
     command_t* cmds;
     shared_string_manager_t* SSM;
 }command_array_t;
+typedef struct vp_array_s{//Container to free any pointer types when vp_array_free is used.
+    void** vp_arr;
+    int size;
+}vp_array_t;
 macro_buffer_t* macro_buffer_new(char* str_owned, command_array_t* cmd_arr);
 bool macro_buffer_process_next(macro_buffer_t* this,bool print_debug);
 void macro_buffer_str_id_check(macro_buffer_t* this,const VariableLoader_t* vl);
@@ -240,4 +248,7 @@ void command_array_add(command_array_t* this, command_t cmd);
 int command_array_count(const command_array_t* this);
 void command_array_print(const command_array_t* this,const VariableLoader_t* vl,unsigned char decimals);
 void command_array_free(command_array_t* this);
+vp_array_t* vp_array_new(void);
+void vp_array_add(vp_array_t* this,void* p);
+void vp_array_free(vp_array_t* this);
 #endif

@@ -112,10 +112,32 @@ UngrabKeyAll command = `ungrab_keys;`
     The key is based on the X11 KeySym names.
     You cannot use the key 'escape' as that is the key to quit the macro.
 
+Print command = `print=...;;`
+
+Print line command (with newline \n) = `println=...;;`
+
+    You can print most characters to the terminal.
+    Unlike other commands, this command requires double semicolons
+    to print characters. These commands are similar to print
+    functions in C, but with some differences
+    You can output the value of an RPN string (see Variable Loading, Manipulation, and RPN
+    for more information). Use parenthesis as normally and the RPN string to see.
+    This command will output it as (number)(d/l/i/c), where d/l/i/c are types
+    double/long/int/char respectively.
+    Example: println=This will output 3l => (1,2,+);;
+    will output "This will output 3l => 3l" in the program with a newline.
+    You can use escape codes as described below.
+    \a \b \e \f \n \r \t and \v. There are custom
+    escape characters, \( and \;, which prints "(" and ";" respectively.
+    Note: `print=` commands should not be used with debug functions, as the program
+    will warn against using them (when using `print=` and not `println=`)
+    Warning: Don't use strings containing "%_rpn", as
+    these internally will be replaced by the rpn string values.
 
 PRINT command = `PRINT>>(Command)`
 
-    This prints any command prefixed with PRINT>>. Prints similar to setting debug_print_type=1 in configs.
+    This prints any command prefixed with PRINT>>. 
+    Prints similar to setting debug_print_type=1 in configs.
     Can't be shown for debug_print_type=2.
 
 There are Query Commands that will skip the next command if false, or not skip if true. They are prefixed with a `?` and end with a `?`. These should be used next to a JumpTo command. For example:

@@ -49,6 +49,22 @@ void VLNumberPrintNumber(as_number_t num,unsigned decimals){
         case VLNT_Double: printf("%.*lfd",decimals,num.d); break;
     }
 }
+char* VLNumberGetNumberString(as_number_t num,unsigned decimals){
+#define Buffer 512
+    static char temp[Buffer]={0};
+    int num_bytes;
+    switch(num.type){
+        case VLNT_Invalid: num_bytes=snprintf(temp,Buffer,"NaN"); break;
+        case VLNT_Char: num_bytes=snprintf(temp,Buffer,"%dc",num.c); break;
+        case VLNT_Int: num_bytes=snprintf(temp,Buffer,"%di",num.i); break;
+        case VLNT_Long: num_bytes=snprintf(temp,Buffer,"%ldl",num.l); break;
+        case VLNT_Double: num_bytes=snprintf(temp,Buffer,"%.*lfd",decimals,num.d); break;
+    }
+#undef Buffer
+    char* ret=malloc(sizeof(char[num_bytes+1]));
+    EXIT_IF_NULL(ret,char*);
+    return strcpy(ret,temp);
+}
 as_number_t VLNumberCast(as_number_t num,VLNumberType type){
     #define GET_NUM ((num.type==VLNT_Double)?num.d:\
     (num.type==VLNT_Long)?num.l:\

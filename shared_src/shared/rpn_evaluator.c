@@ -426,7 +426,10 @@ free(current_token)
         #undef DOPARSETOKENROUTINE
         break;
     }
-    if(see_stack) _Stack_as_number_print(stack_an);
+    if(see_stack){
+        _Stack_as_number_print(stack_an);
+        putchar('\n');
+    }
     bool stack_is_one=(stack_an->size==1);
     if(stack_is_one){if(process_num) *get_value=stack_an->stack[0];}
     else fprintf(stderr,ERR("Too Many Numbers Error: RPN String has more than 1 number in the stack. Not a valid RPN string.\n"));
@@ -557,12 +560,12 @@ VLNumberType _Stack_get_highest_number_type(const Stack_as_number_t* this,int nu
     return highest_nt;
 }
 void _Stack_as_number_print(const Stack_as_number_t* this){
-    printf("[");
+    putchar('[');
     for(int i=0;i<this->size;i++){
         VLNumberPrintNumber(this->stack[i],10);
         fputs(i!=this->size-1?", ":"",stdout);
     }
-    printf("]\n");
+    printf("]< ");
 }
 void RPNEvaluatorAssignVar(const char* token,as_number_t num){
     assert(StringMap_as_number_assign_ph(DefaultRPNVariablesMap,token,num)==VA_Rewritten);
