@@ -114,7 +114,7 @@ UngrabKeyAll command = `ungrab_keys;`
 
 Print command = `print=...;;`
 
-Print line command (with newline \n) = `println=...;;`
+Print command (with newline \n) = `println=...;;`
 
     You can print most characters to the terminal.
     Unlike other commands, this command requires double semicolons
@@ -139,6 +139,17 @@ PRINT command = `PRINT>>(Command)`
     This prints any command prefixed with PRINT>>. 
     Prints similar to setting debug_print_type=1 in configs.
     Can't be shown for debug_print_type=2.
+
+DebugConfig command =
+
+`debug,debug_print_type=[0-2];`
+
+`debug,rpn_decimals=[0-9]{3};`
+
+`debug,rpn_stack_debug=[0-1];`
+
+    These temporarily change the values from the config file to be set in the macro.
+    Valid numbers should be used. For rpn_decimals, it should be from 0 to 255 only.
 
 There are Query Commands that will skip the next command if false, or not skip if true. They are prefixed with a `?` and end with a `?`. These should be used next to a JumpTo command. For example:
 
@@ -284,7 +295,7 @@ QueryRPNEval command = `\?!?eval=\(RPN\)\?`
 
 The following commands mentioned in header Script Commands and Queries also supports RPN strings and variables for dynamic values:
 
-Delay, RepeatEnd, MoveMouse (Absolute and Relative), QueryComparePixel, QueryCompareCoords, and QueryCoordsWithin.
+`Delay`, `RepeatEnd`, `MoveMouse` (Absolute and Relative), `JumpToIndex` (Absolute and Relative), `QueryComparePixel`, `QueryCompareCoords`, and `QueryCoordsWithin`.
 
     Examples:
     init,i,delay_v=0;

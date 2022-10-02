@@ -3,6 +3,9 @@ init,d,tri_w=0;#Triangle wave from 0 to 1 back to 0 linearly
 init,d,radius=100;
 init,i,tri_f=720;
 init,r,tri_h=i(tri_f,2,/);
+debug,debug_print_type=1;
+debug,rpn_decimals=10;
+debug,rpn_stack_debug=1;
 save_mma;
 grab_key=a;grab_key=d;grab_key=w;grab_key=s;
 println=\e[1;34maaa\nbbb;%\(1,2,+) is (1,2,+) (tri_f,as_d)\e[0m;;

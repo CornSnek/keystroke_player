@@ -5,6 +5,11 @@
 #include <string.h>
 #include <ctype.h>
 __ReadStateWithStringDef(__ReadStateEnums)
+const char* DebugConfigTypeString[3]={
+    "debug_print_type",
+    "rpn_decimals",
+    "rpn_stack_debug"
+};
 const int IndexNotFound=-1;
 const int JumpFromNotConnected=-2;
 macro_buffer_t* macro_buffer_new(char* str_owned, command_array_t* cmd_arr){
@@ -28,7 +33,7 @@ int error_move_offset(const char* begin_error_p){//Moves the pointer to the end 
         next_p++;
     }while(true);
 }
-bool macro_buffer_process_next(macro_buffer_t* this,bool print_debug){//Returns bool if processed successfully or not.
+bool macro_buffer_process_next(macro_buffer_t* this,bool print_debug,bool rpn_debug){//Returns bool if processed successfully or not.
     ReadState read_state=RS_Start;
     bool key_processed=false;
     InputState input_state=IS_Down;
@@ -48,6 +53,7 @@ bool macro_buffer_process_next(macro_buffer_t* this,bool print_debug){//Returns 
     bool first_number_parsed=false, print_cmd=false, store_index=false, invert_query=false, print_newline, is_absolute;
     CompareCoords cmp_flags=CMP_NULL;
     VLCallbackType vct;
+    DebugConfigType dct;
     #define DO_ERROR()\
     print_where_error_is(this->contents,this->token_i,read_i+read_offset_i);\
     this->token_i+=error_move_offset(this->contents+this->token_i+read_i+read_offset_i);\
@@ -230,6 +236,12 @@ bool macro_buffer_process_next(macro_buffer_t* this,bool print_debug){//Returns 
                     EXIT_IF_NULL(print_rpn_strs,char**);
                     break;
                 }
+                if(!strncmp(current_char_p,"debug,",6)){
+                    read_i+=6;
+                    read_offset_i=-1;
+                    read_state=RS_DebugType;
+                    break;
+                }
                 if(char_is_key(current_char)){
                     if(current_char=='m'&&isdigit(this->contents[this->token_i+read_i+read_offset_i+1])){
                         read_i++;
@@ -401,7 +413,7 @@ bool macro_buffer_process_next(macro_buffer_t* this,bool print_debug){//Returns 
                             .cmd_u.repeat_end=(repeat_end_t){
                                 .cmd_index=repeat_id_manager_search_command_index(this->rim,str_name),
                                 .str_index=repeat_id_manager_search_string_index(this->rim,str_name),
-                                .counter=VL_new_callback_number_rpn(this->vl,rpn_str_arr[0],print_debug)
+                                .counter=VL_new_callback_number_rpn(this->vl,rpn_str_arr[0],rpn_debug)
                             }
                         }
                     );
@@ -509,7 +521,7 @@ bool macro_buffer_process_next(macro_buffer_t* this,bool print_debug){//Returns 
                     command_array_add(this->cmd_arr,
                         (command_t){.type=CMD_Delay,.subtype=CMDST_Command,.print_cmd=print_cmd,
                             .cmd_u.delay=(delay_t){
-                                .callback=VL_new_callback_number_rpn(this->vl,rpn_str_arr[0],print_debug),
+                                .callback=VL_new_callback_number_rpn(this->vl,rpn_str_arr[0],rpn_debug),
                                 .delay_mult=delay_mult
                             }
                         }
@@ -598,7 +610,7 @@ bool macro_buffer_process_next(macro_buffer_t* this,bool print_debug){//Returns 
                 if(num_str_arr[first_number_parsed]){
                     vlci[first_number_parsed]=VL_new_callback_int(this->vl,strtol(num_str_arr[first_number_parsed],NULL,10));
                     free(num_str_arr[first_number_parsed]);
-                }else vlci[first_number_parsed]=VL_new_callback_number_rpn(this->vl,rpn_str_arr[first_number_parsed],print_debug);
+                }else vlci[first_number_parsed]=VL_new_callback_number_rpn(this->vl,rpn_str_arr[first_number_parsed],rpn_debug);
                 if(!first_number_parsed){
                     first_number_parsed=true;
                     break;
@@ -695,7 +707,7 @@ bool macro_buffer_process_next(macro_buffer_t* this,bool print_debug){//Returns 
                     command_array_add(this->cmd_arr,
                         (command_t){.type=CMD_JumpToIndex,.subtype=CMDST_Jump,.print_cmd=print_cmd,
                             .cmd_u.jump_to_index=(jump_to_index_t){
-                                .jump_cb=VL_new_callback_number_rpn(this->vl,rpn_str_arr[0],print_debug),
+                                .jump_cb=VL_new_callback_number_rpn(this->vl,rpn_str_arr[0],rpn_debug),
                                 .is_absolute=is_absolute
                             }
                         }
@@ -838,7 +850,7 @@ bool macro_buffer_process_next(macro_buffer_t* this,bool print_debug){//Returns 
                 if(num_str_arr[parsed_num_i]){
                     vlci[parsed_num_i]=VL_new_callback_char(this->vl,strtol(num_str_arr[parsed_num_i],NULL,10));
                     free(num_str_arr[parsed_num_i]);
-                }else vlci[parsed_num_i]=VL_new_callback_number_rpn(this->vl,rpn_str_arr[parsed_num_i],print_debug);
+                }else vlci[parsed_num_i]=VL_new_callback_number_rpn(this->vl,rpn_str_arr[parsed_num_i],rpn_debug);
                 if(parsed_num_i++!=3) break; //Don't break after 4th number is successfully parsed.
                 command_array_add(this->cmd_arr,
                     (command_t){.type=CMD_QueryComparePixel,.subtype=CMDST_Query,.print_cmd=print_cmd,
@@ -909,7 +921,7 @@ bool macro_buffer_process_next(macro_buffer_t* this,bool print_debug){//Returns 
                     command_array_add(this->cmd_arr,
                         (command_t){.type=CMD_QueryCompareCoords,.subtype=CMDST_Query,.print_cmd=print_cmd,
                             .cmd_u.compare_coords=(compare_coords_t){
-                                .cmp_flags=cmp_flags,.var_callback=VL_new_callback_number_rpn(this->vl,rpn_str_arr[0],print_debug)
+                                .cmp_flags=cmp_flags,.var_callback=VL_new_callback_number_rpn(this->vl,rpn_str_arr[0],rpn_debug)
                             },
                             .invert_query=invert_query
                         }
@@ -952,7 +964,7 @@ bool macro_buffer_process_next(macro_buffer_t* this,bool print_debug){//Returns 
                 if(num_str_arr[parsed_num_i]){
                     vlci[parsed_num_i]=VL_new_callback_int(this->vl,strtol(num_str_arr[parsed_num_i],NULL,10));
                     free(num_str_arr[parsed_num_i]);
-                }else vlci[parsed_num_i]=VL_new_callback_number_rpn(this->vl,rpn_str_arr[parsed_num_i],print_debug);
+                }else vlci[parsed_num_i]=VL_new_callback_number_rpn(this->vl,rpn_str_arr[parsed_num_i],rpn_debug);
                 if(parsed_num_i++!=3) break; //Don't break after 4th number is successfully parsed.
                 command_array_add(this->cmd_arr,
                     (command_t){.type=CMD_QueryCoordsWithin,.subtype=CMDST_Query,.print_cmd=print_cmd,
@@ -977,7 +989,7 @@ bool macro_buffer_process_next(macro_buffer_t* this,bool print_debug){//Returns 
                     rpn_str_arr[0]=char_string_slice(begin_p,end_p);
                     command_array_add(this->cmd_arr,
                         (command_t){.type=CMD_QueryRPNEval,.subtype=CMDST_Query,.print_cmd=print_cmd,
-                            .cmd_u.rpn_eval=VL_new_callback_number_rpn(this->vl,rpn_str_arr[0],print_debug)
+                            .cmd_u.rpn_eval=VL_new_callback_number_rpn(this->vl,rpn_str_arr[0],rpn_debug)
                         }
                     );
                     read_offset_i+=end_p-begin_p+1;
@@ -1083,7 +1095,7 @@ bool macro_buffer_process_next(macro_buffer_t* this,bool print_debug){//Returns 
                             break;   
                         }
                         rpn_str_arr[0]=char_string_slice(begin_p,end_p);
-                        RPNValidStringE status=RPNEvaluatorEvaluate(rpn_str_arr[0],this->vl,&an,print_debug,true,RPN_EVAL_START_B,RPN_EVAL_END_B,RPN_EVAL_SEP);
+                        RPNValidStringE status=RPNEvaluatorEvaluate(rpn_str_arr[0],this->vl,&an,rpn_debug,true,RPN_EVAL_START_B,RPN_EVAL_END_B,RPN_EVAL_SEP);
                         free(rpn_str_arr[0]);
                         if(status!=RPNVS_Ok){
                             free(str_name);
@@ -1273,7 +1285,7 @@ bool macro_buffer_process_next(macro_buffer_t* this,bool print_debug){//Returns 
                     rpn_str_arr[0]=char_string_slice(begin_p,end_p);
                     command_array_add(this->cmd_arr,
                         (command_t){.type=CMD_EditVar,.subtype=CMDST_Var,.print_cmd=print_cmd,
-                            .cmd_u.edit_var=VL_new_callback_rewrite_variable_rpn(this->vl,rpn_str_arr[0],str_name,print_debug)
+                            .cmd_u.edit_var=VL_new_callback_rewrite_variable_rpn(this->vl,rpn_str_arr[0],str_name,rpn_debug)
                         }
                     );
                     read_offset_i+=end_p-begin_p+1;
@@ -1368,7 +1380,7 @@ bool macro_buffer_process_next(macro_buffer_t* this,bool print_debug){//Returns 
                     }
                     rpn_str_arr[0]=char_string_slice(begin_p,end_p);
                     read_offset_i+=end_p-begin_p;
-                    SSManager_add_string(this->cmd_arr->SSM,&rpn_str_arr[0]);//Add rpn string to free later.
+                    SSManager_add_string(this->vl->ssm,&rpn_str_arr[0]);//Add rpn string to free later.
                     str_name=realloc(str_name,sizeof(char[(print_str_len=print_str_len+5)]));
                     EXIT_IF_NULL(str_name,char*);
                     print_rpn_strs=realloc(print_rpn_strs,sizeof(char*)*++print_rpn_strs_len);
@@ -1440,6 +1452,73 @@ bool macro_buffer_process_next(macro_buffer_t* this,bool print_debug){//Returns 
                 }
                 str_name=realloc(str_name,sizeof(char[++print_str_len]));
                 str_name[print_str_len-1]=current_char;
+                break;
+            case RS_DebugType:
+                if(!strncmp(current_char_p,"debug_print_type=",17)){
+                    read_i+=17;
+                    read_offset_i=-1;
+                    dct=DCT_DebugPrintType;
+                    read_state=RS_DebugValue;
+                    break;
+                }
+                if(!strncmp(current_char_p,"rpn_decimals=",13)){
+                    read_i+=13;
+                    read_offset_i=-1;
+                    dct=DCT_RPNDecimals;
+                    read_state=RS_DebugValue;
+                    break;
+                }
+                if(!strncmp(current_char_p,"rpn_stack_debug=",16)){
+                    read_i+=16;
+                    read_offset_i=-1;
+                    dct=DCT_RPNStackDebug;
+                    read_state=RS_DebugValue;
+                    break;
+                }
+                fprintf(stderr,ERR("Invalid variable character '%c' at line %lu char %lu state %s.\n"),current_char,line_num,char_num,ReadStateStrings[read_state]);
+                DO_ERROR();
+                break;
+            case RS_DebugValue:
+                if(isdigit(current_char)) break;
+                if(current_char==';'){
+                    num_str_arr[0]=malloc(sizeof(char)*(read_offset_i+1));
+                    EXIT_IF_NULL(num_str_arr[0],char*);
+                    strncpy(num_str_arr[0],this->contents+this->token_i+read_i,read_offset_i);
+                    num_str_arr[0][read_offset_i]='\0';
+                    parsed_num=strtol(num_str_arr[0],NULL,10);
+                    free(num_str_arr[0]);
+                    if(dct==DCT_DebugPrintType){
+                        if(parsed_num<0||parsed_num>2){
+                            fprintf(stderr,ERR("debug_print_type should be 0, 1, or 2 at line %lu char %lu state %s.\n"),line_num,char_num,ReadStateStrings[read_state]);
+                            DO_ERROR();
+                            break;
+                        }
+                    }else if(dct==DCT_RPNDecimals){
+                        if(parsed_num<0||parsed_num>255){
+                            fprintf(stderr,ERR("rpn_decimals should be from 0 to 255 at line %lu char %lu state %s.\n"),line_num,char_num,ReadStateStrings[read_state]);
+                            DO_ERROR();
+                            break;
+                        }
+                    }else if(dct==DCT_RPNStackDebug){
+                        if(parsed_num!=0&&parsed_num!=1){
+                            fprintf(stderr,ERR("rpn_stack_debug should be from 0 to 1 at line %lu char %lu state %s.\n"),line_num,char_num,ReadStateStrings[read_state]);
+                            DO_ERROR();
+                            break;
+                        }
+                    }
+                    command_array_add(this->cmd_arr,
+                        (command_t){.type=CMD_DebugConfig,.subtype=CMDST_Command,.print_cmd=print_cmd,
+                            .cmd_u.debug_config=(debug_config_t){
+                                .type=dct,
+                                .value=parsed_num
+                            }
+                        }
+                    );
+                    key_processed=true;
+                    break;
+                }
+                fprintf(stderr,ERR("Invalid variable character '%c' at line %lu char %lu state %s.\n"),current_char,line_num,char_num,ReadStateStrings[read_state]);
+                DO_ERROR();
                 break;
             case RS_Count://Nothing (Shouldn't be used).
                 break;
@@ -1908,6 +1987,10 @@ void command_array_print(const command_array_t* this,const VariableLoader_t* vl,
                     }
                 }
                 putchar('\n');
+                break;
+            case CMD_DebugConfig:
+                printf("DebugConfig Type: '%s' Value: %lu\n"
+                    ,DebugConfigTypeString[cmd.debug_config.type],cmd.debug_config.value);
                 break;
         }
     }

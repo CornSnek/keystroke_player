@@ -24,10 +24,15 @@ typedef struct{
     delay_ns_t init_delay;
     delay_ns_t key_check_delay;
     DebugPrintType debug_print_type;
-    unsigned char decimals;
+    unsigned char rpn_decimals;
+    bool rpn_stack_debug;
 }Config;
 const Config InitConfig={
-    .init_delay=2000000,.key_check_delay=1000,.debug_print_type=DBP_None,.decimals=10
+    .init_delay=2000000
+    ,.key_check_delay=1000
+    ,.debug_print_type=DBP_None
+    ,.rpn_decimals=5
+    ,.rpn_stack_debug=false
 };
 inline static bool fgets_change(char* str,int buffer_len);
 inline static bool write_to_config(const Config config);
@@ -126,13 +131,13 @@ int main(void){
                 fgets(input_str,INPUT_BUFFER_LEN,stdin);
                 if(input_str[0]!='\n') config.key_check_delay=strtol(input_str,NULL,10);
                 puts("Set value for decimals (0 to 255 number of decimals to show for a double)");
-                printf("Value right now is %u (Enter nothing to skip):",config.decimals);
+                printf("Value right now is %u (Enter nothing to skip):",config.rpn_decimals);
                 fgets(input_str,INPUT_BUFFER_LEN,stdin);
-                if(input_str[0]!='\n') config.decimals=strtol(input_str,NULL,10);
-                printf("The output is %u.\n",config.decimals);
+                if(input_str[0]!='\n') config.rpn_decimals=strtol(input_str,NULL,10);
+                printf("The output is %u.\n",config.rpn_decimals);
                 while(true){
                     puts("Set value for debug_commands (Prints debug commands when playing macro)");
-                    printf("0 for no debug printing, 1 to print all commands (parsing and running program), 2 to print some command numbers and strings (clears terminal)\n");
+                    puts("0 for no debug printing, 1 to print all commands (parsing and running program), 2 to print some command numbers and strings (clears terminal)");
                     printf("Value right now is %d (Enter 0/1/2 or nothing to skip): ",config.debug_print_type);
                     fgets(input_str,INPUT_BUFFER_LEN,stdin);
                     switch(input_str[0]){
@@ -144,6 +149,19 @@ int main(void){
                     }
                 }
                 debug_print_type_valid:
+                while(true){
+                    puts("Set value for rpn_stack_debug (Prints every operation of numbers and operators in the number stack)");
+                    puts("0 to disable, 1 to enable.");
+                    printf("Value right now is %d (Enter 0 or 1 or nothing to skip): ",config.rpn_stack_debug);
+                    fgets(input_str,INPUT_BUFFER_LEN,stdin);
+                    switch(input_str[0]){
+                        case '0': config.rpn_stack_debug=false; goto rpn_stack_debug_valid;
+                        case '1': config.rpn_stack_debug=true; goto rpn_stack_debug_valid;
+                        case '\n': goto rpn_stack_debug_valid;
+                        default: break;
+                    }
+                }
+                rpn_stack_debug_valid:
                 if(write_to_config(config)) puts("Changes written to config.bin");
                 else puts("Didn't write. An error has occured when writing.");
                 //while((clear_stdin=getchar())!='\n'&&clear_stdin!=EOF);
@@ -251,7 +269,7 @@ int main(void){
                     rpnvs_e=RPNEvaluatorEvaluate(input_str,vl,&an_output,rpn_see_stack,true,RPN_EVAL_START_B,RPN_EVAL_END_B,RPN_EVAL_SEP);
                     //while((clear_stdin=getchar())!='\n'&&clear_stdin!=EOF);
                     printf("Status: %d Type: %s Result: ",rpnvs_e,VLNumberTypeStr(an_output.type));
-                    VLNumberPrintNumber(an_output,config.decimals);
+                    VLNumberPrintNumber(an_output,config.rpn_decimals);
                     puts("");
                 }
                 while(var_menu){
@@ -296,7 +314,7 @@ int main(void){
                                 default: break;//Should not exist.
                             }
                             printf("Added number ");
-                            VLNumberPrintNumber(an_opt_output.v,config.decimals);
+                            VLNumberPrintNumber(an_opt_output.v,config.rpn_decimals);
                             printf(" to variable '%s'.\n",var_str);
                         }else{
                             printf("Invalid number parse. Did not add variable '%s'.\n",var_str);
@@ -446,11 +464,11 @@ ProgramStatus parse_file(const char* path, xdo_t* xdo_obj, Config config, bool a
     command_array_t* cmd_arr=command_array_new();
     macro_buffer_t* mb=macro_buffer_new(cmd_output,cmd_arr);
     while(true){
-        macro_buffer_process_next(mb,config.debug_print_type==DBP_AllCommands);
+        macro_buffer_process_next(mb,config.debug_print_type==DBP_AllCommands,config.rpn_stack_debug);
         if(mb->token_i>mb->str_size) break;
     }
     if(!mb->parse_error){
-        if(config.debug_print_type==DBP_AllCommands) command_array_print(cmd_arr,mb->vl,config.decimals); //Always print if no read errors after processing all commands.
+        if(config.debug_print_type==DBP_AllCommands) command_array_print(cmd_arr,mb->vl,config.rpn_decimals); //Always print if no read errors after processing all commands.
         macro_buffer_str_id_check(mb,mb->vl);
     }
     if(!mb->parse_error&&and_run){
@@ -477,7 +495,6 @@ pthread_mutex_t input_mutex=PTHREAD_MUTEX_INITIALIZER;
 pthread_cond_t wait_cond=PTHREAD_COND_INITIALIZER;
 void* keyboard_check_listener(shared_rs* srs_p){
     pthread_mutex_lock(&input_mutex);
-    const delay_ns_t key_check_delay=srs_p->key_check_delay;
     key_grabs_t* kg=srs_p->kg;
     Display* xdpy=srs_p->xdo_obj->xdpy;
     int scr=DefaultScreen(xdpy);
@@ -485,6 +502,7 @@ void* keyboard_check_listener(shared_rs* srs_p){
     XFlush(xdpy);
     XEvent e={0};
     while(!srs_p->program_done){
+        const delay_ns_t key_check_delay=srs_p->key_check_delay;
         pthread_mutex_unlock(&input_mutex);
         usleep(key_check_delay);
         pthread_mutex_lock(&input_mutex);
@@ -954,7 +972,7 @@ bool run_program(command_array_t* cmd_arr, const char* file_str, Config config, 
             case CMD_InitVar:
                 cmdprintf("Initialized variable string name '%s' of type %s of value '",cmd_u.init_var.variable,VLNumberTypeStr(cmd_u.init_var.as_number.type));
                 if((config.debug_print_type==DBP_AllCommands||this_cmd.print_cmd)){
-                    VLNumberPrintNumber(cmd_u.init_var.as_number,config.decimals);
+                    VLNumberPrintNumber(cmd_u.init_var.as_number,config.rpn_decimals);
                     puts("'");
                 }
                 break;
@@ -965,7 +983,7 @@ bool run_program(command_array_t* cmd_arr, const char* file_str, Config config, 
                     const char* var=VL_get_callback(vl,cmd_u.edit_var)->args.rpn.variable;
                     StringMapOpt_as_number_t an=StringMap_as_number_read(vl->sman,var);
                     printf("Value of '%s' is now: '",var);
-                    VLNumberPrintNumber(an.value,config.decimals);
+                    VLNumberPrintNumber(an.value,config.rpn_decimals);
                     puts("'");
                 }
                 break;
@@ -1006,8 +1024,8 @@ bool run_program(command_array_t* cmd_arr, const char* file_str, Config config, 
                 print_string_rpn_results=malloc(sizeof(char*)*cmd_u.print_string.rpn_strs_len);
                 EXIT_IF_NULL(print_string_rpn_results,char*);
                 for(int i=0;i<cmd_u.print_string.rpn_strs_len;i++){
-                    RPNEvaluatorEvaluate(cmd_u.print_string.rpn_strs[i],vl,&an_output[0],config.debug_print_type==DBP_AllCommands,true,RPN_EVAL_START_B,RPN_EVAL_END_B,RPN_EVAL_SEP);
-                    print_string_rpn_results[i]=VLNumberGetNumberString(an_output[0],config.decimals);
+                    RPNEvaluatorEvaluate(cmd_u.print_string.rpn_strs[i],vl,&an_output[0],config.rpn_stack_debug,true,RPN_EVAL_START_B,RPN_EVAL_END_B,RPN_EVAL_SEP);
+                    print_string_rpn_results[i]=VLNumberGetNumberString(an_output[0],config.rpn_decimals);
                 }
                 print_string_copy=replace_str_array(cmd_u.print_string.str,"%_rpn",cmd_u.print_string.rpn_strs_len,(const char**)print_string_rpn_results);
                 fputs(print_string_copy,stdout);//printf but without using format strings.
@@ -1016,6 +1034,19 @@ bool run_program(command_array_t* cmd_arr, const char* file_str, Config config, 
                     free(print_string_rpn_results[i]);
                 free(print_string_rpn_results);
                 free(print_string_copy);
+                break;
+            case CMD_DebugConfig:
+                cmdprintf("Changing debug config '%s' to value '%ld'\n",DebugConfigTypeString[cmd_u.debug_config.type],cmd_u.debug_config.value);
+                switch(cmd_u.debug_config.type){
+                    case DCT_DebugPrintType:
+                        config.debug_print_type=cmd_u.debug_config.value;
+                        break;
+                    case DCT_RPNDecimals:
+                        config.rpn_decimals=cmd_u.debug_config.value;
+                        break;
+                    case DCT_RPNStackDebug:
+                        config.rpn_stack_debug=cmd_u.debug_config.value;
+                }
                 break;
         }
         if(this_cmd.subtype!=CMDST_Query) ++cmd_arr_i;

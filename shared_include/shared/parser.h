@@ -8,8 +8,8 @@
 #include <stdbool.h>
 #include <X11/Xlib.h>
 //Sringifying enums separately. Add e(number) and #e(number) for a new enum and string.
-#define __STR_READ_ENUMS(e1,e2,e3,e4,e5,e6,e7,e8,e9,e10,e11,e12,e13,e14,e15,e16,e17,e18,e19,e20,e21,e22,e23,e24,e25,e26,e27,e28,e29,e30,ecount)\
-#e1,#e2,#e3,#e4,#e5,#e6,#e7,#e8,#e9,#e10,#e11,#e12,#e13,#e14,#e15,#e16,#e17,#e18,#e19,#e20,#e21,#e22,#e23,#e24,#e25,#e26,#e27,#e28,#e29,#e30
+#define __STR_READ_ENUMS(e1,e2,e3,e4,e5,e6,e7,e8,e9,e10,e11,e12,e13,e14,e15,e16,e17,e18,e19,e20,e21,e22,e23,e24,e25,e26,e27,e28,e29,e30,e31,e32,ecount)\
+#e1,#e2,#e3,#e4,#e5,#e6,#e7,#e8,#e9,#e10,#e11,#e12,#e13,#e14,#e15,#e16,#e17,#e18,#e19,#e20,#e21,#e22,#e23,#e24,#e25,#e26,#e27,#e28,#e29,#e30,#e31,#e32
 //For .h file.
 #define __ReadStateWithStringDec(...) typedef enum _ReadState{__VA_ARGS__}ReadState;\
 extern const char* ReadStateStrings[RS_Count];
@@ -47,6 +47,8 @@ extern const char* ReadStateStrings[RS_Count];
     RS_GrabKey,\
     RS_WaitUntilKey,\
     RS_PrintString,\
+    RS_DebugType,\
+    RS_DebugValue,\
     RS_Count
 __ReadStateWithStringDec(__ReadStateEnums)
 typedef enum _InputState{
@@ -154,6 +156,16 @@ typedef struct print_string_s{
     const char** rpn_strs;
     int rpn_strs_len;
 }print_string_t;
+typedef enum _DebugConfigType{
+    DCT_DebugPrintType,
+    DCT_RPNDecimals,
+    DCT_RPNStackDebug
+}DebugConfigType;
+extern const char* DebugConfigTypeString[3];
+typedef struct debug_config_s{
+    DebugConfigType type;
+    long value;
+}debug_config_t;
 typedef union command_union{
     auto_keystroke_t auto_ks;
     delay_t delay;
@@ -174,6 +186,7 @@ typedef union command_union{
     keystroke_t grab_key;
     keystroke_t wait_until_key;
     print_string_t print_string;
+    debug_config_t debug_config;
 }command_union_t;
 typedef enum _CommandType{
     CMD_KeyStroke,
@@ -202,6 +215,7 @@ typedef enum _CommandType{
     CMD_GrabKey,
     CMD_UngrabKeyAll,
     CMD_PrintString,
+    CMD_DebugConfig
 }CommandType;
 typedef enum _CommandSubType{
     CMDST_Command,
@@ -229,7 +243,7 @@ typedef struct vp_array_s{//Container to free any pointer types when vp_array_fr
     int size;
 }vp_array_t;
 macro_buffer_t* macro_buffer_new(char* str_owned, command_array_t* cmd_arr);
-bool macro_buffer_process_next(macro_buffer_t* this,bool print_debug);
+bool macro_buffer_process_next(macro_buffer_t* this,bool print_debug,bool rpn_debug);
 void macro_buffer_str_id_check(macro_buffer_t* this,const VariableLoader_t* vl);
 void macro_buffer_free(macro_buffer_t* this);
 repeat_id_manager_t* repeat_id_manager_new(void);

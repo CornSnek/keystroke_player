@@ -13,7 +13,7 @@ START_TEST(parse_from_string){
     strcpy(a_string_heap,a_string_stack);
     command_array_t* cmd_arr=command_array_new();
     macro_buffer_t* mb=macro_buffer_new(a_string_heap,cmd_arr);
-    while(macro_buffer_process_next(mb,false)){
+    while(macro_buffer_process_next(mb,false,false)){
         if(mb->token_i>mb->str_size) break;
     }
     printf("%d\n",mb->parse_error);
