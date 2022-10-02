@@ -52,7 +52,7 @@ void VLNumberPrintNumber(as_number_t num,unsigned decimals){
 char* VLNumberGetNumberString(as_number_t num,unsigned decimals){
 #define Buffer 512
     static char temp[Buffer]={0};
-    int num_bytes;
+    int num_bytes=0;
     switch(num.type){
         case VLNT_Invalid: num_bytes=snprintf(temp,Buffer,"NaN"); break;
         case VLNT_Char: num_bytes=snprintf(temp,Buffer,"%dc",num.c); break;

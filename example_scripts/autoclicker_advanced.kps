@@ -1,0 +1,24 @@
+init,l,click_mdelay=100;
+init,l,MDelayMin=10; #So the macro doesn't lag.
+init,l,MDelayMax=1000;
+init,i,enable_autoclick=0;
+init,d,exp_inc=1; #Increases the longer keys are held.
+debug,debug_print_type=0; #Disable any debug printing.
+debug,rpn_stack_debug=0;
+print=This macro can can autoclick up to 10 milliseconds and 1000 milliseconds.
+The autoclicker can also be enabled/disabled at will.
+Press c/z to enable/disable autoclick. Hold q/e to adjust delay.\n\n\n\n;; #Next println has escape codes that go backwards by 3.
+grab_key=q;grab_key=e;grab_key=c;grab_key=z;
+(A;
+println=\e[3F\e[0JMouse click delay \(milliseconds): (click_mdelay)
+AutoclickEnabled (enable_autoclick)
+ExpDelayGrowth (exp_inc);;
+?key_press=c?edit,enable_autoclick=(1);
+?key_press=z?edit,enable_autoclick=(0);
+?key_press=q?edit,click_mdelay=(click_mdelay,exp_inc,-,MDelayMin,max);
+?key_press=e?edit,click_mdelay=(click_mdelay,exp_inc,+,MDelayMax,min);
+edit,exp_inc=(exp_inc,1.06,*,1000,min);
+?!key_press=q??!key_press=e?edit,exp_inc=(1); #Reset to 0 if none pressed.
+?eval=(enable_autoclick)?m1=c;
+.m(enable_autoclick,click_mdelay,100,b?t:f);
+)A;

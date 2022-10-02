@@ -126,10 +126,13 @@ int main(void){
                 printf("Value right now is %lu (Enter nothing to skip): ",config.init_delay);
                 fgets(input_str,INPUT_BUFFER_LEN,stdin);
                 if(input_str[0]!='\n') config.init_delay=strtol(input_str,NULL,10);
-                puts("Set value for key_check_delay (Microseconds to check if q key is pressed)");
-                printf("Value right now is %lu (Enter nothing to skip): ",config.key_check_delay);
-                fgets(input_str,INPUT_BUFFER_LEN,stdin);
-                if(input_str[0]!='\n') config.key_check_delay=strtol(input_str,NULL,10);
+                while(true){
+                    puts("Set value for key_check_delay (Microseconds to check key presses, up to 1 second or 1000000 microseconds)");
+                    printf("Value right now is %lu (Enter nothing to skip): ",config.key_check_delay);
+                    fgets(input_str,INPUT_BUFFER_LEN,stdin);
+                    if(input_str[0]!='\n') config.key_check_delay=strtol(input_str,NULL,10);
+                    if(config.key_check_delay<=1000000) break;
+                }
                 puts("Set value for decimals (0 to 255 number of decimals to show for a double)");
                 printf("Value right now is %u (Enter nothing to skip):",config.rpn_decimals);
                 fgets(input_str,INPUT_BUFFER_LEN,stdin);

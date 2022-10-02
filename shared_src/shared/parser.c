@@ -989,7 +989,8 @@ bool macro_buffer_process_next(macro_buffer_t* this,bool print_debug,bool rpn_de
                     rpn_str_arr[0]=char_string_slice(begin_p,end_p);
                     command_array_add(this->cmd_arr,
                         (command_t){.type=CMD_QueryRPNEval,.subtype=CMDST_Query,.print_cmd=print_cmd,
-                            .cmd_u.rpn_eval=VL_new_callback_number_rpn(this->vl,rpn_str_arr[0],rpn_debug)
+                            .cmd_u.rpn_eval=VL_new_callback_number_rpn(this->vl,rpn_str_arr[0],rpn_debug),
+                            .invert_query=invert_query
                         }
                     );
                     read_offset_i+=end_p-begin_p+1;
@@ -1019,7 +1020,8 @@ bool macro_buffer_process_next(macro_buffer_t* this,bool print_debug,bool rpn_de
                                 .cmd_u.key_pressed=(keystroke_t){
                                     .keysym=keysym,
                                     .key=str_name
-                                }
+                                },
+                                .invert_query=invert_query
                             }
                         );
                         key_processed=true;

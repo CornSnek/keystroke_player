@@ -515,6 +515,8 @@ size_t trim_comments(char** strptr){//Same as above, but with comments until new
     (*strptr)[str_i-comment_count]='\0';
     return str_i-comment_count;
 }
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wstringop-truncation"
 void replace_str(char** strptr, const char* replace, const char* with){
     char* new_strptr=(malloc(sizeof(char)));
     EXIT_IF_NULL(new_strptr,char*);
@@ -547,6 +549,7 @@ void replace_str(char** strptr, const char* replace, const char* with){
     free(*strptr);
     *strptr=new_strptr;//Change freed pointer to new pointer.
 }
+#pragma GCC diagnostic pop
 //replace string is replaced with each string in with_arr (only once). Same function as replace_str.
 char* replace_str_array(const char* str, const char* replace,int n,const char** with_arr){
     int with_arr_i=0;
