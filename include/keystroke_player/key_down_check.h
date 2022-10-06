@@ -50,7 +50,7 @@ typedef struct km_grabs_s{//To use XGrabKey/XUngrabKey and check if key was pres
 }km_grabs_t;
 km_grabs_t* km_grabs_new(xdo_t* xdo_obj);
 void km_grabs_kadd(km_grabs_t* this,keystroke_t ks_add);
-void km_grabs_badd(km_grabs_t* this,mouse_button_t b_add);
+void km_grabs_badd(km_grabs_t* this,mouse_button_t b_add,bool held_down);
 bool km_grabs_kgrab_exist(const km_grabs_t* this,keystroke_t ks);
 bool km_grabs_bgrab_exist(const km_grabs_t* this,int b);
 bool km_grabs_get_kpressed(const km_grabs_t* this,keystroke_t ks);

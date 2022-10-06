@@ -74,7 +74,7 @@ JumpTo command = `JT>[A-Za-z0-9\+\_]+;`
     There can be more than one JumpTo and it can be before and/or after
     a JumpFrom.
 
-JumpToIndex command = `JTI[AR]>[0-9\-];`
+JumpToIndex command = `JTI[AR]>[0-9\-]+;`
 
     Will jump based based on (A)bsolute or (R)elative position.
     Negative numbers are used for relative positions. The program will throw
@@ -93,23 +93,28 @@ JumpBack command = `JB>;`
     JumpBack command pops any index stored in the stack.
     Will throw an error if the stack is empty.
 
-WaitUntilKey command = `wait_key=[A-Za-z0-9_];`
+WaitUntilKey command = `!?wait_key=[A-Za-z0-9_]+;`
 
     This command blocks the macro program until the key has been held down.
+    Appending ! to wait_key inverts so that the program checks if it is not held down.
     The key is based on the X11 KeySym names. 
     You cannot use this with GrabKey commands, as the macro will throw a runtime error.
     You cannot use the key 'escape' as that is the key to quit the macro.
     Note: This command slows down loops. It is advised to use these outside loops.
 
 
-WaitUntilButton command = `wait_button=[1-5];`
+WaitUntilButton command = `!?wait_button=[1-5];`
+
+WaitUntilButton command (clicked) = `wait_buttonc=[1-5];`
 
     This command blocks the macro program until the mouse button has been held down.
+    wait_buttonc makes it so that next button clicks are required instead of holding down.
+    Appending ! to wait_button inverts so that the program checks if it is not held down.
     1=Left, 2=Middle, 3=Right, 4=Wheel Up, 5=Wheel Down
     You cannot use this with GrabButton commands (TODO), as the macro will throw a runtime error.
     Note: This command slows down loops. It is advised to use these outside loops.
 
-GrabKey command = `grab_key=[A-Za-z0-9_];`
+GrabKey command = `grab_key=[A-Za-z0-9_]+;`
 
 UngrabKeyAll command = `ungrab_keys;`
 
@@ -178,7 +183,7 @@ QueryComparePixel command = `\?!?pxc=[0-9]+,[0-9]+,[0-9]+,[0-9]+\?`
         the mouse pixel is r,g,b=108,148,128 the query is true since 108, 148, and 128 is within 20.
         If the mouse pixel is r,g,b=255,255,255, the query is false since 255 is not within 20.
 
-QueryCompareCoords command = `\?!?coords=[xy][<>]=?[0-9]\?`
+QueryCompareCoords command = `\?!?coords=[xy][<>]=?[0-9]+\?`
 
     Compares either the x or y coordinate of the mouse. Supports
     >, >=, <, and <= only.
@@ -196,7 +201,7 @@ QueryRPNEval command = `\?!?eval=\(RPN\)\?`
 
     For more information, see header Commands with Variable Loading and Manipulation
 
-QueryKeyPress command = `\?!?key_press=[A-Za-z0-9_]\?`
+QueryKeyPress command = `\?!?key_press=[A-Za-z0-9_]+\?`
 
     This query checks if a key has been held down.
     The key is based on the X11 KeySym names.

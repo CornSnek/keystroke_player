@@ -132,10 +132,11 @@ void km_grabs_kadd(km_grabs_t* this,keystroke_t ks_add){
         ,RootWindow(this->xdo_obj->xdpy,DefaultScreen(this->xdo_obj->xdpy)),False,GrabModeAsync,GrabModeAsync);
     XFlush(this->xdo_obj->xdpy);
 }
-void km_grabs_badd(km_grabs_t* this,mouse_button_t b_add){
+void km_grabs_badd(km_grabs_t* this,mouse_button_t b_add,bool held_down){
     const int add_i=b_add.button-1;
     this->b_arr[add_i]=b_add;
     this->b_exist[add_i]=true; //Keep this->b_pressed as true/false if held down or not.
+    if(!held_down) this->b_pressed[add_i]=false; //Act as clicked
     XGrabButton(this->xdo_obj->xdpy,b_add.button,None,RootWindow(this->xdo_obj->xdpy,DefaultScreen(this->xdo_obj->xdpy))
         ,False,ButtonPressMask|ButtonReleaseMask,GrabModeAsync,GrabModeAsync,None,None);
     XFlush(this->xdo_obj->xdpy);

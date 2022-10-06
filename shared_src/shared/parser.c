@@ -50,7 +50,7 @@ bool macro_buffer_process_next(macro_buffer_t* this,bool print_debug,bool rpn_de
     bool added_keystate=false;
     int read_i=0; //Index to read.
     int read_offset_i=0; //Last character to read by offset of read_i.
-    bool first_number_parsed=false, print_cmd=false, store_index=false, invert_query=false, print_newline, is_absolute;
+    bool first_number_parsed=false, print_cmd=false, store_index=false, invert_b=false, held_down=true, print_newline, is_absolute;
     CompareCoords cmp_flags=CMP_NULL;
     VLCallbackType vct;
     DebugConfigType dct;
@@ -208,9 +208,32 @@ bool macro_buffer_process_next(macro_buffer_t* this,bool print_debug,bool rpn_de
                     read_state=RS_WaitUntilKey;
                     break;
                 }
+                if(!strncmp(current_char_p,"!wait_key=",10)){
+                    read_i+=10;
+                    read_offset_i=-1;
+                    invert_b=true;
+                    read_state=RS_WaitUntilKey;
+                    break;
+                }
                 if(!strncmp(current_char_p,"wait_button=",12)){
                     read_i+=12;
                     read_offset_i=-1;
+                    held_down=true;
+                    read_state=RS_WaitUntilButton;
+                    break;
+                }
+                if(!strncmp(current_char_p,"!wait_button=",13)){
+                    read_i+=13;
+                    read_offset_i=-1;
+                    held_down=true;
+                    invert_b=true;
+                    read_state=RS_WaitUntilButton;
+                    break;
+                }
+                if(!strncmp(current_char_p,"wait_buttonc=",13)){
+                    read_i+=13;
+                    read_offset_i=-1;
+                    held_down=false;
                     read_state=RS_WaitUntilButton;
                     break;
                 }
@@ -780,7 +803,7 @@ bool macro_buffer_process_next(macro_buffer_t* this,bool print_debug,bool rpn_de
                 if(current_char=='!'){
                     read_i+=1;
                     read_offset_i=-1;
-                    invert_query=!invert_query;
+                    invert_b=!invert_b;
                     break;
                 }
                 if(!strncmp(current_char_p,"pxc=",4)){
@@ -863,7 +886,7 @@ bool macro_buffer_process_next(macro_buffer_t* this,bool print_debug,bool rpn_de
                         .cmd_u.pixel_compare=(pixel_compare_t){
                             .r_cb=vlci[0],.g_cb=vlci[1],.b_cb=vlci[2],.thr_cb=vlci[3]
                         },
-                        .invert_query=invert_query
+                        .invert_query=invert_b
                     }
                 );
                 key_processed=true;
@@ -907,7 +930,7 @@ bool macro_buffer_process_next(macro_buffer_t* this,bool print_debug,bool rpn_de
                             .cmd_u.compare_coords=(compare_coords_t){
                                 .cmp_flags=cmp_flags,.var_callback=VL_new_callback_int(this->vl,strtol(num_str_arr[0],NULL,10))
                             },
-                            .invert_query=invert_query
+                            .invert_query=invert_b
                         }
                     );
                     free(num_str_arr[0]);
@@ -929,7 +952,7 @@ bool macro_buffer_process_next(macro_buffer_t* this,bool print_debug,bool rpn_de
                             .cmd_u.compare_coords=(compare_coords_t){
                                 .cmp_flags=cmp_flags,.var_callback=VL_new_callback_number_rpn(this->vl,rpn_str_arr[0],rpn_debug)
                             },
-                            .invert_query=invert_query
+                            .invert_query=invert_b
                         }
                     );
                     read_offset_i+=end_p-begin_p+1;
@@ -977,7 +1000,7 @@ bool macro_buffer_process_next(macro_buffer_t* this,bool print_debug,bool rpn_de
                         .cmd_u.coords_within=(coords_within_t){
                             .xl_cb=vlci[0],.yl_cb=vlci[1],.xh_cb=vlci[2],.yh_cb=vlci[3]
                         },
-                        .invert_query=invert_query
+                        .invert_query=invert_b
                     }
                 );
                 key_processed=true;
@@ -996,7 +1019,7 @@ bool macro_buffer_process_next(macro_buffer_t* this,bool print_debug,bool rpn_de
                     command_array_add(this->cmd_arr,
                         (command_t){.type=CMD_QueryRPNEval,.subtype=CMDST_Query,.print_cmd=print_cmd,
                             .cmd_u.rpn_eval=VL_new_callback_number_rpn(this->vl,rpn_str_arr[0],rpn_debug),
-                            .invert_query=invert_query
+                            .invert_query=invert_b
                         }
                     );
                     read_offset_i+=end_p-begin_p+1;
@@ -1027,7 +1050,7 @@ bool macro_buffer_process_next(macro_buffer_t* this,bool print_debug,bool rpn_de
                                     .keysym=keysym,
                                     .key=str_name
                                 },
-                                .invert_query=invert_query
+                                .invert_query=invert_b
                             }
                         );
                         key_processed=true;
@@ -1323,7 +1346,8 @@ bool macro_buffer_process_next(macro_buffer_t* this,bool print_debug,bool rpn_de
                             (command_t){.type=CMD_WaitUntilKey,.subtype=CMDST_Command,.print_cmd=print_cmd,
                                 .cmd_u.wait_until_key=(keystroke_t){
                                     .keysym=keysym,
-                                    .key=str_name
+                                    .key=str_name,
+                                    .invert_press=invert_b
                                 }
                             }
                         );
@@ -1346,11 +1370,7 @@ bool macro_buffer_process_next(macro_buffer_t* this,bool print_debug,bool rpn_de
                         DO_ERROR();
                         break;
                     }
-                    num_str_arr[0]=malloc(sizeof(int)*2);
-                    num_str_arr[0][0]=current_char;
-                    num_str_arr[0][1]='\0';
-                    parsed_num=strtol(num_str_arr[0],NULL,10);
-                    free(num_str_arr[0]);
+                    parsed_num=current_char-'0';
                     if(parsed_num<1||parsed_num>5){
                         fprintf(stderr,ERR("Invalid mouse button number (Should be 1 to 5) at line %lu char %lu state %s.\n"),line_num,char_num,ReadStateStrings[read_state]);
                         DO_ERROR();
@@ -1359,7 +1379,9 @@ bool macro_buffer_process_next(macro_buffer_t* this,bool print_debug,bool rpn_de
                     command_array_add(this->cmd_arr,
                         (command_t){.type=CMD_WaitUntilButton,.subtype=CMDST_Command,.print_cmd=print_cmd,
                             .cmd_u.wait_until_button=(mouse_button_t){
-                                .button=parsed_num
+                                .button=parsed_num,
+                                .held_down=held_down,
+                                .invert_press=invert_b
                             }
                         }
                     );
@@ -2014,10 +2036,10 @@ void command_array_print(const command_array_t* this,const VariableLoader_t* vl,
                 printf("EditVar Name: '%s' RPN String: '%s'\n",VL_get_callback(vl,cmd.edit_var)->args.rpn.variable,VL_get_callback(vl,cmd.edit_var)->args.rpn.rpn_str);
                 break;
             case CMD_WaitUntilKey:
-                printf("WaitUntilKey Key: '%s' KeySym: '%lu'\n",cmd.wait_until_key.key,cmd.wait_until_key.keysym);
+                printf("WaitUntilKey Key: '%s' KeySym: %lu Invert: %d\n",cmd.wait_until_key.key,cmd.wait_until_key.keysym,cmd.wait_until_key.invert_press);
                 break;
             case CMD_WaitUntilButton:
-                printf("WaitUntilButton Button: '%d'\n",cmd.wait_until_button.button);
+                printf("WaitUntilButton Button: '%d' HeldDown: %d Invert: %d\n",cmd.wait_until_button.button,cmd.wait_until_button.held_down,cmd.wait_until_button.invert_press);
                 break;
             case CMD_GrabKey:
                 printf("GrabKey Key: '%s' KeySym: '%lu'\n",cmd.grab_key.key,cmd.grab_key.keysym);

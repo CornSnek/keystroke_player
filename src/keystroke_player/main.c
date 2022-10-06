@@ -503,6 +503,7 @@ typedef struct{
     delay_ns_t key_check_delay;
     bool program_done;
     bool do_wait_cond;
+    bool wait_cond_inv;
     bool wait_for_key;
     bool wait_for_button;
     int wait_button;
@@ -538,13 +539,12 @@ void* keyboard_check_listener(shared_rs* srs_p){
                     if(XKeysymToKeycode(xdpy,kmg->ks_arr[i].keysym)==this_keycode)
                         kmg->ks_pressed[i]=is_pressed;
             }
-            if(e.type==ButtonPress||e.type==ButtonRelease){
+            if(e.type==ButtonPress||e.type==ButtonRelease)
                 km_grabs_set_bpressed(srs_p->kmg,e.xbutton.button,(e.type==ButtonPress));
-            }
         }
-        if(srs_p->wait_for_key&&kmg->ks_pressed[kmg->size-1])
+        if(srs_p->wait_for_key&&(kmg->ks_pressed[kmg->size-1]^srs_p->wait_cond_inv))
             pthread_cond_signal(&wait_cond); //Last key would be from CMD_WaitUntilKey if do_wait_cond is set.
-        if(srs_p->wait_for_button&&km_grabs_get_bpressed(srs_p->kmg,srs_p->wait_button))
+        if(srs_p->wait_for_button&&(km_grabs_get_bpressed(srs_p->kmg,srs_p->wait_button)^srs_p->wait_cond_inv))
             pthread_cond_signal(&wait_cond);
     }
     XUngrabKey(xdpy,XKeysymToKeycode(xdpy,XK_Escape),None,RootWindow(xdpy,scr));
@@ -626,7 +626,7 @@ bool run_program(command_array_t* cmd_arr, const char* file_str, Config config, 
     }
     int cmd_arr_len=command_array_count(cmd_arr),cmd_arr_i=0,stack_cmd_i;
     key_down_check_t* kdc=key_down_check_new();
-    shared_rs srs=(shared_rs){.xdo_obj=xdo_obj,.program_done=false,.do_wait_cond=false,.wait_for_key=false,.wait_for_button=false,.key_check_delay=config.key_check_delay,.kmg=km_grabs_new(xdo_obj)};
+    shared_rs srs=(shared_rs){.xdo_obj=xdo_obj,.program_done=false,.do_wait_cond=false,.wait_cond_inv=false,.wait_for_key=false,.wait_for_button=false,.key_check_delay=config.key_check_delay,.kmg=km_grabs_new(xdo_obj)};
     printf("Starting script in %ld microseconds (%f seconds)\n",config.init_delay,(float)config.init_delay/1000000);
     puts("Press Escape Key to stop the macro.");
     usleep(config.init_delay);
@@ -1009,7 +1009,7 @@ bool run_program(command_array_t* cmd_arr, const char* file_str, Config config, 
                 }
                 break;
             case CMD_WaitUntilKey:
-                cmdprintf("Waiting until keypress '%s'\n",cmd_u.wait_until_key.key);
+                cmdprintf("Waiting until keypress '%s'%s\n",cmd_u.wait_until_key.key,cmd_u.wait_until_key.invert_press?" (Not Held Down)":"");
                 pthread_mutex_lock(&input_mutex);
                 if(km_grabs_kgrab_exist(srs.kmg,cmd_u.wait_until_key)){
                     pthread_mutex_unlock(&input_mutex);//DoRuntimeError macro will relock.
@@ -1020,6 +1020,7 @@ bool run_program(command_array_t* cmd_arr, const char* file_str, Config config, 
                 km_grabs_kadd(srs.kmg,cmd_u.wait_until_key);
                 srs.do_wait_cond=true;
                 srs.wait_for_key=true;
+                srs.wait_cond_inv=cmd_u.wait_until_key.invert_press;
                 pthread_cond_wait(&wait_cond,&input_mutex);
                 srs.do_wait_cond=false;
                 srs.wait_for_key=false;
@@ -1030,7 +1031,7 @@ bool run_program(command_array_t* cmd_arr, const char* file_str, Config config, 
                 ts_usleep_before_adj=ts_rm_delay;
                 break;
             case CMD_WaitUntilButton:
-                cmdprintf("Waiting until mouse button '%d'",cmd_u.wait_until_button.button);
+                cmdprintf("Waiting until mouse button '%d' (%s%s)\n",cmd_u.wait_until_button.button,cmd_u.wait_until_button.invert_press?"Not ":"",cmd_u.wait_until_button.held_down?"Held Down":"Clicked");
                 pthread_mutex_lock(&input_mutex);
                 if(false){//Not implemented yet.
                     pthread_mutex_unlock(&input_mutex);//DoRuntimeError macro will relock.
@@ -1038,10 +1039,11 @@ bool run_program(command_array_t* cmd_arr, const char* file_str, Config config, 
                     DoRuntimeError();
                     break;
                 }
-                km_grabs_badd(srs.kmg,cmd_u.wait_until_button);
+                km_grabs_badd(srs.kmg,cmd_u.wait_until_button,cmd_u.wait_until_button.held_down);
                 srs.wait_button=cmd_u.wait_until_button.button;
                 srs.do_wait_cond=true;
                 srs.wait_for_button=true;
+                srs.wait_cond_inv=cmd_u.wait_until_button.invert_press;
                 pthread_cond_wait(&wait_cond,&input_mutex);
                 srs.do_wait_cond=false;
                 srs.wait_for_button=false;
