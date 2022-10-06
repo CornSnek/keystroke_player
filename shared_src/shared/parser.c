@@ -1431,11 +1431,13 @@ bool macro_buffer_process_next(macro_buffer_t* this,bool print_debug,bool rpn_de
                         case 'v': esc_seq='\v'; goto valid_esc_seq;
                         case '(': esc_seq='('; goto valid_esc_seq;
                         case ';': esc_seq=';'; goto valid_esc_seq;
+                        case '\n': goto skip_esc_seq;
                         default: goto invalid_esc_seq;
                     }
                     valid_esc_seq:
                     str_name=realloc(str_name,sizeof(char[++print_str_len]));
                     str_name[print_str_len-1]=esc_seq;
+                    skip_esc_seq://Newline or pressing enter. ('\\n')
                     read_offset_i+=1;
                     break;
                     invalid_esc_seq:

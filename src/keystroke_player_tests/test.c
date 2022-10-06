@@ -1,4 +1,5 @@
 #include "shared_string.h"
+#include "reserved_macro.h"
 #include "parser.h"
 #include "test_utils.h"
 #include <string.h>
@@ -145,49 +146,50 @@ char* read_macro_file(void){
     fclose(f_obj);
     return df_str;
 }
-START_TEST(macro_paster_test){
-    macro_paster_t* mp=macro_paster_new();
-    ck_assert_int_eq(macro_paster_add_name(mp,"AAA"),1);
-    ck_assert_int_eq(macro_paster_add_name(mp,"AAA"),0);
-    ck_assert_int_eq(macro_paster_add_name(mp,"BBB"),1);
-    ck_assert_int_eq(macro_paster_add_var(mp,"CCC","def"),0);
-    ck_assert_int_eq(macro_paster_add_var(mp,"BBB","def"),1);
-    ck_assert_int_eq(macro_paster_add_var(mp,"BBB","def"),0);
-    ck_assert_int_eq(macro_paster_add_name(mp,"CCC"),1);
-    ck_assert_int_eq(macro_paster_add_var(mp,"BBB","ghi"),1);
-    ck_assert_int_eq(macro_paster_add_var(mp,"CCC","ghi"),1);
-    ck_assert_int_eq(macro_paster_write_var_by_str(mp,"DDD","aaa","ddd"),0);
-    ck_assert_int_eq(macro_paster_write_var_by_str(mp,"CCC","ghj","klmnop"),0);
-    ck_assert_int_eq(macro_paster_write_var_by_str(mp,"BBB","def","klmnop"),1);
-    ck_assert_int_eq(macro_paster_write_var_by_str(mp,"BBB","ghi","nopqrst"),1);
-    ck_assert_int_eq(macro_paster_write_var_by_str(mp,"CCC","ghi","write"),1);
-    ck_assert_int_eq(macro_paster_write_var_by_str(mp,"CCC","ghi","rewrite"),1);
-    ck_assert_int_eq(macro_paster_add_var(mp,"AAA","var_1"),1);
-    ck_assert_int_eq(macro_paster_write_var_by_ind(mp,"DDD",0,"value_1"),0);
-    ck_assert_int_eq(macro_paster_write_var_by_ind(mp,"AAA",-1,"value_1"),0);
-    ck_assert_int_eq(macro_paster_write_var_by_ind(mp,"AAA",1,"value_1"),0);
-    ck_assert_int_eq(macro_paster_write_var_by_ind(mp,"AAA",0,"value_1"),1);
-    ck_assert_int_eq(macro_paster_write_var_by_ind(mp,"AAA",0,"value_2"),1);
-    ck_assert_int_eq(macro_paster_write_macro_def(mp,"BBC",":def+:ghi;(:def*:ghi)"),0);
-    ck_assert_int_eq(macro_paster_write_macro_def(mp,"BBB",":def+:ghi;(:def*:ghi)"),1);
-    macro_paster_print(mp);
+START_TEST(ts_macro_paster_test){
+    R_TS_Macro_Init();
+    ts_macro_paster_t* mp=ts_macro_paster_new();
+    ck_assert_int_eq(ts_macro_paster_add_name(mp,"AAA"),1);
+    ck_assert_int_eq(ts_macro_paster_add_name(mp,"AAA"),0);
+    ck_assert_int_eq(ts_macro_paster_add_name(mp,"BBB"),1);
+    ck_assert_int_eq(ts_macro_paster_add_var(mp,"CCC","def"),0);
+    ck_assert_int_eq(ts_macro_paster_add_var(mp,"BBB","def"),1);
+    ck_assert_int_eq(ts_macro_paster_add_var(mp,"BBB","def"),0);
+    ck_assert_int_eq(ts_macro_paster_add_name(mp,"CCC"),1);
+    ck_assert_int_eq(ts_macro_paster_add_var(mp,"BBB","ghi"),1);
+    ck_assert_int_eq(ts_macro_paster_add_var(mp,"CCC","ghi"),1);
+    ck_assert_int_eq(ts_macro_paster_write_var_by_str(mp,"DDD","aaa","ddd"),0);
+    ck_assert_int_eq(ts_macro_paster_write_var_by_str(mp,"CCC","ghj","klmnop"),0);
+    ck_assert_int_eq(ts_macro_paster_write_var_by_str(mp,"BBB","def","klmnop"),1);
+    ck_assert_int_eq(ts_macro_paster_write_var_by_str(mp,"BBB","ghi","nopqrst"),1);
+    ck_assert_int_eq(ts_macro_paster_write_var_by_str(mp,"CCC","ghi","write"),1);
+    ck_assert_int_eq(ts_macro_paster_write_var_by_str(mp,"CCC","ghi","rewrite"),1);
+    ck_assert_int_eq(ts_macro_paster_add_var(mp,"AAA","var_1"),1);
+    ck_assert_int_eq(ts_macro_paster_write_var_by_ind(mp,"DDD",0,"value_1"),0);
+    ck_assert_int_eq(ts_macro_paster_write_var_by_ind(mp,"AAA",-1,"value_1"),0);
+    ck_assert_int_eq(ts_macro_paster_write_var_by_ind(mp,"AAA",1,"value_1"),0);
+    ck_assert_int_eq(ts_macro_paster_write_var_by_ind(mp,"AAA",0,"value_1"),1);
+    ck_assert_int_eq(ts_macro_paster_write_var_by_ind(mp,"AAA",0,"value_2"),1);
+    ck_assert_int_eq(ts_macro_paster_write_macro_def(mp,"BBC",":def+:ghi;(:def*:ghi)"),0);
+    ck_assert_int_eq(ts_macro_paster_write_macro_def(mp,"BBB",":def+:ghi;(:def*:ghi)"),1);
+    ts_macro_paster_print(mp);
     char* str=0;
-    macro_paster_get_val_string(mp,"BBB",':',&str);
+    ts_macro_paster_get_val_string(mp,"BBB",':',&str);
     printf("%s\n",str);
     free(str);
-    macro_paster_free(mp);
-    macro_paster_t* mp2=macro_paster_new();
+    ts_macro_paster_free(mp);
+    ts_macro_paster_t* mp2=ts_macro_paster_new();
     char* file_str=read_macro_file();
     ck_assert_ptr_ne(file_str,0);
     trim_comments(&file_str);//So that the program doesn't process commented macros.
     MacroProcessStatus mps=file_contains_macro_definitions(file_str,MACROS_DEF_START_B,MACROS_DEF_END_B);
     if(mps==MPS_HasDefinitions){
-        macro_paster_process_macros(mp2,file_str,MACROS_DEF_START_B,MACROS_DEF_END_B,MACRO_START_B,MACRO_END_B,MACRO_DEF_SEP,MACRO_VAR_SEP);
+        ts_macro_paster_process_macros(mp2,file_str,MACROS_DEF_START_B,MACROS_DEF_END_B,MACRO_START_B,MACRO_END_B,MACRO_DEF_SEP,MACRO_VAR_SEP);
         char* cmd_output=0;
-        macro_paster_expand_macros(mp2,file_str,MACROS_DEF_END_B,MACRO_START_B,MACRO_END_B,MACRO_VAR_SEP,&cmd_output);
+        ts_macro_paster_expand_macros(mp2,file_str,MACROS_DEF_END_B,MACRO_START_B,MACRO_END_B,MACRO_VAR_SEP,&cmd_output);
         free(cmd_output);
     }
-    macro_paster_free(mp2);
+    ts_macro_paster_free(mp2);
     printf("%s\n",file_str);
     char* highlight_str=print_string_highlight(file_str,file_str,file_str,"\x1B[47;30;1m","\x1B[0m");
     char* srv=string_read_view(highlight_str,highlight_str+11,5);
@@ -195,10 +197,12 @@ START_TEST(macro_paster_test){
     free(srv);
     free(highlight_str);
     free(file_str);
+    R_TS_Macro_Free();
 }
 END_TEST
 START_TEST(macro_fail_test){
-    macro_paster_t* mp=macro_paster_new();
+    R_TS_Macro_Init();
+    ts_macro_paster_t* mp=ts_macro_paster_new();
     const char* bad_macro_def_strings[]={
         "[!!"//Mismatched macro brackets
         ,"[!![!A:=1!]\n[!B:=0!!]"//Mismatched macro definition brackets
@@ -209,11 +213,11 @@ START_TEST(macro_fail_test){
     };
     for(size_t i=0;i<sizeof(bad_macro_def_strings)/sizeof(bad_macro_def_strings[0]);i++){
         ck_assert_int_eq(
-            macro_paster_process_macros(mp,bad_macro_def_strings[i],MACROS_DEF_START_B,MACROS_DEF_END_B,MACRO_START_B,MACRO_END_B,MACRO_DEF_SEP,MACRO_VAR_SEP)
+            ts_macro_paster_process_macros(mp,bad_macro_def_strings[i],MACROS_DEF_START_B,MACROS_DEF_END_B,MACRO_START_B,MACRO_END_B,MACRO_DEF_SEP,MACRO_VAR_SEP)
         ,0);
     }
-    macro_paster_process_macros(mp,"[!![!RECURSION:=[!RECURSION!]!][!ABC:=what!]!!]",MACROS_DEF_START_B,MACROS_DEF_END_B,MACRO_START_B,MACRO_END_B,MACRO_DEF_SEP,MACRO_VAR_SEP);
-    macro_paster_print(mp);
+    ts_macro_paster_process_macros(mp,"[!![!RECURSION:=[!RECURSION!]!][!ABC:=what!]!!]",MACROS_DEF_START_B,MACROS_DEF_END_B,MACRO_START_B,MACRO_END_B,MACRO_DEF_SEP,MACRO_VAR_SEP);
+    ts_macro_paster_print(mp);
     const char* bad_macro_exp_strings[]={
         "[!ABC!]"//No macro definition end bracket
         ,"[!!!!][!ABC!]!]"//Mismatched brackets
@@ -224,11 +228,12 @@ START_TEST(macro_fail_test){
     for(size_t i=0;i<sizeof(bad_macro_exp_strings)/sizeof(bad_macro_exp_strings[0]);i++){
         char* cmd_output=0;
         ck_assert_int_eq(
-            macro_paster_expand_macros(mp,bad_macro_exp_strings[i],MACROS_DEF_END_B,MACRO_START_B,MACRO_END_B,MACRO_VAR_SEP,&cmd_output)
+            ts_macro_paster_expand_macros(mp,bad_macro_exp_strings[i],MACROS_DEF_END_B,MACRO_START_B,MACRO_END_B,MACRO_VAR_SEP,&cmd_output)
         ,0);
         free(cmd_output);
     }
-    macro_paster_free(mp);
+    ts_macro_paster_free(mp);
+    R_TS_Macro_Free();
 }
 END_TEST
 START_TEST(replace_test){
@@ -425,8 +430,8 @@ Suite* test_suite(void){
     tcase_add_test(tc_core,repeat_id_search_str_test);
     tcase_add_test(tc_core,shared_string_test);
     tcase_add_test(tc_core,innermost_test);
-    tcase_add_test(tc_core,macro_paster_test);
-    tcase_add_test(tc_core,macro_fail_test);
+    tcase_add_test(tc_core,ts_macro_paster_test);
+    //tcase_add_test(tc_core,macro_fail_test);
     tcase_add_test(tc_core,replace_test);
     tcase_set_timeout(tc_core,1000.);
     tcase_add_test(tc_core,hash_map_test);

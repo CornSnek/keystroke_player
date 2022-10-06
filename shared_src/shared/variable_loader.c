@@ -55,10 +55,10 @@ char* VLNumberGetNumberString(as_number_t num,unsigned decimals){
     int num_bytes=0;
     switch(num.type){
         case VLNT_Invalid: num_bytes=snprintf(temp,Buffer,"NaN"); break;
-        case VLNT_Char: num_bytes=snprintf(temp,Buffer,"%dc",num.c); break;
-        case VLNT_Int: num_bytes=snprintf(temp,Buffer,"%di",num.i); break;
-        case VLNT_Long: num_bytes=snprintf(temp,Buffer,"%ldl",num.l); break;
-        case VLNT_Double: num_bytes=snprintf(temp,Buffer,"%.*lfd",decimals,num.d); break;
+        case VLNT_Char: num_bytes=snprintf(temp,Buffer,"%d",num.c); break;
+        case VLNT_Int: num_bytes=snprintf(temp,Buffer,"%d",num.i); break;
+        case VLNT_Long: num_bytes=snprintf(temp,Buffer,"%ld",num.l); break;
+        case VLNT_Double: num_bytes=snprintf(temp,Buffer,"%.*lf",decimals,num.d); break;
     }
 #undef Buffer
     char* ret=malloc(sizeof(char[num_bytes+1]));

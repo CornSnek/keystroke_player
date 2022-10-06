@@ -94,7 +94,8 @@
         "frequency.h": "c",
         "stdint.h": "c",
         "keysymdef.h": "c",
-        "stdarg.h": "c"
+        "stdarg.h": "c",
+        "reserved_macro.h": "c"
     },
     //"editor.autoClosingBrackets": "never",
     //"editor.autoClosingDelete": "never",

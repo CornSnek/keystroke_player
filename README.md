@@ -128,7 +128,8 @@ Print command (with newline \n) = `println=...;;`
     will output "This will output 3l => 3l" in the program with a newline.
     You can use escape codes as described below.
     \a \b \e \f \n \r \t and \v. There are custom
-    escape characters, \( and \;, which prints "(" and ";" respectively.
+    escape characters, \( and \;, which prints "(" and ";" respectively. 
+    '\\n' (Or \ and pressing Enter) adds no characters just like in shell scripts.
     Note: `print=` commands should not be used with debug functions, as the program
     will warn against using them (when using `print=` and not `println=`)
     Warning: Don't use strings containing "%_rpn", as
@@ -348,6 +349,11 @@ Here is an example in example_scripts/macro_test.kps.
     JF>DownRight;mmr=[!X_v!],[!Y_v!];.m5;?coords=y>[!H_Y!]?JT>UpRight;
         ?coords=x>[!H_X!]?JT>DownLeft;
         JT>DownRight;
+
+# Text Substitution Reserved Macros
+
+TODO: Add some.
+
 # Build
 source tasks.conf (In project folder)
 

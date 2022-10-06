@@ -3,6 +3,7 @@
 #include "key_down_check.h"
 #include "variable_loader.h"
 #include "rpn_evaluator.h"
+#include "reserved_macro.h"
 #include <math.h>
 #include <time.h>
 #include <string.h>
@@ -14,6 +15,7 @@ int usleep(useconds_t usec);
 #include <X11/Xlib.h>
 #include <X11/Xutil.h>
 #include <assert.h>
+#include <poll.h>
 typedef enum _ProgramStatus{
     PS_RunSuccess,PS_CompileSuccess,PS_MacroError,PS_ReadError,PS_ParseError,PS_ProgramError
 }ProgramStatus;
@@ -43,7 +45,9 @@ inline static void get_pixel_color(Display* d, int x, int y, XColor* color);
 inline static ProgramStatus parse_file(const char* path, xdo_t* xdo_obj, Config config, bool and_run);
 inline static void timespec_diff(const struct timespec* ts_begin,struct timespec* ts_end_clone,struct timespec* ts_diff);
 inline static bool run_program(command_array_t* cmd_arr, const char* file_str, Config config, xdo_t* xdo_obj, VariableLoader_t* vl);
-inline static bool test_mouse_func(void* xdo_v);
+bool input_state_func(void* MS_v);
+bool test_mouse_func(void* xdo_v);
+inline static void clear_stdin();
 typedef enum _MenuState{
     MS_Start,MS_EditConfig,MS_BuildFile,MS_RunFile,MS_MouseCoords,MS_RpnEvaluatorStart,MS_RpnEvaluator,MS_Done
 }MenuState;
@@ -51,19 +55,6 @@ typedef struct ms_cont{
     MenuState* ms;
     MenuState v;
 }ms_cont_t;
-inline static bool _input_state_func(void* MS_v){//Sets menu_state variable in main(void) to v.
-    *(((ms_cont_t*)MS_v)->ms)=((ms_cont_t*)MS_v)->v;
-    return false;
-}
-inline static bool test_mouse_func(void* xdo_v){
-    int x_mouse,y_mouse;
-    XColor pc;
-    xdo_get_mouse_location((xdo_t*)xdo_v,&x_mouse,&y_mouse,0);
-    printf("You clicked at x:%d y:%d",x_mouse,y_mouse);
-    get_pixel_color(((xdo_t*)xdo_v)->xdpy,x_mouse,y_mouse,&pc);
-    printf(" with r:%u g:%u b:%u\n",pc.red>>8,pc.green>>8,pc.blue>>8);//Truncate to byte instead.
-    return true;
-}
 int main(void){
     if(access(CONFIG_FILE_F,F_OK)) if(!write_to_config(InitConfig)) return EXIT_FAILURE;
     xdo_t* xdo_obj=xdo_new(NULL);
@@ -78,6 +69,7 @@ int main(void){
     as_number_opt_t an_opt_output;
     RPNValidStringE rpnvs_e;
     RPNEvaluatorInit();
+    R_TS_Macro_Init();
     while(true){
         //printf(CLEAR_TERM);
         switch(menu_state){
@@ -95,27 +87,27 @@ int main(void){
                     "Escape key toggles enabling/disabling keybinds outside of macro scripts\n\n"
                 );
                 keypress_loop(xdo_obj->xdpy,(callback_t[6]){{
-                    .func=_input_state_func,
+                    .func=input_state_func,
                     .arg=&(ms_cont_t){.ms=&menu_state,.v=MS_Done},
                     .ks=XK_Q
                 },{
-                    .func=_input_state_func,
+                    .func=input_state_func,
                     .arg=&(ms_cont_t){.ms=&menu_state,.v=MS_EditConfig},
                     .ks=XK_C
                 },{
-                    .func=_input_state_func,
+                    .func=input_state_func,
                     .arg=&(ms_cont_t){.ms=&menu_state,.v=MS_BuildFile},
                     .ks=XK_B
                 },{
-                    .func=_input_state_func,
+                    .func=input_state_func,
                     .arg=&(ms_cont_t){.ms=&menu_state,.v=MS_RunFile},
                     .ks=XK_R
                 },{
-                    .func=_input_state_func,
+                    .func=input_state_func,
                     .arg=&(ms_cont_t){.ms=&menu_state,.v=MS_MouseCoords},
                     .ks=XK_T
                 },{
-                    .func=_input_state_func,
+                    .func=input_state_func,
                     .arg=&(ms_cont_t){.ms=&menu_state,.v=MS_RpnEvaluatorStart},
                     .ks=XK_E
                 }},6);
@@ -124,17 +116,20 @@ int main(void){
                 config=read_config_file();
                 puts("Set value for init_delay (Microseconds before macro plays)");
                 printf("Value right now is %lu (Enter nothing to skip): ",config.init_delay);
+                clear_stdin();
                 fgets(input_str,INPUT_BUFFER_LEN,stdin);
                 if(input_str[0]!='\n') config.init_delay=strtol(input_str,NULL,10);
                 while(true){
                     puts("Set value for key_check_delay (Microseconds to check key presses, up to 1 second or 1000000 microseconds)");
                     printf("Value right now is %lu (Enter nothing to skip): ",config.key_check_delay);
+                    clear_stdin();
                     fgets(input_str,INPUT_BUFFER_LEN,stdin);
                     if(input_str[0]!='\n') config.key_check_delay=strtol(input_str,NULL,10);
                     if(config.key_check_delay<=1000000) break;
                 }
                 puts("Set value for decimals (0 to 255 number of decimals to show for a double)");
                 printf("Value right now is %u (Enter nothing to skip):",config.rpn_decimals);
+                clear_stdin();
                 fgets(input_str,INPUT_BUFFER_LEN,stdin);
                 if(input_str[0]!='\n') config.rpn_decimals=strtol(input_str,NULL,10);
                 printf("The output is %u.\n",config.rpn_decimals);
@@ -142,6 +137,7 @@ int main(void){
                     puts("Set value for debug_commands (Prints debug commands when playing macro)");
                     puts("0 for no debug printing, 1 to print all commands (parsing and running program), 2 to print some command numbers and strings (clears terminal)");
                     printf("Value right now is %d (Enter 0/1/2 or nothing to skip): ",config.debug_print_type);
+                    clear_stdin();
                     fgets(input_str,INPUT_BUFFER_LEN,stdin);
                     switch(input_str[0]){
                         case '0': config.debug_print_type=DBP_None; goto debug_print_type_valid;
@@ -156,6 +152,7 @@ int main(void){
                     puts("Set value for rpn_stack_debug (Prints every operation of numbers and operators in the number stack)");
                     puts("0 to disable, 1 to enable.");
                     printf("Value right now is %d (Enter 0 or 1 or nothing to skip): ",config.rpn_stack_debug);
+                    clear_stdin();
                     fgets(input_str,INPUT_BUFFER_LEN,stdin);
                     switch(input_str[0]){
                         case '0': config.rpn_stack_debug=false; goto rpn_stack_debug_valid;
@@ -177,6 +174,7 @@ int main(void){
                 file_name_str=read_default_file();
                 printf("Set file path to open. Current file: %s\n",file_name_str?file_name_str:"(None)");
                 printf("(Press enter to skip, type c to cancel.): ");
+                clear_stdin();
                 fgets(input_str,INPUT_BUFFER_LEN,stdin);
                 if(!strcmp(input_str,"c\n")){
                     free(file_name_str);
@@ -209,7 +207,7 @@ int main(void){
                 }
                 puts("Press y to build/run again or q to return to menu.\n");
                 keypress_loop(xdo_obj->xdpy,(callback_t[2]){{
-                    .func=_input_state_func,
+                    .func=input_state_func,
                     .arg=&(ms_cont_t){.ms=&menu_state,.v=MS_Start},
                     .ks=XK_Q
                 },{
@@ -257,7 +255,7 @@ int main(void){
                     .arg=&(_boolean_edit_t){.p=&rpn_see_stack,.v=!rpn_see_stack},
                     .ks=XK_S
                 },{
-                    .func=_input_state_func,
+                    .func=input_state_func,
                     .arg=&(ms_cont_t){.ms=&menu_state,.v=MS_Start},
                     .ks=XK_Q
                 },{
@@ -268,6 +266,7 @@ int main(void){
                 if(do_rpn){
                     puts("Type RPN with values comma delimited tokens enclosed with parenthesis.");
                     puts("Example: (1,2,+,3,4,+,*) is valid.");
+                    clear_stdin();
                     fgets(input_str,INPUT_BUFFER_LEN,stdin);
                     rpnvs_e=RPNEvaluatorEvaluate(input_str,vl,&an_output,rpn_see_stack,true,RPN_EVAL_START_B,RPN_EVAL_END_B,RPN_EVAL_SEP);
                     //while((clear_stdin=getchar())!='\n'&&clear_stdin!=EOF);
@@ -297,6 +296,7 @@ int main(void){
                         input_str_end=0;
                         while(!input_str_end||input_str[0]=='\n'){
                             puts("Variable name to add:");
+                            clear_stdin();
                             fgets(input_str,INPUT_BUFFER_LEN,stdin);
                             input_str_end=strchr(input_str,'\n');
                         }
@@ -304,6 +304,7 @@ int main(void){
                         input_str_end=0;
                         while(!input_str_end||input_str[0]=='\n'){
                             puts("Write value (Numbers can have (i)nt/(c)har/(l)ong/(d)ouble at the end to signify type. Default: (l)ong): ");
+                            clear_stdin();
                             fgets(input_str,INPUT_BUFFER_LEN,stdin);
                             input_str_end=strchr(input_str,'\n');
                         }
@@ -330,6 +331,7 @@ int main(void){
                         input_str_end=0;
                         while(!input_str_end||input_str[0]=='\n'){
                             puts("Variable name to remove:");
+                            clear_stdin();
                             fgets(input_str,INPUT_BUFFER_LEN,stdin);
                             input_str_end=strchr(input_str,'\n');
                         }
@@ -367,6 +369,7 @@ int main(void){
     }
     done:
     RPNEvaluatorFree();
+    R_TS_Macro_Free();
     xdo_free(xdo_obj);
     return 0;
 }
@@ -441,29 +444,29 @@ ProgramStatus parse_file(const char* path, xdo_t* xdo_obj, Config config, bool a
     file_str[str_len]='\0';
     fclose(f_obj);
     trim_comments(&file_str);//So that the program doesn't process commented macros.
-    macro_paster_t* mp=macro_paster_new();
+    ts_macro_paster_t* mp=ts_macro_paster_new();
     MacroProcessStatus mps=file_contains_macro_definitions(file_str,MACROS_DEF_START_B,MACROS_DEF_END_B);
     char* cmd_output;
     if(mps==MPS_NoMacros){
         cmd_output=file_str;
     }else if(mps==MPS_HasDefinitions){
-        if(!macro_paster_process_macros(mp,file_str,MACROS_DEF_START_B,MACROS_DEF_END_B,MACRO_START_B,MACRO_END_B,MACRO_DEF_SEP,MACRO_VAR_SEP)){
-            macro_paster_free(mp);
+        if(!ts_macro_paster_process_macros(mp,file_str,MACROS_DEF_START_B,MACROS_DEF_END_B,MACRO_START_B,MACRO_END_B,MACRO_DEF_SEP,MACRO_VAR_SEP)){
+            ts_macro_paster_free(mp);
             free(file_str);
             return PS_MacroError;
         }
-        if(!macro_paster_expand_macros(mp,file_str,MACROS_DEF_END_B,MACRO_START_B,MACRO_END_B,MACRO_VAR_SEP,&cmd_output)){
-            macro_paster_free(mp);
+        if(!ts_macro_paster_expand_macros(mp,file_str,MACROS_DEF_END_B,MACRO_START_B,MACRO_END_B,MACRO_VAR_SEP,&cmd_output)){
+            ts_macro_paster_free(mp);
             free(file_str);
             return PS_MacroError;
         }
         free(file_str);//Free since cmd_output is used instead.
-    }else{//TODO: Built-in macros
-        macro_paster_free(mp);
+    }else{//TODO: reserved macros
+        ts_macro_paster_free(mp);
         free(file_str);
         return PS_MacroError;
     }
-    macro_paster_free(mp);
+    ts_macro_paster_free(mp);
     command_array_t* cmd_arr=command_array_new();
     macro_buffer_t* mb=macro_buffer_new(cmd_output,cmd_arr);
     while(true){
@@ -1071,4 +1074,22 @@ bool run_program(command_array_t* cmd_arr, const char* file_str, Config config, 
     key_down_check_key_up(kdc,xdo_obj,CURRENTWINDOW);
     key_down_check_free(kdc);
     return no_error;
+}
+bool input_state_func(void* MS_v){//Sets menu_state variable in main(void) to v.
+    *(((ms_cont_t*)MS_v)->ms)=((ms_cont_t*)MS_v)->v;
+    return false;
+}
+bool test_mouse_func(void* xdo_v){
+    int x_mouse,y_mouse;
+    XColor pc;
+    xdo_get_mouse_location((xdo_t*)xdo_v,&x_mouse,&y_mouse,0);
+    printf("You clicked at x:%d y:%d",x_mouse,y_mouse);
+    get_pixel_color(((xdo_t*)xdo_v)->xdpy,x_mouse,y_mouse,&pc);
+    printf(" with r:%u g:%u b:%u\n",pc.red>>8,pc.green>>8,pc.blue>>8);//Truncate to byte instead.
+    return true;
+}
+inline static void clear_stdin(){
+    static char next_c;
+    static struct pollfd pfd={.fd=STDIN_FILENO,.events=POLLIN};//Using poll(,,0) to read() without block.
+    while(poll(&pfd,1,0)>0) read(STDIN_FILENO,&next_c,sizeof(next_c));
 }
