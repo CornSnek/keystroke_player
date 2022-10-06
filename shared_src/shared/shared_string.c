@@ -217,35 +217,27 @@ bool ts_macro_paster_write_var_by_ind(ts_macro_paster_t* this,const char* str_na
         return false;
     }
 }
-MacroProcessStatus file_contains_macro_definitions(const char* file_str,const char* start_m,const char* end_m){
+MacroProcessStatus file_contains_any_macros(const char* file_str,const char* start_m,const char* end_m,const char*start_b){
     const char* file_str_p=file_str;
     bool has_begin_bracket=false;
     bool has_end_bracket=false;
-    while((file_str_p=strchr(file_str_p,start_m[0]))){
-        if(!strncmp(file_str_p++,start_m,strlen(start_m))){
-            has_begin_bracket=true;
-            break;
-        }
-    }
+    if((file_str_p=strstr(file_str_p,start_m))) has_begin_bracket=true;
     if(!has_begin_bracket){
+        if(strstr(file_str,start_b)){
+            puts("File contains only reserved macros. Expanding macros to file "MACRO_PROCESS_F" and processing its commands.");
+            return MPS_HasReservedMacros;
+        }
         puts("File does not contain macro definitions. Using this file to process commands.");
         return MPS_NoMacros;
     }
-    while((file_str_p=strchr(file_str_p,end_m[0]))){
-        if(!strncmp(file_str_p++,end_m,strlen(end_m))){
-            has_end_bracket=true;
-            break;
-        }
-    }
+    if((file_str_p=strstr(file_str_p,end_m))) has_end_bracket=true;
     if(!has_end_bracket){
         fprintf(stderr,ERR("Macro definitions processing error: End bracket '%s' missing.\n"),end_m);
         return MPS_ImproperBrackets;
     }
-    while((file_str_p=strchr(file_str_p,start_m[0]))){
-        if(!strncmp(file_str_p++,start_m,strlen(start_m))){
-            fprintf(stderr,ERR("Macro definitions processing error: There should only be one set of '%s' and '%s' to contain the macro definitions.\n"),start_m,end_m);
-            return MPS_ImproperBrackets;
-        }
+    if((file_str_p=strstr(file_str_p,start_m))){
+        fprintf(stderr,ERR("Macro definitions processing error: There should only be one set of '%s' and '%s' to contain the macro definitions.\n"),start_m,end_m);
+        return MPS_ImproperBrackets;
     }
     puts("This file contains macro definitions. Expanding macros to file "MACRO_PROCESS_F" and processing its commands.");
     return MPS_HasDefinitions;
@@ -336,15 +328,20 @@ void _write_to_macro_output(const char* mo){
         printf("Macro expansion written to %s\n",MACRO_PROCESS_F);
     }
 }
-bool ts_macro_paster_expand_macros(ts_macro_paster_t* this,const char* file_str,const char* end_m,const char* start_b,const char* end_b,char var_sep,char** output){
+bool ts_macro_paster_expand_macros(ts_macro_paster_t* this,bool only_reserved,const char* file_str,const char* end_m,const char* start_b,const char* end_b,char var_sep,char** output){
     *output=0;
     const char* begin_cmd_p;
     int m_i,cmd_len;
-    split_at_sep(file_str,end_m,&begin_cmd_p,&m_i,&cmd_len);
-    if(!begin_cmd_p){
-        fprintf(stderr,ERR("Error: Couldn't find macro end bracket '%s'.\n"),end_m);
-        return false;
-    }
+    if(!only_reserved){
+        split_at_sep(file_str,end_m,&begin_cmd_p,&m_i,&cmd_len);
+        if(!begin_cmd_p){
+            fprintf(stderr,ERR("Error: Couldn't find macro end bracket '%s'.\n"),end_m);
+            return false;
+        }
+    }else{
+        begin_cmd_p=file_str;
+        cmd_len=(int)strlen(file_str); //The whole file if only reserved.
+    } 
     char* cmd_str=malloc(sizeof(char)*(cmd_len+1));
     EXIT_IF_NULL(cmd_str,char*);
     strcpy(cmd_str,begin_cmd_p);
@@ -431,11 +428,9 @@ bool ts_macro_paster_expand_macros(ts_macro_paster_t* this,const char* file_str,
                 trim_whitespace(&output);
                 replace_str_at(&cmd_str,macro_w_br,output,begin_m_p,end_m_p);
             }else{
-                free(macro_name_str); free(macro_w_br); free(macro_n_br);
-                    for(int i=0;i<var_i;i++)
-                        free(rmacro_arr[i]);
+                free(macro_name_str); free(macro_w_br); free(macro_n_br); free(cmd_str);
+                for(int i=0;i<var_i;i++) free(rmacro_arr[i]);
                 free(rmacro_arr);
-                free(cmd_str);
                 return false;
             }
             free(output);

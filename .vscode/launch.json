@@ -23,7 +23,7 @@
                     "ignoreFailures": false
                 }
             ],
-            //"preLaunchTask": "source tasks.conf"
+            "preLaunchTask": "source tasks.conf"
         }
     ]
 }

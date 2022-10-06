@@ -445,7 +445,7 @@ ProgramStatus parse_file(const char* path, xdo_t* xdo_obj, Config config, bool a
     fclose(f_obj);
     trim_comments(&file_str);//So that the program doesn't process commented macros.
     ts_macro_paster_t* mp=ts_macro_paster_new();
-    MacroProcessStatus mps=file_contains_macro_definitions(file_str,MACROS_DEF_START_B,MACROS_DEF_END_B);
+    MacroProcessStatus mps=file_contains_any_macros(file_str,MACROS_DEF_START_B,MACROS_DEF_END_B,MACRO_START_B);
     char* cmd_output;
     if(mps==MPS_NoMacros){
         cmd_output=file_str;
@@ -455,13 +455,20 @@ ProgramStatus parse_file(const char* path, xdo_t* xdo_obj, Config config, bool a
             free(file_str);
             return PS_MacroError;
         }
-        if(!ts_macro_paster_expand_macros(mp,file_str,MACROS_DEF_END_B,MACRO_START_B,MACRO_END_B,MACRO_VAR_SEP,&cmd_output)){
+        if(!ts_macro_paster_expand_macros(mp,false,file_str,MACROS_DEF_END_B,MACRO_START_B,MACRO_END_B,MACRO_VAR_SEP,&cmd_output)){
             ts_macro_paster_free(mp);
             free(file_str);
             return PS_MacroError;
         }
         free(file_str);//Free since cmd_output is used instead.
-    }else{//TODO: reserved macros
+    }else if(mps==MPS_HasReservedMacros){
+        if(!ts_macro_paster_expand_macros(mp,true,file_str,MACROS_DEF_END_B,MACRO_START_B,MACRO_END_B,MACRO_VAR_SEP,&cmd_output)){
+            ts_macro_paster_free(mp);
+            free(file_str);
+            return PS_MacroError;
+        }
+        free(file_str);//Free since cmd_output is used instead.
+    }else{
         ts_macro_paster_free(mp);
         free(file_str);
         return PS_MacroError;

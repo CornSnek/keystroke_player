@@ -182,11 +182,11 @@ START_TEST(ts_macro_paster_test){
     char* file_str=read_macro_file();
     ck_assert_ptr_ne(file_str,0);
     trim_comments(&file_str);//So that the program doesn't process commented macros.
-    MacroProcessStatus mps=file_contains_macro_definitions(file_str,MACROS_DEF_START_B,MACROS_DEF_END_B);
+    MacroProcessStatus mps=file_contains_any_macros(file_str,MACROS_DEF_START_B,MACROS_DEF_END_B,MACRO_START_B);
     if(mps==MPS_HasDefinitions){
         ts_macro_paster_process_macros(mp2,file_str,MACROS_DEF_START_B,MACROS_DEF_END_B,MACRO_START_B,MACRO_END_B,MACRO_DEF_SEP,MACRO_VAR_SEP);
         char* cmd_output=0;
-        ts_macro_paster_expand_macros(mp2,file_str,MACROS_DEF_END_B,MACRO_START_B,MACRO_END_B,MACRO_VAR_SEP,&cmd_output);
+        ts_macro_paster_expand_macros(mp2,false,file_str,MACROS_DEF_END_B,MACRO_START_B,MACRO_END_B,MACRO_VAR_SEP,&cmd_output);
         free(cmd_output);
     }
     ts_macro_paster_free(mp2);
@@ -228,7 +228,7 @@ START_TEST(macro_fail_test){
     for(size_t i=0;i<sizeof(bad_macro_exp_strings)/sizeof(bad_macro_exp_strings[0]);i++){
         char* cmd_output=0;
         ck_assert_int_eq(
-            ts_macro_paster_expand_macros(mp,bad_macro_exp_strings[i],MACROS_DEF_END_B,MACRO_START_B,MACRO_END_B,MACRO_VAR_SEP,&cmd_output)
+            ts_macro_paster_expand_macros(mp,false,bad_macro_exp_strings[i],MACROS_DEF_END_B,MACRO_START_B,MACRO_END_B,MACRO_VAR_SEP,&cmd_output)
         ,0);
         free(cmd_output);
     }

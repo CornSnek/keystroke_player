@@ -38,11 +38,11 @@ typedef enum _MacroProcessStatus{
     MPS_NoMacros,
     MPS_ImproperBrackets,
     MPS_HasDefinitions,
-    MPS_HasBuiltins
+    MPS_HasReservedMacros
 }MacroProcessStatus;
-MacroProcessStatus file_contains_macro_definitions(const char* file_str,const char* start_m,const char* end_m);
+MacroProcessStatus file_contains_any_macros(const char* file_str,const char* start_m,const char* end_m,const char*start_b);
 bool ts_macro_paster_process_macros(ts_macro_paster_t* this,const char* file_str,const char* start_m,const char* end_m,const char*start_b,const char* end_b,const char* def_sep,char var_sep);
-bool ts_macro_paster_expand_macros(ts_macro_paster_t* this,const char* file_str,const char* end_m,const char*start_b,const char* end_b,char var_sep,char** output);
+bool ts_macro_paster_expand_macros(ts_macro_paster_t* this,bool only_reserved,const char* file_str,const char* end_m,const char*start_b,const char* end_b,char var_sep,char** output);
 bool ts_macro_paster_get_val_string(const ts_macro_paster_t* this,const char* str_name,char prefix,char** output_owner);
 void ts_macro_paster_print(const ts_macro_paster_t* this);
 void ts_macro_paster_free(ts_macro_paster_t* this);
