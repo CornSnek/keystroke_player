@@ -62,12 +62,12 @@ bool R_TS_Macro_IsReserved(const char* str_name){
     R_TS_Macro_InitCalledFirst();
     return StringMap_r_ts_macro_read_ph(R_TS_MacroFunctions,str_name).exists;
 }
-bool R_TS_Macro_GetString(char** arg_arr,const char* str_name,char** output){
+bool R_TS_Macro_GetString(char** arg_arr,const char* str_name,char** output,int num_args){
     R_TS_Macro_InitCalledFirst();
     StringMapOpt_r_ts_macro_t smo_rtsm=StringMap_r_ts_macro_read_ph(R_TS_MacroFunctions,str_name);
     if(smo_rtsm.exists){
         const r_ts_macro_t rtsm=smo_rtsm.value;
-        if(false){
+        if(num_args!=rtsm.num_args){
             fprintf(stderr,ERR("Improper number of arguments for reserved macro '%s' (Should be '%d')\n"),str_name,rtsm.num_args);
             return false;
         }

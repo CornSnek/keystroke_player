@@ -427,7 +427,7 @@ bool ts_macro_paster_expand_macros(ts_macro_paster_t* this,const char* file_str,
             free(macro_val);
         }else{
             char* output;
-            if(R_TS_Macro_GetString(rmacro_arr,macro_name_str,&output)){
+            if(R_TS_Macro_GetString(rmacro_arr,macro_name_str,&output,var_i)){
                 trim_whitespace(&output);
                 replace_str_at(&cmd_str,macro_w_br,output,begin_m_p,end_m_p);
             }else{
@@ -435,6 +435,7 @@ bool ts_macro_paster_expand_macros(ts_macro_paster_t* this,const char* file_str,
                     for(int i=0;i<var_i;i++)
                         free(rmacro_arr[i]);
                 free(rmacro_arr);
+                free(cmd_str);
                 return false;
             }
             free(output);
