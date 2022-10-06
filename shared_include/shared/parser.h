@@ -8,8 +8,8 @@
 #include <stdbool.h>
 #include <X11/Xlib.h>
 //Sringifying enums separately. Add e(number) and #e(number) for a new enum and string.
-#define __STR_READ_ENUMS(e1,e2,e3,e4,e5,e6,e7,e8,e9,e10,e11,e12,e13,e14,e15,e16,e17,e18,e19,e20,e21,e22,e23,e24,e25,e26,e27,e28,e29,e30,e31,e32,ecount)\
-#e1,#e2,#e3,#e4,#e5,#e6,#e7,#e8,#e9,#e10,#e11,#e12,#e13,#e14,#e15,#e16,#e17,#e18,#e19,#e20,#e21,#e22,#e23,#e24,#e25,#e26,#e27,#e28,#e29,#e30,#e31,#e32
+#define __STR_READ_ENUMS(e1,e2,e3,e4,e5,e6,e7,e8,e9,e10,e11,e12,e13,e14,e15,e16,e17,e18,e19,e20,e21,e22,e23,e24,e25,e26,e27,e28,e29,e30,e31,e32,e33,ecount)\
+#e1,#e2,#e3,#e4,#e5,#e6,#e7,#e8,#e9,#e10,#e11,#e12,#e13,#e14,#e15,#e16,#e17,#e18,#e19,#e20,#e21,#e22,#e23,#e24,#e25,#e26,#e27,#e28,#e29,#e30,#e31,#e32,#e33
 //For .h file.
 #define __ReadStateWithStringDec(...) typedef enum _ReadState{__VA_ARGS__}ReadState;\
 extern const char* ReadStateStrings[RS_Count];
@@ -46,6 +46,7 @@ extern const char* ReadStateStrings[RS_Count];
     RS_EditVarValue,\
     RS_GrabKey,\
     RS_WaitUntilKey,\
+    RS_WaitUntilButton,\
     RS_PrintString,\
     RS_DebugType,\
     RS_DebugValue,\
@@ -150,6 +151,9 @@ typedef struct keystroke_s{
     KeySym keysym;
     const char* key;
 }keystroke_t;
+typedef struct mouse_button_s{
+    int button;
+}mouse_button_t;
 typedef struct print_string_s{
     const char* str;
     bool newline;
@@ -185,6 +189,7 @@ typedef union command_union{
     keystroke_t key_pressed;
     keystroke_t grab_key;
     keystroke_t wait_until_key;
+    mouse_button_t wait_until_button;
     print_string_t print_string;
     debug_config_t debug_config;
 }command_union_t;
@@ -212,6 +217,7 @@ typedef enum _CommandType{
     CMD_InitVar,
     CMD_EditVar,
     CMD_WaitUntilKey,
+    CMD_WaitUntilButton,
     CMD_GrabKey,
     CMD_UngrabKeyAll,
     CMD_PrintString,

@@ -113,13 +113,13 @@ bool _boolean_edit_func(void* b_v){
     *(((_boolean_edit_t*)b_v)->p)=((_boolean_edit_t*)b_v)->v;
     return false;
 }
-key_grabs_t* key_grabs_new(xdo_t* xdo_obj){
-    key_grabs_t* this=malloc(sizeof(key_grabs_t));
-    EXIT_IF_NULL(this,key_grabs_t*);
-    *this=(key_grabs_t){.xdo_obj=xdo_obj,.ks_arr=0,.ks_pressed=0,.size=0};
+km_grabs_t* km_grabs_new(xdo_t* xdo_obj){
+    km_grabs_t* this=malloc(sizeof(km_grabs_t));
+    EXIT_IF_NULL(this,km_grabs_t*);
+    *this=(km_grabs_t){.xdo_obj=xdo_obj,.ks_arr=0,.ks_pressed=0,.size=0,.b_arr={{0}},.b_exist={0},.b_pressed={0}};
     return this;
 }
-void key_grabs_add(key_grabs_t* this,keystroke_t ks_add){
+void km_grabs_kadd(km_grabs_t* this,keystroke_t ks_add){
     for(int i=0;i<this->size;i++)//Skip duplicates with same key keysym.
         if(this->ks_arr[i].keysym==ks_add.keysym) return;
     this->ks_arr=this->size++?realloc(this->ks_arr,sizeof(keystroke_t[this->size])):malloc(sizeof(keystroke_t));
@@ -128,15 +128,27 @@ void key_grabs_add(key_grabs_t* this,keystroke_t ks_add){
     EXIT_IF_NULL(this->ks_pressed,bool*);
     this->ks_arr[this->size-1]=ks_add;
     this->ks_pressed[this->size-1]=false;
-    XGrabKey(this->xdo_obj->xdpy,XKeysymToKeycode(this->xdo_obj->xdpy,ks_add.keysym),None,RootWindow(this->xdo_obj->xdpy,DefaultScreen(this->xdo_obj->xdpy)),False,GrabModeAsync,GrabModeAsync);
+    XGrabKey(this->xdo_obj->xdpy,XKeysymToKeycode(this->xdo_obj->xdpy,ks_add.keysym),None
+        ,RootWindow(this->xdo_obj->xdpy,DefaultScreen(this->xdo_obj->xdpy)),False,GrabModeAsync,GrabModeAsync);
     XFlush(this->xdo_obj->xdpy);
 }
-bool key_grabs_grab_exist(const key_grabs_t* this,keystroke_t ks){
+void km_grabs_badd(km_grabs_t* this,mouse_button_t b_add){
+    const int add_i=b_add.button-1;
+    this->b_arr[add_i]=b_add;
+    this->b_exist[add_i]=true; //Keep this->b_pressed as true/false if held down or not.
+    XGrabButton(this->xdo_obj->xdpy,b_add.button,None,RootWindow(this->xdo_obj->xdpy,DefaultScreen(this->xdo_obj->xdpy))
+        ,False,ButtonPressMask|ButtonReleaseMask,GrabModeAsync,GrabModeAsync,None,None);
+    XFlush(this->xdo_obj->xdpy);
+}
+bool km_grabs_kgrab_exist(const km_grabs_t* this,keystroke_t ks){
     for(int i=0;i<this->size;i++)
         if(this->ks_arr[i].keysym==ks.keysym) return true;
     return false;
 }
-bool key_grabs_get_pressed(const key_grabs_t* this,keystroke_t ks){
+bool km_grabs_bgrab_exist(const km_grabs_t* this,int b){
+    return this->b_exist[b-1];
+}
+bool km_grabs_get_kpressed(const km_grabs_t* this,keystroke_t ks){
     for(int i=0;i<this->size;i++){
         if(this->ks_arr[i].keysym==ks.keysym){
             return this->ks_pressed[i];
@@ -144,7 +156,13 @@ bool key_grabs_get_pressed(const key_grabs_t* this,keystroke_t ks){
     }
     return false;
 }
-void key_grabs_remove(key_grabs_t* this,keystroke_t ks_rm){
+bool km_grabs_get_bpressed(const km_grabs_t* this,int b){
+    return this->b_pressed[b-1];
+}
+void km_grabs_set_bpressed(km_grabs_t* this,int b,bool p){
+    this->b_pressed[b-1]=p;
+}
+void km_grabs_kremove(km_grabs_t* this,keystroke_t ks_rm){
     for(int i=0;i<this->size;i++){
         if(this->ks_arr[i].keysym==ks_rm.keysym){
             XUngrabKey(this->xdo_obj->xdpy,XKeysymToKeycode(this->xdo_obj->xdpy,ks_rm.keysym),None,RootWindow(this->xdo_obj->xdpy,DefaultScreen(this->xdo_obj->xdpy)));
@@ -164,17 +182,34 @@ void key_grabs_remove(key_grabs_t* this,keystroke_t ks_rm){
         }
     }
 }
-void key_grabs_remove_all(key_grabs_t* this){
+void km_grabs_bremove(km_grabs_t* this,mouse_button_t b_rm){
+    const int rm_i=b_rm.button-1;
+    this->b_exist[rm_i]=false;
+    XUngrabButton(this->xdo_obj->xdpy,b_rm.button,None,RootWindow(this->xdo_obj->xdpy,DefaultScreen(this->xdo_obj->xdpy)));
+    XFlush(this->xdo_obj->xdpy);
+}
+void km_grabs_kremove_all(km_grabs_t* this){
     for(int i=0;i<this->size;i++)
         XUngrabKey(this->xdo_obj->xdpy,XKeysymToKeycode(this->xdo_obj->xdpy,this->ks_arr[i].keysym),None,RootWindow(this->xdo_obj->xdpy,DefaultScreen(this->xdo_obj->xdpy)));
+    XFlush(this->xdo_obj->xdpy);
     free(this->ks_arr);
     free(this->ks_pressed);
     this->size=0;
     this->ks_arr=0;
 }
-void key_grabs_free(key_grabs_t* this){
+void km_grabs_bremove_all(km_grabs_t* this){
+    for(int i=0;i<5;i++){
+        this->b_exist[i]=false;
+        XUngrabButton(this->xdo_obj->xdpy,i+1,None,RootWindow(this->xdo_obj->xdpy,DefaultScreen(this->xdo_obj->xdpy)));
+    }
+    XFlush(this->xdo_obj->xdpy);   
+}
+void km_grabs_free(km_grabs_t* this){
     for(int i=0;i<this->size;i++)
         XUngrabKey(this->xdo_obj->xdpy,XKeysymToKeycode(this->xdo_obj->xdpy,this->ks_arr[i].keysym),None,RootWindow(this->xdo_obj->xdpy,DefaultScreen(this->xdo_obj->xdpy)));
+    for(int b=1;b<=5;b++)
+        XUngrabButton(this->xdo_obj->xdpy,b,None,RootWindow(this->xdo_obj->xdpy,DefaultScreen(this->xdo_obj->xdpy)));
+    XFlush(this->xdo_obj->xdpy);
     free(this->ks_arr);
     free(this->ks_pressed);
     free(this);

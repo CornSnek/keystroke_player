@@ -39,18 +39,27 @@ typedef struct _boolean_edit_s{
     bool v;
 }_boolean_edit_t;
 bool _boolean_edit_func(void* b_v);
-typedef struct key_grabs_s{//To use XGrabKey/XUngrabKey and check if key was pressed in a different thread when main thread is sleeping.
+typedef struct km_grabs_s{//To use XGrabKey/XUngrabKey and check if key was pressed in a different thread when main thread is sleeping.
     xdo_t* xdo_obj;
     keystroke_t* ks_arr;
     bool* ks_pressed;
     int size;
-}key_grabs_t;
-key_grabs_t* key_grabs_new(xdo_t* xdo_obj);
-void key_grabs_add(key_grabs_t* this,keystroke_t ks_add);
-bool key_grabs_grab_exist(const key_grabs_t* this,keystroke_t ks);
-bool key_grabs_get_pressed(const key_grabs_t* this,keystroke_t ks);
-void key_grabs_remove(key_grabs_t* this,keystroke_t ks_rm);
-void key_grabs_remove_all(key_grabs_t* this);
-void key_grabs_free(key_grabs_t* this);
+    mouse_button_t b_arr[5];//5 for all mouse buttons.
+    bool b_exist[5];
+    bool b_pressed[5];
+}km_grabs_t;
+km_grabs_t* km_grabs_new(xdo_t* xdo_obj);
+void km_grabs_kadd(km_grabs_t* this,keystroke_t ks_add);
+void km_grabs_badd(km_grabs_t* this,mouse_button_t b_add);
+bool km_grabs_kgrab_exist(const km_grabs_t* this,keystroke_t ks);
+bool km_grabs_bgrab_exist(const km_grabs_t* this,int b);
+bool km_grabs_get_kpressed(const km_grabs_t* this,keystroke_t ks);
+bool km_grabs_get_bpressed(const km_grabs_t* this,int b);
+void km_grabs_set_bpressed(km_grabs_t* this,int b,bool p);
+void km_grabs_kremove(km_grabs_t* this,keystroke_t ks_rm);
+void km_grabs_bremove(km_grabs_t* this,mouse_button_t b_rm);
+void km_grabs_kremove_all(km_grabs_t* this);
+void km_grabs_bremove_all(km_grabs_t* this);
+void km_grabs_free(km_grabs_t* this);
 #endif
 

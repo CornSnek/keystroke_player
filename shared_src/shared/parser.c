@@ -208,6 +208,12 @@ bool macro_buffer_process_next(macro_buffer_t* this,bool print_debug,bool rpn_de
                     read_state=RS_WaitUntilKey;
                     break;
                 }
+                if(!strncmp(current_char_p,"wait_button=",12)){
+                    read_i+=12;
+                    read_offset_i=-1;
+                    read_state=RS_WaitUntilButton;
+                    break;
+                }
                 if(!strncmp(current_char_p,"grab_key=",9)){
                     read_i+=9;
                     read_offset_i=-1;
@@ -1333,6 +1339,37 @@ bool macro_buffer_process_next(macro_buffer_t* this,bool print_debug,bool rpn_de
                 fprintf(stderr,ERR("Invalid variable character '%c' at line %lu char %lu state %s.\n"),current_char,line_num,char_num,ReadStateStrings[read_state]);
                 DO_ERROR();
                 break;
+            case RS_WaitUntilButton:
+                if(isdigit(current_char)){
+                    if(current_char_p[1]!=';'){
+                        fprintf(stderr,ERR("Command should be terminated with ';' at line %lu char %lu state %s.\n"),line_num,char_num,ReadStateStrings[read_state]);
+                        DO_ERROR();
+                        break;
+                    }
+                    num_str_arr[0]=malloc(sizeof(int)*2);
+                    num_str_arr[0][0]=current_char;
+                    num_str_arr[0][1]='\0';
+                    parsed_num=strtol(num_str_arr[0],NULL,10);
+                    free(num_str_arr[0]);
+                    if(parsed_num<1||parsed_num>5){
+                        fprintf(stderr,ERR("Invalid mouse button number (Should be 1 to 5) at line %lu char %lu state %s.\n"),line_num,char_num,ReadStateStrings[read_state]);
+                        DO_ERROR();
+                        break;
+                    }
+                    command_array_add(this->cmd_arr,
+                        (command_t){.type=CMD_WaitUntilButton,.subtype=CMDST_Command,.print_cmd=print_cmd,
+                            .cmd_u.wait_until_button=(mouse_button_t){
+                                .button=parsed_num
+                            }
+                        }
+                    );
+                    key_processed=true;
+                    read_offset_i++;
+                    break;
+                }
+                fprintf(stderr,ERR("Invalid variable character '%c' at line %lu char %lu state %s.\n"),current_char,line_num,char_num,ReadStateStrings[read_state]);
+                DO_ERROR();
+                break;
             case RS_GrabKey:
                 if(char_is_key(current_char)) break;
                 if(current_char==';'){
@@ -1978,6 +2015,9 @@ void command_array_print(const command_array_t* this,const VariableLoader_t* vl,
                 break;
             case CMD_WaitUntilKey:
                 printf("WaitUntilKey Key: '%s' KeySym: '%lu'\n",cmd.wait_until_key.key,cmd.wait_until_key.keysym);
+                break;
+            case CMD_WaitUntilButton:
+                printf("WaitUntilButton Button: '%d'\n",cmd.wait_until_button.button);
                 break;
             case CMD_GrabKey:
                 printf("GrabKey Key: '%s' KeySym: '%lu'\n",cmd.grab_key.key,cmd.grab_key.keysym);

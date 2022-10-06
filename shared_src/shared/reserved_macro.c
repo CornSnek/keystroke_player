@@ -4,7 +4,7 @@
 #include <string.h>
 StringMap_ImplDef(r_ts_macro_t,r_ts_macro)
 StringMap_r_ts_macro_t* R_TS_MacroFunctions=0;
-bool _repeat_string(char** output,char** str_arr){
+bool repeat_string(char** output,char** str_arr){
     long rep_num=strtol(str_arr[1],NULL,10);
     if(rep_num<=0){
         *output=0;
@@ -37,7 +37,7 @@ void R_TS_Macro_Init(){
     if(is_ph) is_ph=(status==VA_Written);\
     (void)0
 #endif
-        SMVA("@REP",_repeat_string,2);
+        SMVA("@REP",repeat_string,2);
 #if SMVA_DEBUG==1
         StringMap_r_ts_macro_print_debug(R_TS_MacroFunctions);
 #endif
@@ -66,18 +66,16 @@ bool R_TS_Macro_GetString(char** arg_arr,const char* str_name,char** output,int 
     R_TS_Macro_InitCalledFirst();
     StringMapOpt_r_ts_macro_t smo_rtsm=StringMap_r_ts_macro_read_ph(R_TS_MacroFunctions,str_name);
     if(smo_rtsm.exists){
-        const r_ts_macro_t rtsm=smo_rtsm.value;
-        if(num_args!=rtsm.num_args){
-            fprintf(stderr,ERR("Improper number of arguments for reserved macro '%s' (Should be '%d')\n"),str_name,rtsm.num_args);
+        if(num_args!=smo_rtsm.value.num_args){
+            fprintf(stderr,ERR("Improper number of arguments for reserved macro '%s' (Should be %d)\n"),str_name,smo_rtsm.value.num_args);
             return false;
         }
-        bool is_success=rtsm.parse_f(output,arg_arr);
+        bool is_success=smo_rtsm.value.parse_f(output,arg_arr);
         if(!is_success) fprintf(stderr,ERR("One of the reserved macros have not successfully processed.\n"));
         return is_success;
-    }else{
-        SHOULD_BE_UNREACHABLE();
-        return false;
     }
+    fprintf(stderr,ERR("Macro name, '%s', is not a defined reserved macro.\n"),str_name);
+    return false;
 }
 void R_TS_Macro_Free(){
     StringMap_r_ts_macro_free(R_TS_MacroFunctions);

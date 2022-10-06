@@ -101,6 +101,14 @@ WaitUntilKey command = `wait_key=[A-Za-z0-9_];`
     You cannot use the key 'escape' as that is the key to quit the macro.
     Note: This command slows down loops. It is advised to use these outside loops.
 
+
+WaitUntilButton command = `wait_button=[1-5];`
+
+    This command blocks the macro program until the mouse button has been held down.
+    1=Left, 2=Middle, 3=Right, 4=Wheel Up, 5=Wheel Down
+    You cannot use this with GrabButton commands (TODO), as the macro will throw a runtime error.
+    Note: This command slows down loops. It is advised to use these outside loops.
+
 GrabKey command = `grab_key=[A-Za-z0-9_];`
 
 UngrabKeyAll command = `ungrab_keys;`
@@ -352,7 +360,16 @@ Here is an example in example_scripts/macro_test.kps.
 
 # Text Substitution Reserved Macros
 
-TODO: Add some.
+These are macros that have `@` affixed to them similar to RPN Reserved Variables.
+
+Here are the Current Reserved Macros and their specified arguments.
+
+`[!@REP:"str":"num"!]` - Repeat string macro
+
+    Macro that copies the "str" argument
+    by number of "num" times. "num" must be
+    an integer greater than 0.
+    Example: "[!@REP:pass;:5!]" outputs "pass;pass;pass;pass;pass;"
 
 # Build
 source tasks.conf (In project folder)
