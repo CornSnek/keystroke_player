@@ -60,6 +60,8 @@ void km_grabs_kremove(km_grabs_t* this,keystroke_t ks_rm);
 void km_grabs_bremove(km_grabs_t* this,mouse_button_t b_rm);
 void km_grabs_kremove_all(km_grabs_t* this);
 void km_grabs_bremove_all(km_grabs_t* this);
+void km_grabs_ktoggle(km_grabs_t* this,bool toggle);
+void km_grabs_btoggle(km_grabs_t* this,bool toggle);
 void km_grabs_free(km_grabs_t* this);
 #endif
 

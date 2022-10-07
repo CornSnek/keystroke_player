@@ -306,6 +306,13 @@ bool macro_buffer_process_next(macro_buffer_t* this,bool print_debug,bool rpn_de
                         read_state=RS_MouseClickType;
                         break;
                     }
+                    char* escape_p,* semic_p;
+                    if((escape_p=strstr(current_char_p,"Escape"))
+                        &&(semic_p=strchr(current_char_p,';'))&&escape_p<semic_p){
+                        fprintf(stderr,ERR("Key 'Escape' cannot be used, because it is used to quit the macro.\n"));
+                        DO_ERROR();
+                        break;
+                    }
                     read_state=RS_Keys;
                     break;
                 }
@@ -1072,8 +1079,8 @@ bool macro_buffer_process_next(macro_buffer_t* this,bool print_debug,bool rpn_de
                     strncpy(str_name,this->contents+this->token_i+read_i,read_offset_i);
                     str_name[read_offset_i]='\0';
                     KeySym keysym;
-                    if(!strcmp(str_name,"escape")){
-                        fprintf(stderr,ERR("Key 'escape' cannot be used, because it is already used to quit the macro.\n"));
+                    if(!strcmp(str_name,"Escape")){
+                        fprintf(stderr,ERR("Key 'Escape' cannot be used, because it is used to quit the macro.\n"));
                         free(str_name);
                         DO_ERROR();
                         break;
@@ -1398,8 +1405,8 @@ bool macro_buffer_process_next(macro_buffer_t* this,bool print_debug,bool rpn_de
                     strncpy(str_name,this->contents+this->token_i+read_i,read_offset_i);
                     str_name[read_offset_i]='\0';
                     KeySym keysym;
-                    if(!strcmp(str_name,"escape")){
-                        fprintf(stderr,ERR("Key 'escape' cannot be used, because it is already used to quit the macro.\n"));
+                    if(!strcmp(str_name,"Escape")){
+                        fprintf(stderr,ERR("Key 'Escape' cannot be used, because it is used to quit the macro.\n"));
                         free(str_name);
                         DO_ERROR();
                         break;
@@ -1463,8 +1470,8 @@ bool macro_buffer_process_next(macro_buffer_t* this,bool print_debug,bool rpn_de
                     strncpy(str_name,this->contents+this->token_i+read_i,read_offset_i);
                     str_name[read_offset_i]='\0';
                     KeySym keysym;
-                    if(!strcmp(str_name,"escape")){
-                        fprintf(stderr,ERR("Key 'escape' cannot be used, because it is already used to quit the macro.\n"));
+                    if(!strcmp(str_name,"Escape")){
+                        fprintf(stderr,ERR("Key 'Escape' cannot be used, because it is used to quit the macro.\n"));
                         free(str_name);
                         DO_ERROR();
                         break;
@@ -1498,8 +1505,8 @@ bool macro_buffer_process_next(macro_buffer_t* this,bool print_debug,bool rpn_de
                     strncpy(str_name,this->contents+this->token_i+read_i,read_offset_i);
                     str_name[read_offset_i]='\0';
                     KeySym keysym;
-                    if(!strcmp(str_name,"escape")){
-                        fprintf(stderr,ERR("Key 'escape' cannot be used, because it is already used to quit the macro.\n"));
+                    if(!strcmp(str_name,"Escape")){
+                        fprintf(stderr,ERR("Key 'Escape' cannot be used, because it is used to quit the macro.\n"));
                         free(str_name);
                         DO_ERROR();
                         break;

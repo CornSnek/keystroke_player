@@ -745,24 +745,24 @@ bool run_program(command_array_t* cmd_arr, const char* file_str, Config config, 
         LastKey_n++;
         switch(cmd_type){
             case CMD_KeyStroke:
+                pthread_mutex_lock(&input_mutex);
+                km_grabs_ktoggle(srs.kmg,false);//Don't send key pressed events to input thread.
                 switch(cmd_u.auto_ks.key_state){
                     case IS_Down:
                         cmdprintf("Key down for %s\n",cmd_u.auto_ks.key);
-                        pthread_mutex_lock(&input_mutex);
                         xdo_send_keysequence_window_down(xdo_obj,CURRENTWINDOW,cmd_u.auto_ks.key,0);
                         key_down_check_add(kdc,cmd_u.auto_ks.key);
                         break;
                     case IS_Up:
                         cmdprintf("Key up for %s\n",cmd_u.auto_ks.key);
-                        pthread_mutex_lock(&input_mutex);
                         xdo_send_keysequence_window_up(xdo_obj,CURRENTWINDOW,cmd_u.auto_ks.key,0);
                         key_down_check_remove(kdc,cmd_u.auto_ks.key);
                         break;
                     case IS_Click:
                         cmdprintf("Key click for %s\n",cmd_u.auto_ks.key);
-                        pthread_mutex_lock(&input_mutex);
                         xdo_send_keysequence_window(xdo_obj,CURRENTWINDOW,cmd_u.auto_ks.key,0);
                 }
+                km_grabs_ktoggle(srs.kmg,true);
                 pthread_mutex_unlock(&input_mutex);
                 PrintLastCommand(LastKey);
                 break;
@@ -815,22 +815,22 @@ bool run_program(command_array_t* cmd_arr, const char* file_str, Config config, 
                 cmdprintf("This is a loop counter (%d) String ID#%d\n",cmd_u.repeat_start.counter,cmd_u.repeat_start.str_index);
                 break;
             case CMD_MouseClick:
+                pthread_mutex_lock(&input_mutex);
+                km_grabs_btoggle(srs.kmg,false); //Disable mouse grabs.
                 switch(cmd_u.mouse_click.mouse_state){
                     case IS_Down:
-                        pthread_mutex_lock(&input_mutex);
                         cmdprintf("Mouse down (%d).\n",cmd_u.mouse_click.mouse_type);
                         xdo_mouse_down(xdo_obj,CURRENTWINDOW,cmd_u.mouse_click.mouse_type);
                         break;
                     case IS_Up:
-                        pthread_mutex_lock(&input_mutex);
                         cmdprintf("Mouse up (%d).\n",cmd_u.mouse_click.mouse_type);
                         xdo_mouse_up(xdo_obj,CURRENTWINDOW,cmd_u.mouse_click.mouse_type);
                         break;
                     case IS_Click:
-                        pthread_mutex_lock(&input_mutex);
                         cmdprintf("Mouse click (%d).\n",cmd_u.mouse_click.mouse_type);
                         xdo_click_window(xdo_obj,CURRENTWINDOW,cmd_u.mouse_click.mouse_type);
                 }
+                km_grabs_btoggle(srs.kmg,true);
                 pthread_mutex_unlock(&input_mutex);
                 PrintLastCommand(LastKey);
                 break;
