@@ -115,6 +115,16 @@ bool macro_buffer_process_next(macro_buffer_t* this,bool print_debug,bool rpn_de
                     key_processed=true;
                     break;
                 }
+                if(!strncmp(current_char_p,"ungrab_buttons;",15)){
+                    command_array_add(this->cmd_arr,
+                        (command_t){.type=CMD_UngrabButtonAll,.subtype=CMDST_Command,.print_cmd=print_cmd,
+                            .cmd_u={{0}}
+                        }
+                    );
+                    read_i+=15;
+                    key_processed=true;
+                    break;
+                }
                 if(!strncmp(current_char_p,"save_mma;",9)){
                     command_array_add(this->cmd_arr,
                         (command_t){.type=CMD_SaveMouseCoords,.subtype=CMDST_Command,.print_cmd=print_cmd,
@@ -180,7 +190,7 @@ bool macro_buffer_process_next(macro_buffer_t* this,bool print_debug,bool rpn_de
                 }
                 if(!strncmp(current_char_p,"JB>;",4)){
                     command_array_add(this->cmd_arr,
-                        (command_t){.type=CMD_JumpBack,.subtype=CMDST_Jump,.print_cmd=print_cmd,
+                        (command_t){.type=CMD_JumpBack,.subtype=CMDST_Command,.print_cmd=print_cmd,
                             .cmd_u={{0}}
                         }
                     );
@@ -241,6 +251,24 @@ bool macro_buffer_process_next(macro_buffer_t* this,bool print_debug,bool rpn_de
                     read_i+=9;
                     read_offset_i=-1;
                     read_state=RS_GrabKey;
+                    break;
+                }
+                if(!strncmp(current_char_p,"ungrab_key=",11)){
+                    read_i+=11;
+                    read_offset_i=-1;
+                    read_state=RS_UngrabKey;
+                    break;
+                }
+                if(!strncmp(current_char_p,"grab_button=",12)){
+                    read_i+=12;
+                    read_offset_i=-1;
+                    read_state=RS_GrabButton;
+                    break;
+                }
+                if(!strncmp(current_char_p,"ungrab_button=",14)){
+                    read_i+=14;
+                    read_offset_i=-1;
+                    read_state=RS_UngrabButton;
                     break;
                 }
                 if(!strncmp(current_char_p,"print=",6)){
@@ -351,7 +379,7 @@ bool macro_buffer_process_next(macro_buffer_t* this,bool print_debug,bool rpn_de
                     strncpy(str_name,this->contents+this->token_i+read_i,read_offset_i);
                     repeat_id_manager_add_name(this->rim,str_name,command_array_count(this->cmd_arr));
                     command_array_add(this->cmd_arr,
-                        (command_t){.type=CMD_RepeatStart,.subtype=CMDST_Jump,.print_cmd=print_cmd,
+                        (command_t){.type=CMD_RepeatStart,.subtype=CMDST_Command,.print_cmd=print_cmd,
                             .cmd_u.repeat_start=(repeat_start_t){
                                 .counter=0,
                                 .str_index=repeat_id_manager_search_string_index(this->rim,str_name)
@@ -386,7 +414,7 @@ bool macro_buffer_process_next(macro_buffer_t* this,bool print_debug,bool rpn_de
                     strncpy(str_name,this->contents+this->token_i+read_i,read_offset_i);
                     if(!SSManager_add_string(this->rim->ssm,&str_name)){//String exists.
                         command_array_add(this->cmd_arr,
-                            (command_t){.type=CMD_RepeatEnd,.subtype=CMDST_Jump,.print_cmd=print_cmd,
+                            (command_t){.type=CMD_RepeatEnd,.subtype=CMDST_Command,.print_cmd=print_cmd,
                                 .cmd_u.repeat_end=(repeat_end_t){
                                     .cmd_index=repeat_id_manager_search_command_index(this->rim,str_name),
                                     .str_index=repeat_id_manager_search_string_index(this->rim,str_name),
@@ -415,7 +443,7 @@ bool macro_buffer_process_next(macro_buffer_t* this,bool print_debug,bool rpn_de
                     }
                     num_str_arr[0]=char_string_slice(begin_p,end_p-1);//-1 to exclude ;
                     command_array_add(this->cmd_arr,
-                        (command_t){.type=CMD_RepeatEnd,.subtype=CMDST_Jump,.print_cmd=print_cmd,
+                        (command_t){.type=CMD_RepeatEnd,.subtype=CMDST_Command,.print_cmd=print_cmd,
                             .cmd_u.repeat_end=(repeat_end_t){
                                 .cmd_index=repeat_id_manager_search_command_index(this->rim,str_name),
                                 .str_index=repeat_id_manager_search_string_index(this->rim,str_name),
@@ -438,7 +466,7 @@ bool macro_buffer_process_next(macro_buffer_t* this,bool print_debug,bool rpn_de
                     }
                     rpn_str_arr[0]=char_string_slice(begin_p,end_p);
                     command_array_add(this->cmd_arr,
-                        (command_t){.type=CMD_RepeatEnd,.subtype=CMDST_Jump,.print_cmd=print_cmd,
+                        (command_t){.type=CMD_RepeatEnd,.subtype=CMDST_Command,.print_cmd=print_cmd,
                             .cmd_u.repeat_end=(repeat_end_t){
                                 .cmd_index=repeat_id_manager_search_command_index(this->rim,str_name),
                                 .str_index=repeat_id_manager_search_string_index(this->rim,str_name),
@@ -669,7 +697,7 @@ bool macro_buffer_process_next(macro_buffer_t* this,bool print_debug,bool rpn_de
                     if(jid_cmd_i==-1){
                         jump_id_manager_add_name(this->jim,str_name,JumpFromNotConnected,false);//-2 Because it's not a JumpFrom
                         command_array_add(this->cmd_arr,
-                        (command_t){.type=CMD_JumpTo,.subtype=CMDST_Jump,.print_cmd=print_cmd,
+                        (command_t){.type=CMD_JumpTo,.subtype=CMDST_Command,.print_cmd=print_cmd,
                                 .cmd_u.jump_to=(jump_to_t){
                                     .cmd_index=JumpFromNotConnected,//Will be edited from a CMD_JumpFrom later.
                                     .str_index=jump_id_manager_search_string_index(this->jim,str_name),
@@ -681,7 +709,7 @@ bool macro_buffer_process_next(macro_buffer_t* this,bool print_debug,bool rpn_de
                         break;
                     }else{
                         command_array_add(this->cmd_arr,
-                        (command_t){.type=CMD_JumpTo,.subtype=CMDST_Jump,.print_cmd=print_cmd,
+                        (command_t){.type=CMD_JumpTo,.subtype=CMDST_Command,.print_cmd=print_cmd,
                                 .cmd_u.jump_to=(jump_to_t){
                                     .cmd_index=jid_cmd_i,
                                     .str_index=jump_id_manager_search_string_index(this->jim,str_name),
@@ -711,7 +739,7 @@ bool macro_buffer_process_next(macro_buffer_t* this,bool print_debug,bool rpn_de
                     }
                     num_str_arr[0]=char_string_slice(begin_p,end_p-1);//-1 to exclude ;
                     command_array_add(this->cmd_arr,
-                        (command_t){.type=CMD_JumpToIndex,.subtype=CMDST_Jump,.print_cmd=print_cmd,
+                        (command_t){.type=CMD_JumpToIndex,.subtype=CMDST_Command,.print_cmd=print_cmd,
                             .cmd_u.jump_to_index=(jump_to_index_t){
                                 .jump_cb=VL_new_callback_int(this->vl,strtol(num_str_arr[0],NULL,10)),
                                 .is_absolute=is_absolute
@@ -734,7 +762,7 @@ bool macro_buffer_process_next(macro_buffer_t* this,bool print_debug,bool rpn_de
                     }
                     rpn_str_arr[0]=char_string_slice(begin_p,end_p);
                     command_array_add(this->cmd_arr,
-                        (command_t){.type=CMD_JumpToIndex,.subtype=CMDST_Jump,.print_cmd=print_cmd,
+                        (command_t){.type=CMD_JumpToIndex,.subtype=CMDST_Command,.print_cmd=print_cmd,
                             .cmd_u.jump_to_index=(jump_to_index_t){
                                 .jump_cb=VL_new_callback_number_rpn(this->vl,rpn_str_arr[0],rpn_debug),
                                 .is_absolute=is_absolute
@@ -761,7 +789,7 @@ bool macro_buffer_process_next(macro_buffer_t* this,bool print_debug,bool rpn_de
                     if(jid_cmd_i==-1){
                         jump_id_manager_add_name(this->jim,str_name,cmd_arr_count,true);
                         command_array_add(this->cmd_arr,
-                            (command_t){.type=CMD_JumpFrom,.subtype=CMDST_Jump,.print_cmd=print_cmd,
+                            (command_t){.type=CMD_JumpFrom,.subtype=CMDST_Command,.print_cmd=print_cmd,
                                 .cmd_u.jump_from=(jump_from_t){
                                     .str_index=jump_id_manager_search_string_index(this->jim,str_name)
                                 }
@@ -774,7 +802,7 @@ bool macro_buffer_process_next(macro_buffer_t* this,bool print_debug,bool rpn_de
                         bool unique=jump_id_manager_set_command_index_once(this->jim,jid_str_i,cmd_arr_count);
                         if(unique){//No Second RS_JumpFrom
                             command_array_add(this->cmd_arr,
-                                (command_t){.type=CMD_JumpFrom,.subtype=CMDST_Jump,.print_cmd=print_cmd,
+                                (command_t){.type=CMD_JumpFrom,.subtype=CMDST_Command,.print_cmd=print_cmd,
                                     .cmd_u.jump_from=(jump_from_t){
                                         .str_index=jid_str_i
                                     }
@@ -1177,7 +1205,7 @@ bool macro_buffer_process_next(macro_buffer_t* this,bool print_debug,bool rpn_de
                         }
                         init_var_value_rpn_success:
                         command_array_add(this->cmd_arr,
-                            (command_t){.type=CMD_InitVar,.subtype=CMDST_Var,.print_cmd=print_cmd,
+                            (command_t){.type=CMD_InitVar,.subtype=CMDST_Command,.print_cmd=print_cmd,
                                 .cmd_u.init_var=(init_var_t){
                                     .as_number=an,
                                     .variable=str_name
@@ -1207,7 +1235,7 @@ bool macro_buffer_process_next(macro_buffer_t* this,bool print_debug,bool rpn_de
                                 break;
                             }
                             command_array_add(this->cmd_arr,
-                                (command_t){.type=CMD_InitVar,.subtype=CMDST_Var,.print_cmd=print_cmd,
+                                (command_t){.type=CMD_InitVar,.subtype=CMDST_Command,.print_cmd=print_cmd,
                                     .cmd_u.init_var=(init_var_t){
                                         .as_number=(as_number_t){
                                             .c=strtol(num_str_arr[0],0,10),
@@ -1225,7 +1253,7 @@ bool macro_buffer_process_next(macro_buffer_t* this,bool print_debug,bool rpn_de
                                 break;
                             }
                             command_array_add(this->cmd_arr,
-                                (command_t){.type=CMD_InitVar,.subtype=CMDST_Var,.print_cmd=print_cmd,
+                                (command_t){.type=CMD_InitVar,.subtype=CMDST_Command,.print_cmd=print_cmd,
                                     .cmd_u.init_var=(init_var_t){
                                         .as_number=(as_number_t){
                                             .i=strtol(num_str_arr[0],0,10),
@@ -1243,7 +1271,7 @@ bool macro_buffer_process_next(macro_buffer_t* this,bool print_debug,bool rpn_de
                                 break;
                             }
                             command_array_add(this->cmd_arr,
-                                (command_t){.type=CMD_InitVar,.subtype=CMDST_Var,.print_cmd=print_cmd,
+                                (command_t){.type=CMD_InitVar,.subtype=CMDST_Command,.print_cmd=print_cmd,
                                     .cmd_u.init_var=(init_var_t){
                                         .as_number=(as_number_t){
                                             .l=strtol(num_str_arr[0],0,10),
@@ -1261,7 +1289,7 @@ bool macro_buffer_process_next(macro_buffer_t* this,bool print_debug,bool rpn_de
                                 break;
                             }
                             command_array_add(this->cmd_arr,
-                                (command_t){.type=CMD_InitVar,.subtype=CMDST_Var,.print_cmd=print_cmd,
+                                (command_t){.type=CMD_InitVar,.subtype=CMDST_Command,.print_cmd=print_cmd,
                                     .cmd_u.init_var=(init_var_t){
                                         .as_number=(as_number_t){
                                             .d=strtod(num_str_arr[0],0),
@@ -1315,7 +1343,7 @@ bool macro_buffer_process_next(macro_buffer_t* this,bool print_debug,bool rpn_de
                     }
                     rpn_str_arr[0]=char_string_slice(begin_p,end_p);
                     command_array_add(this->cmd_arr,
-                        (command_t){.type=CMD_EditVar,.subtype=CMDST_Var,.print_cmd=print_cmd,
+                        (command_t){.type=CMD_EditVar,.subtype=CMDST_Command,.print_cmd=print_cmd,
                             .cmd_u.edit_var=VL_new_callback_rewrite_variable_rpn(this->vl,rpn_str_arr[0],str_name,rpn_debug)
                         }
                     );
@@ -1423,6 +1451,95 @@ bool macro_buffer_process_next(macro_buffer_t* this,bool print_debug,bool rpn_de
                         DO_ERROR();
                         break;
                     }
+                }
+                fprintf(stderr,ERR("Invalid variable character '%c' at line %lu char %lu state %s.\n"),current_char,line_num,char_num,ReadStateStrings[read_state]);
+                DO_ERROR();
+                break;
+            case RS_UngrabKey:
+                if(char_is_key(current_char)) break;
+                if(current_char==';'){
+                    str_name=malloc(sizeof(char)*(read_offset_i+1));
+                    EXIT_IF_NULL(str_name,char*);
+                    strncpy(str_name,this->contents+this->token_i+read_i,read_offset_i);
+                    str_name[read_offset_i]='\0';
+                    KeySym keysym;
+                    if(!strcmp(str_name,"escape")){
+                        fprintf(stderr,ERR("Key 'escape' cannot be used, because it is already used to quit the macro.\n"));
+                        free(str_name);
+                        DO_ERROR();
+                        break;
+                    }
+                    if((keysym=XStringToKeysym(str_name))){
+                        command_array_add(this->cmd_arr,
+                            (command_t){.type=CMD_UngrabKey,.subtype=CMDST_Command,.print_cmd=print_cmd,
+                                .cmd_u.ungrab_key=(keystroke_t){
+                                    .keysym=keysym,
+                                    .key=str_name
+                                }
+                            }
+                        );
+                        key_processed=true;
+                        break;
+                    }else{
+                        fprintf(stderr,ERR("Key '%s' does not contain a valid KeySym number.\n"),str_name);
+                        free(str_name);
+                        DO_ERROR();
+                        break;
+                    }
+                }
+                fprintf(stderr,ERR("Invalid variable character '%c' at line %lu char %lu state %s.\n"),current_char,line_num,char_num,ReadStateStrings[read_state]);
+                DO_ERROR();
+                break;
+            case RS_GrabButton:
+                if(isdigit(current_char)){
+                    if(current_char_p[1]!=';'){
+                        fprintf(stderr,ERR("Command should be terminated with ';' at line %lu char %lu state %s.\n"),line_num,char_num,ReadStateStrings[read_state]);
+                        DO_ERROR();
+                        break;
+                    }
+                    parsed_num=current_char-'0';
+                    if(parsed_num<1||parsed_num>5){
+                        fprintf(stderr,ERR("Invalid mouse button number (Should be 1 to 5) at line %lu char %lu state %s.\n"),line_num,char_num,ReadStateStrings[read_state]);
+                        DO_ERROR();
+                        break;
+                    }
+                    command_array_add(this->cmd_arr,
+                        (command_t){.type=CMD_GrabButton,.subtype=CMDST_Command,.print_cmd=print_cmd,
+                            .cmd_u.grab_button=(mouse_button_t){
+                                .button=parsed_num
+                            }
+                        }
+                    );
+                    key_processed=true;
+                    read_offset_i++;
+                    break;
+                }
+                fprintf(stderr,ERR("Invalid variable character '%c' at line %lu char %lu state %s.\n"),current_char,line_num,char_num,ReadStateStrings[read_state]);
+                DO_ERROR();
+                break;
+            case RS_UngrabButton:
+                if(isdigit(current_char)){
+                    if(current_char_p[1]!=';'){
+                        fprintf(stderr,ERR("Command should be terminated with ';' at line %lu char %lu state %s.\n"),line_num,char_num,ReadStateStrings[read_state]);
+                        DO_ERROR();
+                        break;
+                    }
+                    parsed_num=current_char-'0';
+                    if(parsed_num<1||parsed_num>5){
+                        fprintf(stderr,ERR("Invalid mouse button number (Should be 1 to 5) at line %lu char %lu state %s.\n"),line_num,char_num,ReadStateStrings[read_state]);
+                        DO_ERROR();
+                        break;
+                    }
+                    command_array_add(this->cmd_arr,
+                        (command_t){.type=CMD_UngrabButton,.subtype=CMDST_Command,.print_cmd=print_cmd,
+                            .cmd_u.ungrab_button=(mouse_button_t){
+                                .button=parsed_num
+                            }
+                        }
+                    );
+                    key_processed=true;
+                    read_offset_i++;
+                    break;
                 }
                 fprintf(stderr,ERR("Invalid variable character '%c' at line %lu char %lu state %s.\n"),current_char,line_num,char_num,ReadStateStrings[read_state]);
                 DO_ERROR();
@@ -1799,6 +1916,7 @@ void command_array_add(command_array_t* this, command_t cmd){
         case CMD_WaitUntilKey: SSManager_add_string(this->SSM,(char**)&cmd.cmd_u.wait_until_key.key); break;
         case CMD_QueryKeyPress: SSManager_add_string(this->SSM,(char**)&cmd.cmd_u.key_pressed.key); break;
         case CMD_GrabKey: SSManager_add_string(this->SSM,(char**)&cmd.cmd_u.grab_key.key); break;
+        case CMD_UngrabKey: SSManager_add_string(this->SSM,(char**)&cmd.cmd_u.ungrab_key.key); break;
         case CMD_PrintString: SSManager_add_string(this->SSM,(char**)&cmd.cmd_u.print_string.str); break;
         default: break;
     }
@@ -1886,6 +2004,9 @@ void command_array_print(const command_array_t* this,const VariableLoader_t* vl,
                 break;
             case CMD_UngrabKeyAll:
                 puts("UngrabKeyAll");
+                break;
+            case CMD_UngrabButtonAll:
+                puts("UngrabButtonAll");
                 break;
             case CMD_JumpTo:
                 printf("JumpTo cmd_i: %d str_i: %d store_i: %d\n",cmd.jump_to.cmd_index,cmd.jump_to.str_index,cmd.jump_to.store_index);
@@ -2036,13 +2157,22 @@ void command_array_print(const command_array_t* this,const VariableLoader_t* vl,
                 printf("EditVar Name: '%s' RPN String: '%s'\n",VL_get_callback(vl,cmd.edit_var)->args.rpn.variable,VL_get_callback(vl,cmd.edit_var)->args.rpn.rpn_str);
                 break;
             case CMD_WaitUntilKey:
-                printf("WaitUntilKey Key: '%s' KeySym: %lu Invert: %d\n",cmd.wait_until_key.key,cmd.wait_until_key.keysym,cmd.wait_until_key.invert_press);
+                printf("WaitUntilKey: '%s' KeySym: %lu Invert: %d\n",cmd.wait_until_key.key,cmd.wait_until_key.keysym,cmd.wait_until_key.invert_press);
                 break;
             case CMD_WaitUntilButton:
-                printf("WaitUntilButton Button: '%d' HeldDown: %d Invert: %d\n",cmd.wait_until_button.button,cmd.wait_until_button.held_down,cmd.wait_until_button.invert_press);
+                printf("WaitUntilButton: '%d' HeldDown: %d Invert: %d\n",cmd.wait_until_button.button,cmd.wait_until_button.held_down,cmd.wait_until_button.invert_press);
                 break;
             case CMD_GrabKey:
-                printf("GrabKey Key: '%s' KeySym: '%lu'\n",cmd.grab_key.key,cmd.grab_key.keysym);
+                printf("GrabKey: '%s' KeySym: '%lu'\n",cmd.grab_key.key,cmd.grab_key.keysym);
+                break;
+            case CMD_UngrabKey:
+                printf("UngrabKey: '%s' KeySym: '%lu'\n",cmd.ungrab_key.key,cmd.ungrab_key.keysym);
+                break;
+            case CMD_GrabButton:
+                printf("GrabButton: %d \n",cmd.grab_button.button);
+                break;
+            case CMD_UngrabButton:
+                printf("UngrabButton: %d \n",cmd.ungrab_button.button);
                 break;
             case CMD_PrintString:
                 printf("PrintString '%s' NewLine: %d",cmd.print_string.str,cmd.print_string.newline);

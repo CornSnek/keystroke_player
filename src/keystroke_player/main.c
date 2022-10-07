@@ -1033,7 +1033,7 @@ bool run_program(command_array_t* cmd_arr, const char* file_str, Config config, 
             case CMD_WaitUntilButton:
                 cmdprintf("Waiting until mouse button '%d' (%s%s)\n",cmd_u.wait_until_button.button,cmd_u.wait_until_button.invert_press?"Not ":"",cmd_u.wait_until_button.held_down?"Held Down":"Clicked");
                 pthread_mutex_lock(&input_mutex);
-                if(false){//Not implemented yet.
+                if(km_grabs_bgrab_exist(srs.kmg,cmd_u.wait_until_button.button)){
                     pthread_mutex_unlock(&input_mutex);//DoRuntimeError macro will relock.
                     fprintf(stderr,ERR("Mouse button %d has been previously grabbed by a GrabButton command. Exiting program!\n"),cmd_u.wait_until_button.button);
                     DoRuntimeError();
@@ -1054,15 +1054,39 @@ bool run_program(command_array_t* cmd_arr, const char* file_str, Config config, 
                 ts_usleep_before_adj=ts_rm_delay;
                 break;
             case CMD_GrabKey:
-                cmdprintf("Adding key grabs for key '%s'\n",cmd_u.grab_key.key);
+                cmdprintf("Adding key grab for key '%s'\n",cmd_u.grab_key.key);
                 pthread_mutex_lock(&input_mutex);
                 km_grabs_kadd(srs.kmg,cmd_u.grab_key);
                 pthread_mutex_unlock(&input_mutex);
                 break;
+            case CMD_UngrabKey:
+                cmdprintf("Removing key grab for key '%s'\n",cmd_u.ungrab_key.key);
+                pthread_mutex_lock(&input_mutex);
+                km_grabs_kremove(srs.kmg,cmd_u.ungrab_key);
+                pthread_mutex_unlock(&input_mutex);
+                break;
+            case CMD_GrabButton:
+                cmdprintf("Adding button grab for button %d\n",cmd_u.grab_button.button);
+                pthread_mutex_lock(&input_mutex);
+                km_grabs_badd(srs.kmg,cmd_u.grab_button,false);
+                pthread_mutex_unlock(&input_mutex);
+                break;
+            case CMD_UngrabButton:
+                cmdprintf("Removing button grab for button %d\n",cmd_u.grab_button.button);
+                pthread_mutex_lock(&input_mutex);
+                km_grabs_bremove(srs.kmg,cmd_u.ungrab_button);
+                pthread_mutex_unlock(&input_mutex);
+                break;
             case CMD_UngrabKeyAll:
-                cmdprintf("Removing any key grabs.\n");
+                cmdprintf("Removing all key grabs.\n");
                 pthread_mutex_lock(&input_mutex);
                 km_grabs_kremove_all(srs.kmg);
+                pthread_mutex_unlock(&input_mutex);
+                break;
+            case CMD_UngrabButtonAll:
+                cmdprintf("Removing all button grabs.\n");
+                pthread_mutex_lock(&input_mutex);
+                km_grabs_bremove_all(srs.kmg);
                 pthread_mutex_unlock(&input_mutex);
                 break;
             case CMD_PrintString:

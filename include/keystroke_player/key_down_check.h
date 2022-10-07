@@ -45,17 +45,17 @@ typedef struct km_grabs_s{//To use XGrabKey/XUngrabKey and check if key was pres
     bool* ks_pressed;
     int size;
     mouse_button_t b_arr[5];//5 for all mouse buttons.
-    bool b_exist[5];
+    bool b_grab_exist[5];
     bool b_pressed[5];
 }km_grabs_t;
 km_grabs_t* km_grabs_new(xdo_t* xdo_obj);
 void km_grabs_kadd(km_grabs_t* this,keystroke_t ks_add);
 void km_grabs_badd(km_grabs_t* this,mouse_button_t b_add,bool held_down);
 bool km_grabs_kgrab_exist(const km_grabs_t* this,keystroke_t ks);
-bool km_grabs_bgrab_exist(const km_grabs_t* this,int b);
+bool km_grabs_bgrab_exist(const km_grabs_t* this,unsigned int b);
 bool km_grabs_get_kpressed(const km_grabs_t* this,keystroke_t ks);
-bool km_grabs_get_bpressed(const km_grabs_t* this,int b);
-void km_grabs_set_bpressed(km_grabs_t* this,int b,bool p);
+bool km_grabs_get_bpressed(const km_grabs_t* this,unsigned int b);
+void km_grabs_set_bpressed(km_grabs_t* this,unsigned int b,bool p);
 void km_grabs_kremove(km_grabs_t* this,keystroke_t ks_rm);
 void km_grabs_bremove(km_grabs_t* this,mouse_button_t b_rm);
 void km_grabs_kremove_all(km_grabs_t* this);

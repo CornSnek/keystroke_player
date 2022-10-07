@@ -100,7 +100,8 @@ WaitUntilKey command = `!?wait_key=[A-Za-z0-9_]+;`
     The key is based on the X11 KeySym names. 
     You cannot use this with GrabKey commands, as the macro will throw a runtime error.
     You cannot use the key 'escape' as that is the key to quit the macro.
-    Note: This command slows down loops. It is advised to use these outside loops.
+    Note: This command slows down loops with delays.
+    It is advised to use these outside loops.
 
 
 WaitUntilButton command = `!?wait_button=[1-5];`
@@ -111,19 +112,33 @@ WaitUntilButton command (clicked) = `wait_buttonc=[1-5];`
     wait_buttonc makes it so that next button clicks are required instead of holding down.
     Appending ! to wait_button inverts so that the program checks if it is not held down.
     1=Left, 2=Middle, 3=Right, 4=Wheel Up, 5=Wheel Down
-    You cannot use this with GrabButton commands (TODO), as the macro will throw a runtime error.
-    Note: This command slows down loops. It is advised to use these outside loops.
+    You cannot use this with GrabButton commands, as the macro will throw a runtime error.
+    Note: This command slows down loops with delays.
+    It is advised to use these outside loops.
 
 GrabKey command = `grab_key=[A-Za-z0-9_]+;`
+
+UngrabKey command = `ungrab_key=[A-Za-z0-9_]+;`
 
 UngrabKeyAll command = `ungrab_keys;`
 
     This command listens for key presses and releases,
     but also prevents future key presses from this key to be used normally.
-    To undo this, or to ungrab all keys, use the UngrabKeyAll command.
+    To undo this, use the UngrabKey or UngrabKeyAll command.
     This is paired with the QueryKeyPress command. 
     The key is based on the X11 KeySym names.
     You cannot use the key 'escape' as that is the key to quit the macro.
+
+GrabButton command `grab_button=[1-5];`
+
+UngrabButton command `ungrab_button=[1-5];`
+
+UngrabButtonAll command `ungrab_buttons;`
+
+    This command listens for button presses and releases,
+    but also prevents future button presses from this button to be used normally.
+    To undo this, use the UngrabButton or UngrabButtonAll command.
+    1=Left, 2=Middle, 3=Right, 4=Wheel Up, 5=Wheel Down
 
 Print command = `print=...;;`
 

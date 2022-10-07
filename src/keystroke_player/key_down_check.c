@@ -116,7 +116,7 @@ bool _boolean_edit_func(void* b_v){
 km_grabs_t* km_grabs_new(xdo_t* xdo_obj){
     km_grabs_t* this=malloc(sizeof(km_grabs_t));
     EXIT_IF_NULL(this,km_grabs_t*);
-    *this=(km_grabs_t){.xdo_obj=xdo_obj,.ks_arr=0,.ks_pressed=0,.size=0,.b_arr={{0}},.b_exist={0},.b_pressed={0}};
+    *this=(km_grabs_t){.xdo_obj=xdo_obj,.ks_arr=0,.ks_pressed=0,.size=0,.b_arr={{0}},.b_grab_exist={0},.b_pressed={0}};
     return this;
 }
 void km_grabs_kadd(km_grabs_t* this,keystroke_t ks_add){
@@ -135,7 +135,7 @@ void km_grabs_kadd(km_grabs_t* this,keystroke_t ks_add){
 void km_grabs_badd(km_grabs_t* this,mouse_button_t b_add,bool held_down){
     const int add_i=b_add.button-1;
     this->b_arr[add_i]=b_add;
-    this->b_exist[add_i]=true; //Keep this->b_pressed as true/false if held down or not.
+    this->b_grab_exist[add_i]=true; //Keep this->b_pressed as true/false if held down or not.
     if(!held_down) this->b_pressed[add_i]=false; //Act as clicked
     XGrabButton(this->xdo_obj->xdpy,b_add.button,None,RootWindow(this->xdo_obj->xdpy,DefaultScreen(this->xdo_obj->xdpy))
         ,False,ButtonPressMask|ButtonReleaseMask,GrabModeAsync,GrabModeAsync,None,None);
@@ -146,8 +146,8 @@ bool km_grabs_kgrab_exist(const km_grabs_t* this,keystroke_t ks){
         if(this->ks_arr[i].keysym==ks.keysym) return true;
     return false;
 }
-bool km_grabs_bgrab_exist(const km_grabs_t* this,int b){
-    return this->b_exist[b-1];
+bool km_grabs_bgrab_exist(const km_grabs_t* this,unsigned int b){
+    return this->b_grab_exist[b-1];
 }
 bool km_grabs_get_kpressed(const km_grabs_t* this,keystroke_t ks){
     for(int i=0;i<this->size;i++){
@@ -157,10 +157,10 @@ bool km_grabs_get_kpressed(const km_grabs_t* this,keystroke_t ks){
     }
     return false;
 }
-bool km_grabs_get_bpressed(const km_grabs_t* this,int b){
+bool km_grabs_get_bpressed(const km_grabs_t* this,unsigned int b){
     return this->b_pressed[b-1];
 }
-void km_grabs_set_bpressed(km_grabs_t* this,int b,bool p){
+void km_grabs_set_bpressed(km_grabs_t* this,unsigned int b,bool p){
     this->b_pressed[b-1]=p;
 }
 void km_grabs_kremove(km_grabs_t* this,keystroke_t ks_rm){
@@ -185,7 +185,7 @@ void km_grabs_kremove(km_grabs_t* this,keystroke_t ks_rm){
 }
 void km_grabs_bremove(km_grabs_t* this,mouse_button_t b_rm){
     const int rm_i=b_rm.button-1;
-    this->b_exist[rm_i]=false;
+    this->b_grab_exist[rm_i]=false;
     XUngrabButton(this->xdo_obj->xdpy,b_rm.button,None,RootWindow(this->xdo_obj->xdpy,DefaultScreen(this->xdo_obj->xdpy)));
     XFlush(this->xdo_obj->xdpy);
 }
@@ -200,7 +200,7 @@ void km_grabs_kremove_all(km_grabs_t* this){
 }
 void km_grabs_bremove_all(km_grabs_t* this){
     for(int i=0;i<5;i++){
-        this->b_exist[i]=false;
+        this->b_grab_exist[i]=false;
         XUngrabButton(this->xdo_obj->xdpy,i+1,None,RootWindow(this->xdo_obj->xdpy,DefaultScreen(this->xdo_obj->xdpy)));
     }
     XFlush(this->xdo_obj->xdpy);   
