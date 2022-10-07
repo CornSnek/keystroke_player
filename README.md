@@ -96,6 +96,7 @@ JumpBack command = `JB>;`
 WaitUntilKey command = `!?wait_key=[A-Za-z0-9_]+;`
 
     This command blocks the macro program until the key has been held down.
+    This also prevents future key presses from this key to be used normally.
     Appending ! to wait_key inverts so that the program checks if it is not held down.
     The key is based on the X11 KeySym names. 
     You cannot use this with GrabKey commands, as the macro will throw a runtime error.
@@ -109,6 +110,7 @@ WaitUntilButton command = `!?wait_button=[1-5];`
 WaitUntilButton command (clicked) = `wait_buttonc=[1-5];`
 
     This command blocks the macro program until the mouse button has been held down.
+    This also prevents future button presses from this button to be used normally.
     wait_buttonc makes it so that next button clicks are required instead of holding down.
     Appending ! to wait_button inverts so that the program checks if it is not held down.
     1=Left, 2=Middle, 3=Right, 4=Wheel Up, 5=Wheel Down
@@ -216,12 +218,20 @@ QueryRPNEval command = `\?!?eval=\(RPN\)\?`
 
     For more information, see header Commands with Variable Loading and Manipulation
 
-QueryKeyPress command = `\?!?key_press=[A-Za-z0-9_]+\?`
+QueryKeyPress command = `\?!?key_pressed=[A-Za-z0-9_]+\?`
 
     This query checks if a key has been held down.
     The key is based on the X11 KeySym names.
-    The GrabKey command for the key is required here to function, otherwise the command will warn that the key has not been initialized yet.
+    The GrabKey command for the key is required here to function, otherwise the
+    command will warn that the key has not been initialized yet.
     You cannot use the key 'escape' as that is the key to quit the macro.
+
+QueryButtonPress command = `\?!?button_pressed=[1-5]\?`
+
+    This query checks if a mouse button has been held down.
+    1=Left, 2=Middle, 3=Right, 4=Wheel Up, 5=Wheel Down
+    The GrabButton command for the button is required here to function, otherwise the 
+    command will warn that the button has not been initialized yet.
 
 Comments/Tabs/Spaces/Newlines can be added after a semi-colon has been added to a command.
 

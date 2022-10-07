@@ -23,12 +23,12 @@ JT>AC1;println=[!EA0!] (click_on)\e[0m;;JT>AC0;
 JF>AC1;println=[!EA1!] (click_on)\e[0m;;JF>AC0;
 println=ExpDelayGrowth (exp_inc)
 MouseClickCount (click_count);;
-?key_press=[!K4!]?edit,click_on=(1);
-?key_press=[!K3!]?edit,click_on=(0);
-?key_press=[!K1!]?edit,click_mdelay=(click_mdelay,exp_inc,-,MDelayMin,max);
-?key_press=[!K2!]?edit,click_mdelay=(click_mdelay,exp_inc,+,MDelayMax,min);
+?key_pressed=[!K4!]?edit,click_on=(1);
+?key_pressed=[!K3!]?edit,click_on=(0);
+?key_pressed=[!K1!]?edit,click_mdelay=(click_mdelay,exp_inc,-,MDelayMin,max);
+?key_pressed=[!K2!]?edit,click_mdelay=(click_mdelay,exp_inc,+,MDelayMax,min);
 edit,exp_inc=(exp_inc,1.2,*,1000,min);
-?!key_press=[!K1!]??!key_press=[!K2!]?edit,exp_inc=(1); #Reset to 0 if none pressed.
+?!key_pressed=[!K1!]??!key_pressed=[!K2!]?edit,exp_inc=(1); #Reset to 0 if none pressed.
 ?eval=(click_on)?m1=c;
 edit,click_count=(click_on,click_count,++,0,b?t:f);
 .m(click_on,click_mdelay,100,b?t:f);

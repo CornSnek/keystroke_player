@@ -982,12 +982,22 @@ bool run_program(command_array_t* cmd_arr, const char* file_str, Config config, 
                 PrintLastCommand(LastQuery);
                 break;
             case CMD_QueryKeyPress:
-                cmdprintf("%s next command if Key '%s' is pressed. ",this_cmd.invert_query?"Skip":"Don't skip",cmd_u.key_pressed.key);
-                query_is_true=false;
+                cmdprintf("%s next command if Key '%s' is pressed. ",this_cmd.invert_query?"Skip":"Don't skip",cmd_u.qkey_pressed.key);
+                if(!km_grabs_kgrab_exist(srs.kmg,cmd_u.grab_key))
+                    printf(ERR("Warning: GrabKey command has not been initialized for key '%s'.\n"),cmd_u.qkey_pressed.key);
                 pthread_mutex_lock(&input_mutex);
                 query_is_true=km_grabs_get_kpressed(srs.kmg,cmd_u.grab_key);
                 pthread_mutex_unlock(&input_mutex);
                 cmdprintf("It is %spressed.\n",query_is_true?"":"not ");
+                PrintLastCommand(LastQuery);
+                break;
+            case CMD_QueryButtonPress:
+                cmdprintf("%s next command if Button %d is pressed. ",this_cmd.invert_query?"Skip":"Don't skip",cmd_u.qbutton_pressed.button);
+                if(!km_grabs_bgrab_exist(srs.kmg,cmd_u.grab_button.button))
+                    printf(ERR("Warning: GrabButton command has not been initialized for button %d.\n"),cmd_u.qbutton_pressed.button);
+                pthread_mutex_lock(&input_mutex);
+                query_is_true=km_grabs_get_bpressed(srs.kmg,cmd_u.qbutton_pressed.button);
+                pthread_mutex_unlock(&input_mutex);
                 PrintLastCommand(LastQuery);
                 break;
             case CMD_InitVar:
@@ -1122,10 +1132,8 @@ bool run_program(command_array_t* cmd_arr, const char* file_str, Config config, 
         }
         if(this_cmd.subtype!=CMDST_Query) ++cmd_arr_i;
         else{
-            if(query_is_true^this_cmd.invert_query){//xor
-                query_is_true=false;
-                cmd_arr_i++;
-            }else cmd_arr_i+=this_cmd.query_jump_ne;//Skip next command. If chained, skip more than 1.
+            if(query_is_true^this_cmd.invert_query) cmd_arr_i++;
+            else cmd_arr_i+=this_cmd.query_jump_ne;//Skip next command. If chained, skip more than 1.
         }
         pthread_mutex_lock(&input_mutex);
         if(cmd_arr_i==cmd_arr_len) srs.program_done=true;//To end the mouse_input_t thread loop as well.

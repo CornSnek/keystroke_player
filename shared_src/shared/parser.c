@@ -867,12 +867,19 @@ bool macro_buffer_process_next(macro_buffer_t* this,bool print_debug,bool rpn_de
                     read_state=RS_QueryRPNEval;
                     break;
                 }
-                if(!strncmp(current_char_p,"key_press=",0)){
-                    read_i+=10;
+                if(!strncmp(current_char_p,"key_pressed=",12)){
+                    read_i+=12;
                     read_offset_i=-1;
                     read_state=RS_QueryKeyPress;
                     break;
                 }
+                if(!strncmp(current_char_p,"button_pressed=",15)){
+                    read_i+=15;
+                    read_offset_i=-1;
+                    read_state=RS_QueryButtonPress;
+                    break;
+                }
+                SHOULD_BE_UNREACHABLE();
                 fprintf(stderr,ERR("Unexpected character '%c' at line %lu char %lu state %s.\n"),current_char,line_num,char_num,ReadStateStrings[read_state]);
                 DO_ERROR();
                 break;
@@ -1074,7 +1081,7 @@ bool macro_buffer_process_next(macro_buffer_t* this,bool print_debug,bool rpn_de
                     if((keysym=XStringToKeysym(str_name))){
                         command_array_add(this->cmd_arr,
                             (command_t){.type=CMD_QueryKeyPress,.subtype=CMDST_Query,.print_cmd=print_cmd,
-                                .cmd_u.key_pressed=(keystroke_t){
+                                .cmd_u.qkey_pressed=(keystroke_t){
                                     .keysym=keysym,
                                     .key=str_name
                                 },
@@ -1089,6 +1096,34 @@ bool macro_buffer_process_next(macro_buffer_t* this,bool print_debug,bool rpn_de
                         DO_ERROR();
                         break;
                     }
+                }
+                fprintf(stderr,ERR("Unexpected character '%c' at line %lu char %lu state %s.\n"),current_char,line_num,char_num,ReadStateStrings[read_state]);
+                DO_ERROR();
+                break;
+            case RS_QueryButtonPress:
+                if(isdigit(current_char)){
+                    if(current_char_p[1]!='?'){
+                        fprintf(stderr,ERR("Command should be terminated with '?' at line %lu char %lu state %s.\n"),line_num,char_num,ReadStateStrings[read_state]);
+                        DO_ERROR();
+                        break;
+                    }
+                    parsed_num=current_char-'0';
+                    if(parsed_num<1||parsed_num>5){
+                        fprintf(stderr,ERR("Invalid mouse button number (Should be 1 to 5) at line %lu char %lu state %s.\n"),line_num,char_num,ReadStateStrings[read_state]);
+                        DO_ERROR();
+                        break;
+                    }
+                    command_array_add(this->cmd_arr,
+                        (command_t){.type=CMD_QueryButtonPress,.subtype=CMDST_Query,.print_cmd=print_cmd,
+                            .cmd_u.qbutton_pressed=(mouse_button_t){
+                                .button=parsed_num
+                            },
+                            .invert_query=invert_b
+                        }
+                    );
+                    key_processed=true;
+                    read_offset_i++;
+                    break;
                 }
                 fprintf(stderr,ERR("Unexpected character '%c' at line %lu char %lu state %s.\n"),current_char,line_num,char_num,ReadStateStrings[read_state]);
                 DO_ERROR();
@@ -1914,7 +1949,7 @@ void command_array_add(command_array_t* this, command_t cmd){
     switch(cmd.type){//Edit pointer for any shared strings and take ownership.
         case CMD_KeyStroke: SSManager_add_string(this->SSM,(char**)&cmd.cmd_u.auto_ks.key); break;
         case CMD_WaitUntilKey: SSManager_add_string(this->SSM,(char**)&cmd.cmd_u.wait_until_key.key); break;
-        case CMD_QueryKeyPress: SSManager_add_string(this->SSM,(char**)&cmd.cmd_u.key_pressed.key); break;
+        case CMD_QueryKeyPress: SSManager_add_string(this->SSM,(char**)&cmd.cmd_u.qkey_pressed.key); break;
         case CMD_GrabKey: SSManager_add_string(this->SSM,(char**)&cmd.cmd_u.grab_key.key); break;
         case CMD_UngrabKey: SSManager_add_string(this->SSM,(char**)&cmd.cmd_u.ungrab_key.key); break;
         case CMD_PrintString: SSManager_add_string(this->SSM,(char**)&cmd.cmd_u.print_string.str); break;
@@ -2146,7 +2181,10 @@ void command_array_print(const command_array_t* this,const VariableLoader_t* vl,
                 printf("QueryRPNEval String: '%s'\n",VL_get_callback(vl,cmd.rpn_eval)->args.an_rpn.rpn_str);
                 break;
             case CMD_QueryKeyPress:
-                printf("QueryKeyPress String: '%s'\n",cmd.key_pressed.key);
+                printf("QueryKeyPress String: '%s'\n",cmd.qkey_pressed.key);
+                break;
+            case CMD_QueryButtonPress:
+                printf("QueryButtonPress Button: %d\n",cmd.qbutton_pressed.button);
                 break;
             case CMD_InitVar:
                 printf("InitVar Name: '%s' Type: '%s' Value: '",cmd.init_var.variable,VLNumberTypeStr(cmd.init_var.as_number.type));
