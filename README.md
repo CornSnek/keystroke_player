@@ -192,7 +192,11 @@ For example: `?q1?|q2?|q3?(true);(false);` will jump to the `(true);` command if
 
 Likewise: `?q1?&q2?&q3?(true);(false);` will jump to the `(true);` command if all of the quieries are true. Otherwise, it will jump to the `(false);` command if any one query is false.
 
-All queries can be inverted by prefixing them with a `!` after `?` to skip the next command if true, or not if false (Example: `?!(query)?`. Chained queries with `!` also applies to the above.
+Queries can have indices that indicate how much they can jump similar to command JumpToIndex (Relative) `JTIR>`. The format is `?\-?[0-9]+:\-?[0-9]+,`, where the query can also jump backwards relatively. The first number is the jump when the query is true, and the second number is the jump when the query is false. Unlike normal queries starting with `?` only, queries with indices can be grouped together.
+
+Compared to `|`,`&`, and normal `?` queries, they can be rewritten using queries with indices. For example, `?q1?|q2?|q3?t;f;` is shorthand for `?3:1,q1??2:1,q2??1:2,q3?t;f;`, `?q1?&q2?&q3?t;f;` is shorthand for `?1:4,q1??1:3,q2??1:2,q3?t;f;`, and `?q?t;f;` is shorthand for `?1:2,q?t;f;`. 
+
+All queries can be inverted by prefixing them with a `!` after `?` to skip the next command if true, or not if false. With indices, the values are swapped (Jump by the second number if true, and the first number if false). Example: `?!(query)?` is `?1:2,!(query)?` or `?2:1,(query)?` due to inversion.
 
 QueryComparePixel command = `[\?|&]!?pxc=[0-9]+,[0-9]+,[0-9]+,[0-9]+\?`
 

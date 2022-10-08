@@ -13,8 +13,10 @@ StringMap_ImplDecl(r_ts_macro_t,r_ts_macro,(const char* str){
     while((c=*str++)) hash=((hash<<5)+hash)+c;
     return hash;
 })
-extern void R_TS_Macro_Init();
+void R_TS_Macro_Init();
 bool R_TS_Macro_IsReserved(const char* str_name);
 bool R_TS_Macro_GetString(char** arg_arr,const char* str_name,char** output,int num_args);
-extern void R_TS_Macro_Free();
+void R_TS_Macro_Free();
 #endif
+
+

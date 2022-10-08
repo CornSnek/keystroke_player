@@ -50,6 +50,7 @@ bool macro_buffer_process_next(macro_buffer_t* this,bool print_debug,bool rpn_de
     bool added_keystate=false;
     int read_i=0; //Index to read.
     int read_offset_i=0; //Last character to read by offset of read_i.
+    int query_jump_e=1,query_jump_ne=2; //Default jump for queries.
     bool first_number_parsed=false, print_cmd=false, store_index=false, invert_b=false, held_down=true, print_newline, is_absolute;
     CompareCoords cmp_flags=CMP_NULL;
     VLCallbackType vct;
@@ -848,6 +849,39 @@ bool macro_buffer_process_next(macro_buffer_t* this,bool print_debug,bool rpn_de
                 DO_ERROR();
                 break;
             case RS_Query:
+                if(isdigit(current_char)){
+                    if(query_comb_type!=QCT_NONE){
+                        fprintf(stderr,ERR("? queries can only have custom index numbers allowed once at line %lu char %lu state %s.\n"),line_num,char_num,ReadStateStrings[read_state]);
+                        DO_ERROR();
+                        break;
+                    }
+                    const char* nb=current_char_p,* ne=current_char_p-1;
+                    if(*(++ne)!='-') ne--; //Check if '-' as first char only. Recheck in while loop if not.
+                    while(isdigit(*(++ne))&&*ne!=':'&&*ne){}
+                    if(*ne!=':'){
+                        fprintf(stderr,ERR("Invalid character '%c' (Should be numbers ending with ':') at line %lu char %lu state %s.\n"),*ne,line_num,char_num,ReadStateStrings[read_state]);
+                        DO_ERROR();
+                        break;
+                    }
+                    char* num=char_string_slice(nb,ne-1);
+                    query_jump_e=strtol(num,NULL,10);
+                    free(num);
+                    nb=ne+1;
+                    if(*(++ne)!='-') ne--;
+                    while(isdigit(*(++ne))&&*ne!=','&&*ne){}
+                    if(*ne!=','){
+                        fprintf(stderr,ERR("Invalid character '%c' (Should be numbers ending with ',') at line %lu char %lu state %s.\n"),*ne,line_num,char_num,ReadStateStrings[read_state]);
+                        DO_ERROR();
+                        break;
+                    }
+                    num=char_string_slice(nb,ne-1);
+                    query_jump_ne=strtol(num,NULL,10);
+                    free(num);
+                    read_i+=ne-current_char_p+1;
+                    read_offset_i=-1;
+                    query_comb_type=QCT_CUSTOM;
+                    break;
+                }
                 if(current_char=='!'){
                     read_i+=1;
                     read_offset_i=-1;
@@ -941,8 +975,12 @@ bool macro_buffer_process_next(macro_buffer_t* this,bool print_debug,bool rpn_de
                         .cmd_u.pixel_compare=(pixel_compare_t){
                             .r_cb=vlci[0],.g_cb=vlci[1],.b_cb=vlci[2],.thr_cb=vlci[3]
                         },
-                        .query_details.invert=invert_b,
-                        .query_details.comb_type=query_comb_type
+                        .query_details=(query_details_t){
+                            .invert=invert_b,
+                            .comb_type=query_comb_type,
+                            .jump_e=query_jump_e,
+                            .jump_ne=query_jump_ne
+                        }
                     }
                 );
                 key_processed=true;
@@ -986,8 +1024,12 @@ bool macro_buffer_process_next(macro_buffer_t* this,bool print_debug,bool rpn_de
                             .cmd_u.compare_coords=(compare_coords_t){
                                 .cmp_flags=cmp_flags,.var_callback=VL_new_callback_int(this->vl,strtol(num_str_arr[0],NULL,10))
                             },
-                            .query_details.invert=invert_b,
-                            .query_details.comb_type=query_comb_type
+                            .query_details=(query_details_t){
+                                .invert=invert_b,
+                                .comb_type=query_comb_type,
+                                .jump_e=query_jump_e,
+                                .jump_ne=query_jump_ne
+                        }
                         }
                     );
                     free(num_str_arr[0]);
@@ -1009,8 +1051,12 @@ bool macro_buffer_process_next(macro_buffer_t* this,bool print_debug,bool rpn_de
                             .cmd_u.compare_coords=(compare_coords_t){
                                 .cmp_flags=cmp_flags,.var_callback=VL_new_callback_number_rpn(this->vl,rpn_str_arr[0],rpn_debug)
                             },
-                            .query_details.invert=invert_b,
-                            .query_details.comb_type=query_comb_type
+                            .query_details=(query_details_t){
+                                .invert=invert_b,
+                                .comb_type=query_comb_type,
+                                .jump_e=query_jump_e,
+                                .jump_ne=query_jump_ne
+                            }
                         }
                     );
                     read_offset_i+=end_p-begin_p+1;
@@ -1058,8 +1104,12 @@ bool macro_buffer_process_next(macro_buffer_t* this,bool print_debug,bool rpn_de
                         .cmd_u.coords_within=(coords_within_t){
                             .xl_cb=vlci[0],.yl_cb=vlci[1],.xh_cb=vlci[2],.yh_cb=vlci[3]
                         },
-                        .query_details.invert=invert_b,
-                        .query_details.comb_type=query_comb_type
+                        .query_details=(query_details_t){
+                            .invert=invert_b,
+                            .comb_type=query_comb_type,
+                            .jump_e=query_jump_e,
+                            .jump_ne=query_jump_ne
+                        }
                     }
                 );
                 key_processed=true;
@@ -1078,8 +1128,12 @@ bool macro_buffer_process_next(macro_buffer_t* this,bool print_debug,bool rpn_de
                     command_array_add(this->cmd_arr,
                         (command_t){.type=CMD_QueryRPNEval,.subtype=CMDST_Query,.print_cmd=print_cmd,
                             .cmd_u.rpn_eval=VL_new_callback_number_rpn(this->vl,rpn_str_arr[0],rpn_debug),
-                            .query_details.invert=invert_b,
-                            .query_details.comb_type=query_comb_type
+                            .query_details=(query_details_t){
+                                .invert=invert_b,
+                                .comb_type=query_comb_type,
+                                .jump_e=query_jump_e,
+                                .jump_ne=query_jump_ne
+                            }
                         }
                     );
                     read_offset_i+=end_p-begin_p+1;
@@ -1110,8 +1164,12 @@ bool macro_buffer_process_next(macro_buffer_t* this,bool print_debug,bool rpn_de
                                     .keysym=keysym,
                                     .key=str_name
                                 },
-                                .query_details.invert=invert_b,
-                                .query_details.comb_type=query_comb_type
+                                .query_details=(query_details_t){
+                                    .invert=invert_b,
+                                    .comb_type=query_comb_type,
+                                    .jump_e=query_jump_e,
+                                    .jump_ne=query_jump_ne
+                                }
                             }
                         );
                         key_processed=true;
@@ -1144,8 +1202,12 @@ bool macro_buffer_process_next(macro_buffer_t* this,bool print_debug,bool rpn_de
                             .cmd_u.qbutton_pressed=(mouse_button_t){
                                 .button=parsed_num
                             },
-                            .query_details.invert=invert_b,
-                            .query_details.comb_type=query_comb_type
+                            .query_details=(query_details_t){
+                                .invert=invert_b,
+                                .comb_type=query_comb_type,
+                                .jump_e=query_jump_e,
+                                .jump_ne=query_jump_ne
+                            }
                         }
                     );
                     key_processed=true;
@@ -1783,33 +1845,32 @@ bool macro_buffer_process_next(macro_buffer_t* this,bool print_debug,bool rpn_de
         this_cmd->start_cmd_p=parse_start_p;
         this_cmd->end_cmd_p=parse_end_p;
         if(this_cmd->subtype==CMDST_Query){
-            this_cmd->query_details.jump_e=1;
-            this_cmd->query_details.jump_ne=2;
             if(cmd_i-1>=0){
                 command_t* last_cmd=this->cmd_arr->cmds+cmd_i-1;
-                if(last_cmd->subtype!=CMDST_Query&&this_cmd->subtype==CMDST_Query&&this_cmd->query_details.comb_type!=QCT_NONE)
+                if(last_cmd->subtype!=CMDST_Query&&this_cmd->subtype==CMDST_Query&&this_cmd->query_details.comb_type&~QCT_NONE&~QCT_CUSTOM)
                     puts(ERR("And and Or query types shouldn't be at the beginning (no effect)."));
             }
         }else goto skip_check;
+        const QueryCombType tcqdct=this_cmd->query_details.comb_type;
         if(cmd_i-1>=0){
             command_t* last_cmd=this->cmd_arr->cmds+cmd_i-1;
-            if(this_cmd->query_details.comb_type==QCT_OR&&last_cmd->subtype==CMDST_Query)
+            if(tcqdct==QCT_OR&&last_cmd->subtype==CMDST_Query)
                 last_cmd->query_details.jump_ne=1;
         }
         while(--cmd_i>=0){
             command_t* last_cmd=this->cmd_arr->cmds+cmd_i;
             bool last_same=false;
             if(last_cmd->subtype!=CMDST_Query) break;
-            if(this_cmd->query_details.comb_type==QCT_AND&&last_cmd->query_details.comb_type!=QCT_OR){
+            const QueryCombType lcqdct=last_cmd->query_details.comb_type;
+            if(tcqdct==QCT_AND&&lcqdct&(QCT_AND|QCT_NONE)){
                 last_cmd->query_details.jump_ne++;
                 last_same=true;
-            }
-            if(this_cmd->query_details.comb_type==QCT_OR&&last_cmd->query_details.comb_type!=QCT_AND){
+            }else if(tcqdct==QCT_OR&&lcqdct&(QCT_OR|QCT_NONE)){
                 last_cmd->query_details.jump_e++;
                 last_same=true;
-            }
+            }else if(tcqdct==QCT_CUSTOM&&lcqdct==QCT_CUSTOM) last_same=true;
             if(!last_same){//Only chain same query AND/OR types with a normal one at the beginning.
-                fprintf(stderr,ERR("Chained &...? and |...? query types cannot be mixed together, or a non-first normal query is chained together. (Ex: ?...??...?).\n"));
+                fprintf(stderr,ERR("Chained &...? and |...? query types cannot be mixed together, or queries without custom indices chained together.\n"));
                 this->parse_error=true;
                 break;
             } 

@@ -244,15 +244,16 @@ typedef enum _CommandSubType{
     CMDST_Query
 }CommandSubType;
 typedef enum _QueryCombType{
-    QCT_NONE,
-    QCT_AND,
-    QCT_OR
-}QueryCombType;
+    QCT_NONE=1,
+    QCT_AND=2,
+    QCT_OR=4,
+    QCT_CUSTOM=8
+}QueryCombType;//As flags.
 typedef struct query_details_s{
     QueryCombType comb_type;
+    bool invert;
     int jump_ne;
     int jump_e;
-    bool invert;
 }query_details_t;
 typedef struct command_s{//Aggregating like for SDL events (enums and unions).
     CommandType type;
