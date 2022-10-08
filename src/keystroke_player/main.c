@@ -927,7 +927,7 @@ bool run_program(command_array_t* cmd_arr, const char* file_str, Config config, 
                 an_output[2]=VLNumberCast(an_output[2],VLNT_Char);
                 RuntimeExitIfProcessVLFalse(ProcessVLCallback(vl,pixel_compare.thr_cb,&an_output[3]));
                 an_output[3]=VLNumberCast(an_output[3],VLNT_Char);
-                cmdprintf("%s next command if pixel at mouse matches r,g,b=%d,%d,%d with threshold of %d. ",this_cmd.invert_query?"Skip":"Don't skip",an_output[0].i,an_output[1].i,an_output[2].i,an_output[3].i);
+                cmdprintf("%s next command if pixel at mouse matches r,g,b=%d,%d,%d with threshold of %d. ",this_cmd.query_details.invert?"Skip":"Don't skip",an_output[0].i,an_output[1].i,an_output[2].i,an_output[3].i);
                 pthread_mutex_lock(&input_mutex);
                 xdo_get_mouse_location(xdo_obj,&x_mouse,&y_mouse,0);
                 get_pixel_color(xdo_obj->xdpy,x_mouse,y_mouse,&pc);
@@ -944,7 +944,7 @@ bool run_program(command_array_t* cmd_arr, const char* file_str, Config config, 
                     RuntimeExitIfProcessVLFalse(ProcessVLCallback(vl,cmd_u.compare_coords.var_callback,&an_output[0]));
                     an_output[0]=VLNumberCast(an_output[0],VLNT_Int);
                     const CompareCoords cc=cmd_u.compare_coords.cmp_flags;
-                    cmdprintf("%s next command if mouse coordinate %c%c%s%d. ",this_cmd.invert_query?"Skip":"Don't skip",(cc&CMP_Y)==CMP_Y?'y':'x',(cc&CMP_GT)==CMP_GT?'>':'<',(cc&CMP_W_EQ)==CMP_W_EQ?"=":"",an_output[0].i);
+                    cmdprintf("%s next command if mouse coordinate %c%c%s%d. ",this_cmd.query_details.invert?"Skip":"Don't skip",(cc&CMP_Y)==CMP_Y?'y':'x',(cc&CMP_GT)==CMP_GT?'>':'<',(cc&CMP_W_EQ)==CMP_W_EQ?"=":"",an_output[0].i);
                     pthread_mutex_lock(&input_mutex);
                     xdo_get_mouse_location(xdo_obj,&x_mouse,&y_mouse,0);
                     pthread_mutex_unlock(&input_mutex);
@@ -965,7 +965,7 @@ bool run_program(command_array_t* cmd_arr, const char* file_str, Config config, 
                 an_output[2]=VLNumberCast(an_output[2],VLNT_Int);
                 RuntimeExitIfProcessVLFalse(ProcessVLCallback(vl,coords_within.yh_cb,&an_output[3]));
                 an_output[3]=VLNumberCast(an_output[3],VLNT_Int);
-                cmdprintf("%s next command if mouse is within Top Left x:%d y:%d Bottom Right x:%d y:%d. ",this_cmd.invert_query?"Skip":"Don't skip",an_output[0].i,an_output[1].i,an_output[2].i,an_output[3].i);
+                cmdprintf("%s next command if mouse is within Top Left x:%d y:%d Bottom Right x:%d y:%d. ",this_cmd.query_details.invert?"Skip":"Don't skip",an_output[0].i,an_output[1].i,an_output[2].i,an_output[3].i);
                 pthread_mutex_lock(&input_mutex);
                 xdo_get_mouse_location(xdo_obj,&x_mouse,&y_mouse,0);
                 pthread_mutex_unlock(&input_mutex);
@@ -976,13 +976,13 @@ bool run_program(command_array_t* cmd_arr, const char* file_str, Config config, 
             case CMD_QueryRPNEval:
                 RuntimeExitIfProcessVLFalse(ProcessVLCallback(vl,cmd_u.rpn_eval,&an_output[0]));
                 an_output[0]=VLNumberCast(an_output[0],VLNT_Int);
-                cmdprintf("%s next command if RPN string '%s' is non-zero. ",this_cmd.invert_query?"Skip":"Don't skip",VL_get_callback(vl,cmd_u.rpn_eval)->args.an_rpn.rpn_str);
+                cmdprintf("%s next command if RPN string '%s' is non-zero. ",this_cmd.query_details.invert?"Skip":"Don't skip",VL_get_callback(vl,cmd_u.rpn_eval)->args.an_rpn.rpn_str);
                 query_is_true=an_output[0].i;
                 cmdprintf("It is %szero.\n",query_is_true?"non-":"");
                 PrintLastCommand(LastQuery);
                 break;
             case CMD_QueryKeyPress:
-                cmdprintf("%s next command if Key '%s' is pressed. ",this_cmd.invert_query?"Skip":"Don't skip",cmd_u.qkey_pressed.key);
+                cmdprintf("%s next command if Key '%s' is pressed. ",this_cmd.query_details.invert?"Skip":"Don't skip",cmd_u.qkey_pressed.key);
                 if(!km_grabs_kgrab_exist(srs.kmg,cmd_u.grab_key))
                     printf(ERR("Warning: GrabKey command has not been initialized for key '%s'.\n"),cmd_u.qkey_pressed.key);
                 pthread_mutex_lock(&input_mutex);
@@ -992,7 +992,7 @@ bool run_program(command_array_t* cmd_arr, const char* file_str, Config config, 
                 PrintLastCommand(LastQuery);
                 break;
             case CMD_QueryButtonPress:
-                cmdprintf("%s next command if Button %d is pressed. ",this_cmd.invert_query?"Skip":"Don't skip",cmd_u.qbutton_pressed.button);
+                cmdprintf("%s next command if Button %d is pressed. ",this_cmd.query_details.invert?"Skip":"Don't skip",cmd_u.qbutton_pressed.button);
                 if(!km_grabs_bgrab_exist(srs.kmg,cmd_u.grab_button.button))
                     printf(ERR("Warning: GrabButton command has not been initialized for button %d.\n"),cmd_u.qbutton_pressed.button);
                 pthread_mutex_lock(&input_mutex);
@@ -1131,10 +1131,7 @@ bool run_program(command_array_t* cmd_arr, const char* file_str, Config config, 
                 break;
         }
         if(this_cmd.subtype!=CMDST_Query) ++cmd_arr_i;
-        else{
-            if(query_is_true^this_cmd.invert_query) cmd_arr_i++;
-            else cmd_arr_i+=this_cmd.query_jump_ne;//Skip next command. If chained, skip more than 1.
-        }
+        else cmd_arr_i+=(query_is_true^this_cmd.query_details.invert)?this_cmd.query_details.jump_e:this_cmd.query_details.jump_ne;
         pthread_mutex_lock(&input_mutex);
         if(cmd_arr_i==cmd_arr_len) srs.program_done=true;//To end the mouse_input_t thread loop as well.
     }

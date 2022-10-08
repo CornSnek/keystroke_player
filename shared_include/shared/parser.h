@@ -243,12 +243,22 @@ typedef enum _CommandSubType{
     CMDST_Command,
     CMDST_Query
 }CommandSubType;
+typedef enum _QueryCombType{
+    QCT_NONE,
+    QCT_AND,
+    QCT_OR
+}QueryCombType;
+typedef struct query_details_s{
+    QueryCombType comb_type;
+    int jump_ne;
+    int jump_e;
+    bool invert;
+}query_details_t;
 typedef struct command_s{//Aggregating like for SDL events (enums and unions).
     CommandType type;
     command_union_t cmd_u;
     CommandSubType subtype;//For query commands.
-    int query_jump_ne;
-    bool invert_query;
+    query_details_t query_details;
     bool print_cmd;
     char* start_cmd_p;
     char* end_cmd_p;

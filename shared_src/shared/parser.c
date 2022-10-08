@@ -54,6 +54,7 @@ bool macro_buffer_process_next(macro_buffer_t* this,bool print_debug,bool rpn_de
     CompareCoords cmp_flags=CMP_NULL;
     VLCallbackType vct;
     DebugConfigType dct;
+    QueryCombType query_comb_type=QCT_NONE;
     #define DO_ERROR()\
     print_where_error_is(this->contents,this->token_i,read_i+read_offset_i);\
     this->token_i+=error_move_offset(this->contents+this->token_i+read_i+read_offset_i);\
@@ -357,6 +358,18 @@ bool macro_buffer_process_next(macro_buffer_t* this,bool print_debug,bool rpn_de
                     case '?':
                         read_i++;
                         read_offset_i=-1;
+                        read_state=RS_Query;
+                        break;
+                    case '|':
+                        read_i++;
+                        read_offset_i=-1;
+                        query_comb_type=QCT_OR;
+                        read_state=RS_Query;
+                        break;
+                    case '&':
+                        read_i++;
+                        read_offset_i=-1;
+                        query_comb_type=QCT_AND;
                         read_state=RS_Query;
                         break;
                     default:
@@ -928,7 +941,8 @@ bool macro_buffer_process_next(macro_buffer_t* this,bool print_debug,bool rpn_de
                         .cmd_u.pixel_compare=(pixel_compare_t){
                             .r_cb=vlci[0],.g_cb=vlci[1],.b_cb=vlci[2],.thr_cb=vlci[3]
                         },
-                        .invert_query=invert_b
+                        .query_details.invert=invert_b,
+                        .query_details.comb_type=query_comb_type
                     }
                 );
                 key_processed=true;
@@ -972,7 +986,8 @@ bool macro_buffer_process_next(macro_buffer_t* this,bool print_debug,bool rpn_de
                             .cmd_u.compare_coords=(compare_coords_t){
                                 .cmp_flags=cmp_flags,.var_callback=VL_new_callback_int(this->vl,strtol(num_str_arr[0],NULL,10))
                             },
-                            .invert_query=invert_b
+                            .query_details.invert=invert_b,
+                            .query_details.comb_type=query_comb_type
                         }
                     );
                     free(num_str_arr[0]);
@@ -994,7 +1009,8 @@ bool macro_buffer_process_next(macro_buffer_t* this,bool print_debug,bool rpn_de
                             .cmd_u.compare_coords=(compare_coords_t){
                                 .cmp_flags=cmp_flags,.var_callback=VL_new_callback_number_rpn(this->vl,rpn_str_arr[0],rpn_debug)
                             },
-                            .invert_query=invert_b
+                            .query_details.invert=invert_b,
+                            .query_details.comb_type=query_comb_type
                         }
                     );
                     read_offset_i+=end_p-begin_p+1;
@@ -1042,7 +1058,8 @@ bool macro_buffer_process_next(macro_buffer_t* this,bool print_debug,bool rpn_de
                         .cmd_u.coords_within=(coords_within_t){
                             .xl_cb=vlci[0],.yl_cb=vlci[1],.xh_cb=vlci[2],.yh_cb=vlci[3]
                         },
-                        .invert_query=invert_b
+                        .query_details.invert=invert_b,
+                        .query_details.comb_type=query_comb_type
                     }
                 );
                 key_processed=true;
@@ -1061,7 +1078,8 @@ bool macro_buffer_process_next(macro_buffer_t* this,bool print_debug,bool rpn_de
                     command_array_add(this->cmd_arr,
                         (command_t){.type=CMD_QueryRPNEval,.subtype=CMDST_Query,.print_cmd=print_cmd,
                             .cmd_u.rpn_eval=VL_new_callback_number_rpn(this->vl,rpn_str_arr[0],rpn_debug),
-                            .invert_query=invert_b
+                            .query_details.invert=invert_b,
+                            .query_details.comb_type=query_comb_type
                         }
                     );
                     read_offset_i+=end_p-begin_p+1;
@@ -1092,7 +1110,8 @@ bool macro_buffer_process_next(macro_buffer_t* this,bool print_debug,bool rpn_de
                                     .keysym=keysym,
                                     .key=str_name
                                 },
-                                .invert_query=invert_b
+                                .query_details.invert=invert_b,
+                                .query_details.comb_type=query_comb_type
                             }
                         );
                         key_processed=true;
@@ -1125,7 +1144,8 @@ bool macro_buffer_process_next(macro_buffer_t* this,bool print_debug,bool rpn_de
                             .cmd_u.qbutton_pressed=(mouse_button_t){
                                 .button=parsed_num
                             },
-                            .invert_query=invert_b
+                            .query_details.invert=invert_b,
+                            .query_details.comb_type=query_comb_type
                         }
                     );
                     key_processed=true;
@@ -1762,12 +1782,37 @@ bool macro_buffer_process_next(macro_buffer_t* this,bool print_debug,bool rpn_de
         }
         this_cmd->start_cmd_p=parse_start_p;
         this_cmd->end_cmd_p=parse_end_p;
-        if(this_cmd->subtype==CMDST_Query) this_cmd->query_jump_ne=2;
-        else goto skip_check;
+        if(this_cmd->subtype==CMDST_Query){
+            this_cmd->query_details.jump_e=1;
+            this_cmd->query_details.jump_ne=2;
+            if(cmd_i-1>=0){
+                command_t* last_cmd=this->cmd_arr->cmds+cmd_i-1;
+                if(last_cmd->subtype!=CMDST_Query&&this_cmd->subtype==CMDST_Query&&this_cmd->query_details.comb_type!=QCT_NONE)
+                    puts(ERR("And and Or query types shouldn't be at the beginning (no effect)."));
+            }
+        }else goto skip_check;
+        if(cmd_i-1>=0){
+            command_t* last_cmd=this->cmd_arr->cmds+cmd_i-1;
+            if(this_cmd->query_details.comb_type==QCT_OR&&last_cmd->subtype==CMDST_Query)
+                last_cmd->query_details.jump_ne=1;
+        }
         while(--cmd_i>=0){
             command_t* last_cmd=this->cmd_arr->cmds+cmd_i;
+            bool last_same=false;
             if(last_cmd->subtype!=CMDST_Query) break;
-            last_cmd->query_jump_ne++;//Increase relative jump for chained queries if not equal.
+            if(this_cmd->query_details.comb_type==QCT_AND&&last_cmd->query_details.comb_type!=QCT_OR){
+                last_cmd->query_details.jump_ne++;
+                last_same=true;
+            }
+            if(this_cmd->query_details.comb_type==QCT_OR&&last_cmd->query_details.comb_type!=QCT_AND){
+                last_cmd->query_details.jump_e++;
+                last_same=true;
+            }
+            if(!last_same){//Only chain same query AND/OR types with a normal one at the beginning.
+                fprintf(stderr,ERR("Chained &...? and |...? query types cannot be mixed together, or a non-first normal query is chained together. (Ex: ?...??...?).\n"));
+                this->parse_error=true;
+                break;
+            } 
         }
     }
     skip_check:
@@ -2080,7 +2125,7 @@ void command_array_print(const command_array_t* this,const VariableLoader_t* vl,
                 break;
             case CMD_QueryComparePixel:
                 printf("QueryComparePixel ");
-                printf("%s",this->cmds[i].invert_query?"(inverted) ":"");
+                printf("%s",this->cmds[i].query_details.invert?"(inverted) ":"");
                 vlct=VL_get_callback(vl,cmd.pixel_compare.r_cb);
                 switch(vlct->callback_type){
                     case VLCallback_Char:
@@ -2124,7 +2169,7 @@ void command_array_print(const command_array_t* this,const VariableLoader_t* vl,
                 break;
             case CMD_QueryCompareCoords:
                 printf("QueryCompareCoords %scmp_flags: '%c,%c%s' var"
-                    ,this->cmds[i].invert_query?"(inverted) ":""
+                    ,this->cmds[i].query_details.invert?"(inverted) ":""
                     ,(cmd.compare_coords.cmp_flags&CMP_Y)==CMP_Y?'y':'x'
                     ,(cmd.compare_coords.cmp_flags&CMP_GT)==CMP_GT?'>':'<'
                     ,(cmd.compare_coords.cmp_flags&CMP_W_EQ)==CMP_W_EQ?",=":""
@@ -2142,7 +2187,7 @@ void command_array_print(const command_array_t* this,const VariableLoader_t* vl,
                 break;
             case CMD_QueryCoordsWithin:
                 printf("QuerryCoordsWithin ");
-                printf("%s",this->cmds[i].invert_query?"(inverted) ":"");
+                printf("%s",this->cmds[i].query_details.invert?"(inverted) ":"");
                 vlct=VL_get_callback(vl,cmd.coords_within.xl_cb);
                 switch(vlct->callback_type){
                     case VLCallback_Int:

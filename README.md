@@ -186,11 +186,15 @@ There are Query Commands that will skip the next command if false, or not skip i
 
 `?(query_command)?JT>ThisQueryIsTrue;(false command); ... JF>ThisQueryIsTrue;(true command);`
 
-If queries are chained together, for example, `?q1??q2?q3?(true);(false);`, all queries will jump to the `(false);` command if either query is false. Otherwise, they will read the next query, or go to the `(true);` command if all queries are true.
+Queries can be chained together to simulate an AND/OR condition if they have a `&`/`|` at the beginning respectively.
+
+For example: `?q1?|q2?|q3?(true);(false);` will jump to the `(true);` command if one of the queries are true. If all are false, it would jump to the `(false);` command.
+
+Likewise: `?q1?&q2?&q3?(true);(false);` will jump to the `(true);` command if all of the quieries are true. Otherwise, it will jump to the `(false);` command if any one query is false.
 
 All queries can be inverted by prefixing them with a `!` after `?` to skip the next command if true, or not if false (Example: `?!(query)?`. Chained queries with `!` also applies to the above.
 
-QueryComparePixel command = `\?!?pxc=[0-9]+,[0-9]+,[0-9]+,[0-9]+\?`
+QueryComparePixel command = `[\?|&]!?pxc=[0-9]+,[0-9]+,[0-9]+,[0-9]+\?`
 
     QueryComparePixel checks if the pixel at it's current mouse position is true. Valid numbers should be from 0 to 255.
     They are formatted by (rc,gc,bc,threshold) (Pixel to compare), where threshold will check any pixel colors close to rm,gm,bm (Pixel by mouse)
@@ -200,7 +204,7 @@ QueryComparePixel command = `\?!?pxc=[0-9]+,[0-9]+,[0-9]+,[0-9]+\?`
         the mouse pixel is r,g,b=108,148,128 the query is true since 108, 148, and 128 is within 20.
         If the mouse pixel is r,g,b=255,255,255, the query is false since 255 is not within 20.
 
-QueryCompareCoords command = `\?!?coords=[xy][<>]=?[0-9]+\?`
+QueryCompareCoords command = `[\?|&]!?coords=[xy][<>]=?[0-9]+\?`
 
     Compares either the x or y coordinate of the mouse. Supports
     >, >=, <, and <= only.
@@ -208,17 +212,17 @@ QueryCompareCoords command = `\?!?coords=[xy][<>]=?[0-9]+\?`
         greater than or equal to 100.
         ?coords=y<500? compares if y is less than 500.
 
-QueryCoordsWithin command = `\?!?within=[0-9]+,[0-9]+,[0-9]+,[0-9]+\?`
+QueryCoordsWithin command = `[\?|&]!?within=[0-9]+,[0-9]+,[0-9]+,[0-9]+\?`
 
     Check if mouse is within the boxed coordinates xl,yl,xh,yh.
     xl,yl are the top left coordinates.
     xh,yh are the bottom right coordinates.
 
-QueryRPNEval command = `\?!?eval=\(RPN\)\?`
+QueryRPNEval command = `[\?|&]!?eval=\(RPN\)\?`
 
     For more information, see header Commands with Variable Loading and Manipulation
 
-QueryKeyPress command = `\?!?key_pressed=[A-Za-z0-9_]+\?`
+QueryKeyPress command = `[\?|&]!?key_pressed=[A-Za-z0-9_]+\?`
 
     This query checks if a key has been held down.
     The key is based on the X11 KeySym names.
@@ -226,7 +230,7 @@ QueryKeyPress command = `\?!?key_pressed=[A-Za-z0-9_]+\?`
     command will warn that the key has not been initialized yet.
     You cannot use the key 'escape' as that is the key to quit the macro.
 
-QueryButtonPress command = `\?!?button_pressed=[1-5]\?`
+QueryButtonPress command = `[\?|&]!?button_pressed=[1-5]\?`
 
     This query checks if a mouse button has been held down.
     1=Left, 2=Middle, 3=Right, 4=Wheel Up, 5=Wheel Down
@@ -321,7 +325,7 @@ EditVar command = `edit,[A-Za-z0-9_]=(RPN);`
     #Note: Even though it returns a double, the InitVar command of var1
     #with the i flag will always cast it to an int. 
 
-QueryRPNEval command = `\?!?eval=\(RPN\)\?`
+QueryRPNEval command = `[\?|&]!?eval=\(RPN\)\?`
 
     Checks the RPN string that will go to the next command
     if the expression is non-zero. This is similar to
