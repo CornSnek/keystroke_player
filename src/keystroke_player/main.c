@@ -940,21 +940,18 @@ bool run_program(command_array_t* cmd_arr, const char* file_str, Config config, 
                 PrintLastCommand(LastQuery);
                 break;
             case CMD_QueryCompareCoords:
-                {
-                    RuntimeExitIfProcessVLFalse(ProcessVLCallback(vl,cmd_u.compare_coords.var_callback,&an_output[0]));
-                    an_output[0]=VLNumberCast(an_output[0],VLNT_Int);
-                    const CompareCoords cc=cmd_u.compare_coords.cmp_flags;
-                    cmdprintf("If mouse coordinate %c%c%s%d, jump by %d. Else, jump by %d.\n",(cc&CMP_Y)==CMP_Y?'y':'x',(cc&CMP_GT)==CMP_GT?'>':'<',(cc&CMP_W_EQ)==CMP_W_EQ?"=":"",an_output[0].i,this_cmd.query_details.jump_e,this_cmd.query_details.jump_ne);
-                    pthread_mutex_lock(&input_mutex);
-                    xdo_get_mouse_location(xdo_obj,&x_mouse,&y_mouse,0);
-                    pthread_mutex_unlock(&input_mutex);
-                    const int mouse_compare=(cc&CMP_Y)==CMP_Y?y_mouse:x_mouse;
-                    if((cc&CMP_GT)==CMP_GT) query_is_true=(cc&CMP_W_EQ)==CMP_W_EQ?mouse_compare>=an_output[0].i:mouse_compare>an_output[0].i;
-                    else query_is_true=(cc&CMP_W_EQ)==CMP_W_EQ?mouse_compare<=an_output[0].i:mouse_compare<an_output[0].i;
-                    cmdprintf("Compare is %s.\n",query_is_true?"true":"false");
-                    PrintLastCommand(LastQuery);
-                    break;
-                }
+                RuntimeExitIfProcessVLFalse(ProcessVLCallback(vl,cmd_u.compare_coords.var_callback,&an_output[0]));
+                an_output[0]=VLNumberCast(an_output[0],VLNT_Int);
+                cmdprintf("If mouse coordinate %c%c%s%d, jump by %d. Else, jump by %d.\n",(cmd_u.compare_coords.cmp_flags&CMP_Y)==CMP_Y?'y':'x',(cmd_u.compare_coords.cmp_flags&CMP_GT)==CMP_GT?'>':'<',(cmd_u.compare_coords.cmp_flags&CMP_W_EQ)==CMP_W_EQ?"=":"",an_output[0].i,this_cmd.query_details.jump_e,this_cmd.query_details.jump_ne);
+                pthread_mutex_lock(&input_mutex);
+                xdo_get_mouse_location(xdo_obj,&x_mouse,&y_mouse,0);
+                pthread_mutex_unlock(&input_mutex);
+                const int mouse_compare=(cmd_u.compare_coords.cmp_flags&CMP_Y)==CMP_Y?y_mouse:x_mouse;
+                if((cmd_u.compare_coords.cmp_flags&CMP_GT)==CMP_GT) query_is_true=(cmd_u.compare_coords.cmp_flags&CMP_W_EQ)==CMP_W_EQ?mouse_compare>=an_output[0].i:mouse_compare>an_output[0].i;
+                else query_is_true=(cmd_u.compare_coords.cmp_flags&CMP_W_EQ)==CMP_W_EQ?mouse_compare<=an_output[0].i:mouse_compare<an_output[0].i;
+                cmdprintf("Compare is %s.\n",query_is_true?"true":"false");
+                PrintLastCommand(LastQuery);
+                break;
             case CMD_QueryCoordsWithin:
                 coords_within=cmd_u.coords_within;
                 RuntimeExitIfProcessVLFalse(ProcessVLCallback(vl,coords_within.xl_cb,&an_output[0]));

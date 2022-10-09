@@ -4,7 +4,7 @@
 #include <stdbool.h>
 #include <generics/hash_map.h>
 typedef struct r_ts_macro_s{
-    bool(*parse_f)(char**,char**);
+    bool(*parse_f)(char**,char**,int);
     int num_args;
 }r_ts_macro_t;
 StringMap_ImplDecl(r_ts_macro_t,r_ts_macro,(const char* str){
@@ -15,6 +15,7 @@ StringMap_ImplDecl(r_ts_macro_t,r_ts_macro,(const char* str){
 })
 void R_TS_Macro_Init();
 bool R_TS_Macro_IsReserved(const char* str_name);
+void R_TS_Macro_ResetState();
 bool R_TS_Macro_GetString(char** arg_arr,const char* str_name,char** output,int num_args);
 void R_TS_Macro_Free();
 #endif

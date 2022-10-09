@@ -1854,23 +1854,22 @@ bool macro_buffer_process_next(macro_buffer_t* this,bool print_debug,bool rpn_de
         const QueryCombType tcqdct=this_cmd->query_details.comb_type;
         if(cmd_i-1>=0){
             command_t* last_cmd=this->cmd_arr->cmds+cmd_i-1;
-            if(tcqdct==QCT_OR&&last_cmd->subtype==CMDST_Query)
-                last_cmd->query_details.jump_ne=1;
+            if(tcqdct==QCT_OR&&last_cmd->subtype==CMDST_Query) last_cmd->query_details.jump_ne=1;
         }
         while(--cmd_i>=0){
             command_t* last_cmd=this->cmd_arr->cmds+cmd_i;
             bool last_same=false;
             if(last_cmd->subtype!=CMDST_Query) break;
             const QueryCombType lcqdct=last_cmd->query_details.comb_type;
-            if(tcqdct==QCT_AND&&lcqdct&(QCT_AND|QCT_NONE)){
+            if(tcqdct==QCT_AND&&lcqdct&(QCT_AND|QCT_NONE)){//Only chain same query AND types with a normal one at the beginning.
                 last_cmd->query_details.jump_ne++;
                 last_same=true;
-            }else if(tcqdct==QCT_OR&&lcqdct&(QCT_OR|QCT_NONE)){
+            }else if(tcqdct==QCT_OR&&lcqdct&(QCT_OR|QCT_NONE)){//With or + normal at beginning.
                 last_cmd->query_details.jump_e++;
                 last_same=true;
-            }else if(tcqdct==QCT_CUSTOM&&lcqdct==QCT_CUSTOM) last_same=true;
-            if(!last_same){//Only chain same query AND/OR types with a normal one at the beginning.
-                fprintf(stderr,ERR("Chained &...? and |...? query types cannot be mixed together, or queries without custom indices chained together.\n"));
+            }else if(tcqdct==QCT_CUSTOM&&lcqdct==QCT_CUSTOM) last_same=true;//Chain indexed queries together.
+            if(!last_same){
+                fprintf(stderr,ERR("Chained &...? and |...? query types cannot be mixed together, or any queries without custom indices chained together.\n"));
                 this->parse_error=true;
                 break;
             } 
@@ -1928,6 +1927,7 @@ void macro_buffer_str_id_check(macro_buffer_t* this,const VariableLoader_t* vl){
         fprintf(stderr,ERR("Queries should have at least 2 commands next to it. Error command found at end of file.\n"));
         this->parse_error=true;
     }
+    //TODO: Check Queries for custom indices when out of bounds.
     for(int rpn_i=0;rpn_i<vl->ssm->count;rpn_i++){
         const char* rpn_str;
         if(*(rpn_str=vl->ssm->c_strs[rpn_i])=='('){//Exclude variables without '()'.

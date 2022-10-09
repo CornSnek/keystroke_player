@@ -402,12 +402,22 @@ These are macros that have `@` affixed to them similar to RPN Reserved Variables
 
 Here are the Current Reserved Macros and their specified arguments.
 
-`[!@REP:"str":"num"!]` - Repeat string macro
+`[!@REP:str:num!]` - Repeat string macro
 
-    Macro that copies the "str" argument
-    by number of "num" times. "num" must be
+    Macro that copies the `str` argument
+    by number of `num` times. `num` must be
     an integer greater than 0.
     Example: "[!@REP:pass;:5!]" outputs "pass;pass;pass;pass;pass;"
+
+`[!@FOREACH:substr:str:arg1:arg2:...:argn!]` - For each substring in string macro
+
+    Macro that is similar to @REP, but changes the `substr` contained inside
+    the string `str` to the string arguments `arg1` to `argn`. For example:
+    [!@FOREACH:rep:replaced,:A1:B23:C456!] outputs "A1laced,B23laced,C456laced,"
+
+`[!@C!]` - Colon macro
+
+    Outputs ':', used inside macros since using ':' normally parses as the next argument inside a macro.
 
 # Build
 source tasks.conf (In project folder)
