@@ -431,11 +431,11 @@ Here are the Current Reserved Macros and their specified arguments.
     Calling [!@ENUM_K::!] outputs "1". Calling [!@ENUMREV:EF:!] outputs "EF0".
     To set the enumeration number, use @ENUM_S.
 
-`[!@REPMAC:n:MACRO:marg1:marg2:...:margn!]` - Repeat macro command
+`[!@REPMAC:n:lhs_str:rhs_str:MACRO:marg1:marg2:...:margn!]` - Repeat macro command
 
     Because innermost macros from left to right are expanded first, this macro
     can copy and paste the `@ENUM` macros and their variants. Similar
-    to `@REP`. But n must be 0 or greater. Will output "[!MACRO:marg1:...:margn!]"
+    to `@REP`, and `@FOREACH`. n must be 0 or greater. Will output "lhs_str[!MACRO:marg1:...:margn!]rhs_str"
     number of n times.
 
 # Build

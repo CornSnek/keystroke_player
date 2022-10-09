@@ -25,33 +25,38 @@ bool rtsmf_repeat_string(char** output,char** str_arr,int num_args){
     for(long i=0;i<rep_num;i++) strcat(*output+strlen_str*i,str_arr[1]);
     return (void)num_args,true;
 }
-//[!\@REPREC_R:n:MACRO:marg1:marg2:...:margn!] Repeats a MACRO number of n times from left to right.
+//[!\@REPMAC:n:lhs_str:rhs_str:MACRO:marg1:marg2:...:margn!] Repeats a MACRO number of n times from left to right.
 bool rtsmf_repeat_macro(char** output,char** str_arr,int num_args){
+    if(num_args<4){
+        *output=0;
+        fprintf(stderr,ERR("@REPMAC: Requires at least 4 or more arguments.\n"));
+        return false;
+    }
     long rep_num=strtol(str_arr[0],NULL,10);
     if(rep_num<0){
         *output=0;
-        fprintf(stderr,ERR("@REPREC_R: 1st argument needs to be a valid integer 0 or greater.\n"));
+        fprintf(stderr,ERR("@REPMAC: 1st argument needs to be a valid integer 0 or greater.\n"));
         return false;
     }else if(rep_num>0){
-        static const char REPRECTemplate[]="[!%s%%s!][!@REPMAC:%ld:%s%%s!]";
+        static const char REPRECTemplate[]="%%s[!%s%%s!]%%s[!@REPMAC:%ld:%%s:%%s:%s%%s!]";
         static const size_t PLongIntDigitMax=19,REPRECTemplateNoneLen=sizeof(REPRECTemplate)-7-1;//-7 to exclude %s and %ld and -1 for '\0'
         char* new_output;
-        new_output=malloc(sizeof(char)*(REPRECTemplateNoneLen+PLongIntDigitMax+strlen(str_arr[1])*2+1));
+        new_output=malloc(sizeof(char)*(REPRECTemplateNoneLen+PLongIntDigitMax+strlen(str_arr[3])*2+1));
         EXIT_IF_NULL(new_output,char*);
-        const int realloc_len=sprintf(new_output,REPRECTemplate,str_arr[1],rep_num-1,str_arr[1]);
+        const int realloc_len=sprintf(new_output,REPRECTemplate,str_arr[3],rep_num-1,str_arr[3]);
         new_output=realloc(new_output,sizeof(char)*(realloc_len+1));//+1 because sprintf doesn't include the '\0'
         EXIT_IF_NULL(new_output,char*);
         char* args=calloc(1,sizeof(char));
-        for(int i=2;i<num_args;i++){//Replace the %%s with the arguments of the second macro.
+        for(int i=4;i<num_args;i++){//Replace the %%s with the arguments of the second macro.
             const size_t args_old_strlen=strlen(args);
             args=realloc(args,sizeof(char)*(args_old_strlen+strlen(str_arr[i])+2));//+2 for ':' and '\0' at end.
             EXIT_IF_NULL(args,char*);
             args[args_old_strlen]=':';
             strcpy(args+args_old_strlen+1,str_arr[i]);
         }
-        *output=malloc(sizeof(char)*(realloc_len-4+strlen(args)*2+1));//-4 for 2 %%s converted to %s.
+        *output=malloc(sizeof(char)*(realloc_len-12+strlen(args)*2+strlen(str_arr[1])*2+strlen(str_arr[2])*2+1));//-12 for 6 %%s converted to %s.
         EXIT_IF_NULL(*output,char*);
-        sprintf(*output,new_output,args,args);
+        sprintf(*output,new_output,str_arr[1],args,str_arr[2],str_arr[1],str_arr[2],args);
         free(args);
         free(new_output);
     }else{
