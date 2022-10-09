@@ -347,7 +347,7 @@ bool ts_macro_paster_expand_macros(ts_macro_paster_t* this,bool only_reserved,co
     strcpy(cmd_str,begin_cmd_p);
     size_t expansion_count=0;
     do{
-        if(expansion_count>5000){
+        if(expansion_count>100000){
             fprintf(stderr,ERR("Error: Possibly recursive macro in code. Ended recursion.\n"));
             _write_to_macro_output(cmd_str);
             free(cmd_str);
@@ -419,15 +419,14 @@ bool ts_macro_paster_expand_macros(ts_macro_paster_t* this,bool only_reserved,co
         if(!is_reserved){
             char* macro_val;
             ts_macro_paster_get_val_string(this,macro_name_str,var_sep,&macro_val);
-            trim_whitespace(&macro_val);
             replace_str_at(&cmd_str,macro_w_br,macro_val,begin_m_p,end_m_p);
             free(macro_val);
         }else{
             char* output;
             if(R_TS_Macro_GetString(rmacro_arr,macro_name_str,&output,var_i)){
-                trim_whitespace(&output);
                 replace_str_at(&cmd_str,macro_w_br,output,begin_m_p,end_m_p);
             }else{
+                _write_to_macro_output(cmd_str);
                 free(macro_name_str); free(macro_w_br); free(macro_n_br); free(cmd_str);
                 for(int i=0;i<var_i;i++) free(rmacro_arr[i]);
                 free(rmacro_arr);

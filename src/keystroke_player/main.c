@@ -445,6 +445,7 @@ ProgramStatus parse_file(const char* path, xdo_t* xdo_obj, Config config, bool a
     fclose(f_obj);
     trim_comments(&file_str);//So that the program doesn't process commented macros.
     ts_macro_paster_t* mp=ts_macro_paster_new();
+    R_TS_Macro_ResetState();
     MacroProcessStatus mps=file_contains_any_macros(file_str,MACROS_DEF_START_B,MACROS_DEF_END_B,MACRO_START_B);
     char* cmd_output;
     if(mps==MPS_NoMacros){

@@ -402,10 +402,10 @@ These are macros that have `@` affixed to them similar to RPN Reserved Variables
 
 Here are the Current Reserved Macros and their specified arguments.
 
-`[!@REP:str:num!]` - Repeat string macro
+`[!@REP:n:str!]` - Repeat string macro
 
     Macro that copies the `str` argument
-    by number of `num` times. `num` must be
+    by number of `n` times. `n` must be
     an integer greater than 0.
     Example: "[!@REP:pass;:5!]" outputs "pass;pass;pass;pass;pass;"
 
@@ -415,9 +415,28 @@ Here are the Current Reserved Macros and their specified arguments.
     the string `str` to the string arguments `arg1` to `argn`. For example:
     [!@FOREACH:rep:replaced,:A1:B23:C456!] outputs "A1laced,B23laced,C456laced,"
 
-`[!@C!]` - Colon macro
+`[!@ENUM:lhs_str:rhs_str!]` - Enumeration macro
 
-    Outputs ':', used inside macros since using ':' normally parses as the next argument inside a macro.
+`[!@ENUMREV:lhs_str:rhs_str!]` - Reverse enumeration macro
+
+`[!@ENUM_K:lhs_str:rhs_str!]` - Enumeration macro (keep enumeration)
+
+`[!@ENUM_S:num!]` - Set enumeration macro
+
+    These simply add/subtract 1 to a number and
+    outputs the `lhs_str` and `rhs_str` strings to that number.
+    `lhs_str` and `rhs_str` can be empty. The number is
+    changed each call if not using @ENUM_K. Enumeration is by default 0.
+    Example: [!@ENUM:A:B!] outputs "A0B". Calling [!@ENUM:C:D!] outputs "C1D".
+    Calling [!@ENUM_K::!] outputs "1". Calling [!@ENUMREV:EF:!] outputs "EF0".
+    To set the enumeration number, use @ENUM_S.
+
+`[!@REPMAC:n:MACRO:marg1:marg2:...:margn!]` - Repeat macro command
+
+    Because innermost macros from left to right are expanded first, this macro
+    can copy and paste the `@ENUM` macros and their variants. Similar
+    to `@REP`. But n must be 0 or greater. Will output "[!MACRO:marg1:...:margn!]"
+    number of n times.
 
 # Build
 source tasks.conf (In project folder)

@@ -18,6 +18,7 @@ bool R_TS_Macro_IsReserved(const char* str_name);
 void R_TS_Macro_ResetState();
 bool R_TS_Macro_GetString(char** arg_arr,const char* str_name,char** output,int num_args);
 void R_TS_Macro_Free();
+bool rtsfm_repeat_string_recursive(char** output,char** str_arr,int num_args);
 #endif
 
 
