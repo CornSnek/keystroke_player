@@ -282,18 +282,15 @@ bool ts_macro_paster_process_macros(ts_macro_paster_t* this,const char* file_str
             if(macro_vars_str[i]==var_sep||macro_vars_str[i]=='\0'){
                 char* str=calloc(1,sizeof(char)*(str_len+1));
                 EXIT_IF_NULL(str,char*);
-                bool success;
                 strncpy(str,macro_vars_p,str_len);
                 if(macro_name_set){
-                    success=ts_macro_paster_add_var(this,macro_name_str,str);
-                    if(!success){
+                    if(!ts_macro_paster_add_var(this,macro_name_str,str)){
                         free(macro_vars_str); free(macro_name_str); free(str); free(def_str); free(macros_def);
                         return false;
                     }
                     free(str);
                 }else{
-                    success=ts_macro_paster_add_name(this,str);
-                    if(!success){
+                    if(!ts_macro_paster_add_name(this,str)){
                         free(macro_vars_str); free(str); free(def_str); free(macros_def);
                         return false;
                     }
@@ -372,11 +369,37 @@ bool ts_macro_paster_expand_macros(ts_macro_paster_t* this,bool only_reserved,co
         bool is_reserved=false;
         char** rmacro_arr=0;
         for(size_t parse_i=0;parse_i<=parse_len;parse_i++){
-            if(macro_n_br[parse_i]==var_sep||macro_n_br[parse_i]=='\0'){
+            bool parse_done;
+            if(parse_i) parse_done=(macro_n_br[parse_i]==var_sep&&macro_n_br[parse_i-1]!='\\')||macro_n_br[parse_i]=='\0'; //Escape the ':' with "\:"
+            else parse_done=macro_n_br[parse_i]==var_sep||macro_n_br[parse_i]=='\0';
+            if(parse_done){
                 char* str=calloc(1,sizeof(char)*(str_len+1));
                 EXIT_IF_NULL(str,char*);
                 strncpy(str,macro_vars_p,str_len);
+                char* old_str=str;//Save the original position of str for realloc.
                 if(macro_name_set){
+                    char* str_no_esc=malloc(sizeof(char)*(strlen(old_str)+1));
+                    EXIT_IF_NULL(str_no_esc,char*);
+                    int esc_count=0,str_no_esc_i=0;
+                    while(*str!='\0'&&*str!=':'){
+                        if(*str=='\\'){
+                            esc_count++;
+                            if(*(++str)=='\0'){
+                                fprintf(stderr,ERR("'\\' found at end of macro.\n"));
+                                _write_to_macro_output(cmd_str);
+                                free(old_str); free(str_no_esc); free(macro_name_str); free(macro_w_br); free(macro_n_br); free(cmd_str);
+                                for(int i=0;i<var_i;i++) free(rmacro_arr[i]);
+                                free(rmacro_arr);
+                                return false;
+                            }
+                        }
+                        str_no_esc[str_no_esc_i++]=*(str++);
+                    }
+                    str_no_esc[str_no_esc_i]='\0';
+                    str_no_esc=realloc(str_no_esc,sizeof(char)*(strlen(old_str)-esc_count+1));
+                    EXIT_IF_NULL(str_no_esc,char*);
+                    free(old_str);
+                    str=str_no_esc;
                     if(!is_reserved){
                         if(!ts_macro_paster_write_var_by_ind(this,macro_name_str,var_i,str)){ //Out of range.
                             _write_to_macro_output(cmd_str);

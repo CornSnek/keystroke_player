@@ -362,17 +362,18 @@ The following commands mentioned in header Script Commands and Queries also supp
     #Move right by 10 pixels and up/down depending on move_y.
 
 # Text Substitution Macros and Macro Expansion
-You can add text-substitution macros in the scripts. They are basically used to copy and paste code like in C. To make macros, they must be within these brackets `[!! !!]` at the start of the file. Each macro definition must be within `[! !]` and have a definition separator `:=`. It is of the format `[!MACRO_NAME:Var1:Var2:Var3:...:= (Macro Definition) !]`. Note that the macro definition can have whitespace, but it will be trimmed within the macro definition. To get the variable names for the macro definition so the macro call can substitute them, use `:(variable_name)` To call a macro in the code, just call it with the macro name and its arguments (if any). Example: The macro call `[!MACRO_CALL:abc:def:ghi!]`, where `[!MACRO_CALL:v1:v2:v3:= :v1+:v2*:v3 !]` is the definition of the macro becomes `abc+def*ghi`.
+You can add text-substitution macros in the scripts. They are basically used to copy and paste code like in C. To make macros, they must be within these brackets `[!! !!]` at the start of the file. Each macro definition must be within `[! !]` and have a definition separator `:=`. It is of the format `[!MACRO_NAME:Var1:Var2:Var3:...:= (Macro Definition) !]`. To get the variable names for the macro definition so the macro call can substitute them, use `:(variable_name)` To call a macro in the code, just call it with the macro name and its arguments (if any). Example: The macro call `[!MACRO_CALL:abc:def:ghi!]`, where `[!MACRO_CALL:v1:v2:v3:= :v1+:v2*:v3 !]` is the definition of the macro becomes `abc+def*ghi`.
 
-Macro Definition syntax
+Text Substitution Macro Definition syntax
     
     \[![a-zA-Z0-9_]+(:[a-zA-Z0-9_])*:=[^!\]*]!\]
     where :[a-zA-Z0-9_]+ is to use a variable name in the r.h.s. of the macro definition.
-    Whitespace can be used on the r.h.s. after := only.
 
-Macro Call syntax
+Text Substitution Macro Call syntax
 
     \[![a-zA-Z0-9_]+(:[a-zA-Z0-9_])*!\], where the (:[a-zA-Z0-9_])* are the variable names used within the macro (if any).
+    Backslash '\' can be used to escape characters such as \:, \!, \[ and \] to parse
+    them into single characters :,!,[, and ].
 
 Here is an example in example_scripts/macro_test.kps.
 
