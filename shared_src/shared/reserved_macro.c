@@ -134,7 +134,7 @@ void R_TS_Macro_Init(){
         R_TS_MacroFunctions=StringMap_r_ts_macro_new(18);
         ValueAssignE status;
         bool is_ph=true;
-#define SMVA_DEBUG 1
+#define SMVA_DEBUG 0
 #if SMVA_DEBUG==1
     #define SMVA(Str,Function,Args)\
     status=StringMap_r_ts_macro_assign_ph(R_TS_MacroFunctions,Str,(r_ts_macro_t){.parse_f=Function,.num_args=Args});\

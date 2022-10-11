@@ -849,7 +849,7 @@ bool macro_buffer_process_next(macro_buffer_t* this,bool print_debug,bool rpn_de
                 DO_ERROR();
                 break;
             case RS_Query:
-                if(isdigit(current_char)){
+                if(isdigit(current_char)||current_char=='-'){
                     if(query_comb_type!=QCT_NONE){
                         fprintf(stderr,ERR("? queries can only have custom index numbers allowed once at line %lu char %lu state %s.\n"),line_num,char_num,ReadStateStrings[read_state]);
                         DO_ERROR();
@@ -1879,7 +1879,7 @@ bool macro_buffer_process_next(macro_buffer_t* this,bool print_debug,bool rpn_de
     return !this->parse_error;
 }
 #undef DO_ERROR
-void macro_buffer_str_id_check(macro_buffer_t* this,const VariableLoader_t* vl){
+void macro_buffer_extra_checks(macro_buffer_t* this,const VariableLoader_t* vl){
     bool* id_check=calloc(this->rim->size,sizeof(bool));
     EXIT_IF_NULL(id_check,bool*);
     for(int i=0;i<this->rim->size;i++){
@@ -1913,19 +1913,33 @@ void macro_buffer_str_id_check(macro_buffer_t* this,const VariableLoader_t* vl){
     int check_i=this->cmd_arr->size-1;
     const command_t any_cmd=this->cmd_arr->cmds[check_i];
     if(any_cmd.type==CMD_JumpFrom){
-        fprintf(stderr,ERR("JumpFrom found without a command next to it. Error command found at end of file.\n"));
+        char* error_cmd=char_string_slice(any_cmd.start_cmd_p,any_cmd.end_cmd_p);
+        fprintf(stderr,ERR("JumpFrom found without a command next to it for command '%s'.\n"),error_cmd);
         this->parse_error=true;
+        free(error_cmd);
     }
     if(any_cmd.type==CMD_JumpTo&&any_cmd.cmd_u.jump_to.store_index){
-        fprintf(stderr,ERR("JumpTo with store_index enabled found without a command next to it. Error command found at end of file.\n"));
+        char* error_cmd=char_string_slice(any_cmd.start_cmd_p,any_cmd.end_cmd_p);
+        fprintf(stderr,ERR("JumpTo with store_index enabled found without a command next to it for command '%s'.\n"),error_cmd);
         this->parse_error=true;
+        free(error_cmd);
     }
-    if(this->cmd_arr->cmds[check_i--].subtype==CMDST_Query){//Check twice.
-        fprintf(stderr,ERR("Queries should have at least 2 commands next to it. Error command found at end of file.\n"));
-        this->parse_error=true;
-    }else if(check_i>0&&this->cmd_arr->cmds[check_i].subtype==CMDST_Query){
-        fprintf(stderr,ERR("Queries should have at least 2 commands next to it. Error command found at end of file.\n"));
-        this->parse_error=true;
+    for(int i=0;i<this->cmd_arr->size;i++){
+        const command_t this_cmd=this->cmd_arr->cmds[i];
+        if(this_cmd.subtype==CMDST_Query){
+            if(i+this_cmd.query_details.jump_e>=this->cmd_arr->size||i+this_cmd.query_details.jump_e<0){
+                char* error_cmd=char_string_slice(this_cmd.start_cmd_p,this_cmd.end_cmd_p);
+                fprintf(stderr,ERR("Query index (Jump if equal) out of bounds for command '%s'.\n"),error_cmd);
+                this->parse_error=true;
+                free(error_cmd);
+            }
+            if(i+this_cmd.query_details.jump_ne>=this->cmd_arr->size||i+this_cmd.query_details.jump_ne<0){
+                char* error_cmd=char_string_slice(this_cmd.start_cmd_p,this_cmd.end_cmd_p);
+                fprintf(stderr,ERR("Query index (Jump if not equal) out of bounds for command '%s'.\n"),error_cmd);
+                this->parse_error=true;
+                free(error_cmd);
+            }
+        }
     }
     //TODO: Check Queries for custom indices when out of bounds.
     for(int rpn_i=0;rpn_i<vl->ssm->count;rpn_i++){

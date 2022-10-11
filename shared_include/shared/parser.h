@@ -275,7 +275,7 @@ typedef struct vp_array_s{//Container to free any pointer types when vp_array_fr
 }vp_array_t;
 macro_buffer_t* macro_buffer_new(char* str_owned, command_array_t* cmd_arr);
 bool macro_buffer_process_next(macro_buffer_t* this,bool print_debug,bool rpn_debug);
-void macro_buffer_str_id_check(macro_buffer_t* this,const VariableLoader_t* vl);
+void macro_buffer_extra_checks(macro_buffer_t* this,const VariableLoader_t* vl);
 void macro_buffer_free(macro_buffer_t* this);
 repeat_id_manager_t* repeat_id_manager_new(void);
 void repeat_id_manager_add_name(repeat_id_manager_t* this, char* str_owned, int index);

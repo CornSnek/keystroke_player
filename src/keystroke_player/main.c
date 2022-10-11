@@ -483,7 +483,7 @@ ProgramStatus parse_file(const char* path, xdo_t* xdo_obj, Config config, bool a
     }
     if(!mb->parse_error){
         if(config.debug_print_type==DBP_AllCommands) command_array_print(cmd_arr,mb->vl,config.rpn_decimals); //Always print if no read errors after processing all commands.
-        macro_buffer_str_id_check(mb,mb->vl);
+        macro_buffer_extra_checks(mb,mb->vl);
     }
     if(!mb->parse_error&&and_run){
         bool run_success=run_program(cmd_arr,cmd_output,config,xdo_obj,mb->vl);
