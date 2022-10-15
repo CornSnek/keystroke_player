@@ -1156,22 +1156,29 @@ bool macro_buffer_process_next(macro_buffer_t* this,bool print_debug,bool rpn_de
                     EXIT_IF_NULL(str_name,char*);
                     strncpy(str_name,this->contents+this->token_i+read_i,read_offset_i);
                     str_name[read_offset_i]='\0';
+                    char* strtok_str=malloc(sizeof(char)*(read_offset_i+1));
+                    EXIT_IF_NULL(strtok_str,char*);
+                    strcpy(strtok_str,str_name);
                     KeySym keysym=NoSymbol;
                     unsigned int modifier=0;
-                    char* token_str=strtok(str_name,"+");
+                    char* token_str=strtok(strtok_str,"+");
                     while(token_str){
                         bool is_modifier=false;
                         if(!strcmp(token_str,"Escape")){
                             fprintf(stderr,ERR("Key 'Escape' cannot be used, because it is used to quit the macro.\n"));
+                            free(str_name);
+                            free(strtok_str);
                             DO_ERROR();
-                            break;
+                            goto qkp_break;//Break out of token_str loop and not add any commands.
                         }
                         KeySym _keysym=XStringToKeysym(token_str);
                         if(_keysym){
                             if(keysym){
                                 fprintf(stderr,ERR("Second key disallowed. Can only add modifiers 'alt', 'ctrl', 'shift', and 'super' for one key.\n"));
+                                free(str_name);
+                                free(strtok_str);
                                 DO_ERROR();
-                                break;
+                                goto qkp_break;
                             }
                             keysym=_keysym;
                         }
@@ -1184,11 +1191,14 @@ bool macro_buffer_process_next(macro_buffer_t* this,bool print_debug,bool rpn_de
                         }
                         if(!_keysym&&!is_modifier){
                             fprintf(stderr,ERR("Key '%s' is not a valid KeySym name or is not an 'alt', 'ctrl', 'shift', or 'super' modifier.\n"),token_str);
+                            free(str_name);
+                            free(strtok_str);
                             DO_ERROR();
-                            break;
+                            goto qkp_break;
                         }
                         token_str=strtok(0,"+");
                     }
+                    free(strtok_str);
                     if(keysym){
                         command_array_add(this->cmd_arr,
                             (command_t){.type=CMD_QueryKeyPress,.subtype=CMDST_Query,.print_cmd=print_cmd,
@@ -1213,6 +1223,8 @@ bool macro_buffer_process_next(macro_buffer_t* this,bool print_debug,bool rpn_de
                         DO_ERROR();
                         break;
                     }
+                    qkp_break:
+                    break;
                 }
                 fprintf(stderr,ERR("Unexpected character '%c' at line %lu char %lu state %s.\n"),current_char,line_num,char_num,ReadStateStrings[read_state]);
                 DO_ERROR();
@@ -1519,22 +1531,29 @@ bool macro_buffer_process_next(macro_buffer_t* this,bool print_debug,bool rpn_de
                     EXIT_IF_NULL(str_name,char*);
                     strncpy(str_name,this->contents+this->token_i+read_i,read_offset_i);
                     str_name[read_offset_i]='\0';
+                    char* strtok_str=malloc(sizeof(char)*(read_offset_i+1));
+                    EXIT_IF_NULL(strtok_str,char*);
+                    strcpy(strtok_str,str_name);
                     KeySym keysym=NoSymbol;
-                    unsigned int modifier=None;
-                    char* token_str=strtok(str_name,"+");
+                    unsigned int modifier=0;
+                    char* token_str=strtok(strtok_str,"+");
                     while(token_str){
                         bool is_modifier=false;
                         if(!strcmp(token_str,"Escape")){
                             fprintf(stderr,ERR("Key 'Escape' cannot be used, because it is used to quit the macro.\n"));
+                            free(str_name);
+                            free(strtok_str);
                             DO_ERROR();
-                            break;
+                            goto wuk_break;//Break out of token_str loop and not add any commands.
                         }
                         KeySym _keysym=XStringToKeysym(token_str);
                         if(_keysym){
                             if(keysym){
                                 fprintf(stderr,ERR("Second key disallowed. Can only add modifiers 'alt', 'ctrl', 'shift', and 'super' for one key.\n"));
+                                free(str_name);
+                                free(strtok_str);
                                 DO_ERROR();
-                                break;
+                                goto wuk_break;
                             }
                             keysym=_keysym;
                         }
@@ -1547,11 +1566,14 @@ bool macro_buffer_process_next(macro_buffer_t* this,bool print_debug,bool rpn_de
                         }
                         if(!_keysym&&!is_modifier){
                             fprintf(stderr,ERR("Key '%s' is not a valid KeySym name or is not an 'alt', 'ctrl', 'shift', or 'super' modifier.\n"),token_str);
+                            free(str_name);
+                            free(strtok_str);
                             DO_ERROR();
-                            break;
+                            goto wuk_break;
                         }
                         token_str=strtok(0,"+");
                     }
+                    free(strtok_str);
                     if(keysym){
                         command_array_add(this->cmd_arr,
                             (command_t){.type=CMD_WaitUntilKey,.subtype=CMDST_Command,.print_cmd=print_cmd,
@@ -1571,6 +1593,8 @@ bool macro_buffer_process_next(macro_buffer_t* this,bool print_debug,bool rpn_de
                         DO_ERROR();
                         break;
                     }
+                    wuk_break:
+                    break;
                 }
                 fprintf(stderr,ERR("Invalid variable character '%c' at line %lu char %lu state %s.\n"),current_char,line_num,char_num,ReadStateStrings[read_state]);
                 DO_ERROR();
@@ -1611,22 +1635,29 @@ bool macro_buffer_process_next(macro_buffer_t* this,bool print_debug,bool rpn_de
                     EXIT_IF_NULL(str_name,char*);
                     strncpy(str_name,this->contents+this->token_i+read_i,read_offset_i);
                     str_name[read_offset_i]='\0';
+                    char* strtok_str=malloc(sizeof(char)*(read_offset_i+1));
+                    EXIT_IF_NULL(strtok_str,char*);
+                    strcpy(strtok_str,str_name);
                     KeySym keysym=NoSymbol;
-                    unsigned int modifier=None;
-                    char* token_str=strtok(str_name,"+");
+                    unsigned int modifier=0;
+                    char* token_str=strtok(strtok_str,"+");
                     while(token_str){
                         bool is_modifier=false;
                         if(!strcmp(token_str,"Escape")){
                             fprintf(stderr,ERR("Key 'Escape' cannot be used, because it is used to quit the macro.\n"));
+                            free(str_name);
+                            free(strtok_str);
                             DO_ERROR();
-                            break;
+                            goto gk_break;//Break out of token_str loop and not add any commands.
                         }
                         KeySym _keysym=XStringToKeysym(token_str);
                         if(_keysym){
                             if(keysym){
                                 fprintf(stderr,ERR("Second key disallowed. Can only add modifiers 'alt', 'ctrl', 'shift', and 'super' for one key.\n"));
+                                free(str_name);
+                                free(strtok_str);
                                 DO_ERROR();
-                                break;
+                                goto gk_break;
                             }
                             keysym=_keysym;
                         }
@@ -1639,11 +1670,14 @@ bool macro_buffer_process_next(macro_buffer_t* this,bool print_debug,bool rpn_de
                         }
                         if(!_keysym&&!is_modifier){
                             fprintf(stderr,ERR("Key '%s' is not a valid KeySym name or is not an 'alt', 'ctrl', 'shift', or 'super' modifier.\n"),token_str);
+                            free(str_name);
+                            free(strtok_str);
                             DO_ERROR();
-                            break;
+                            goto gk_break;
                         }
                         token_str=strtok(0,"+");
                     }
+                    free(strtok_str);
                     if(keysym){
                         command_array_add(this->cmd_arr,
                             (command_t){.type=CMD_GrabKey,.subtype=CMDST_Command,.print_cmd=print_cmd,
@@ -1662,6 +1696,8 @@ bool macro_buffer_process_next(macro_buffer_t* this,bool print_debug,bool rpn_de
                         DO_ERROR();
                         break;
                     }
+                    gk_break:
+                    break;
                 }
                 fprintf(stderr,ERR("Invalid variable character '%c' at line %lu char %lu state %s.\n"),current_char,line_num,char_num,ReadStateStrings[read_state]);
                 DO_ERROR();
@@ -1673,22 +1709,29 @@ bool macro_buffer_process_next(macro_buffer_t* this,bool print_debug,bool rpn_de
                     EXIT_IF_NULL(str_name,char*);
                     strncpy(str_name,this->contents+this->token_i+read_i,read_offset_i);
                     str_name[read_offset_i]='\0';
+                    char* strtok_str=malloc(sizeof(char)*(read_offset_i+1));
+                    EXIT_IF_NULL(strtok_str,char*);
+                    strcpy(strtok_str,str_name);
                     KeySym keysym=NoSymbol;
-                    unsigned int modifier=None;
-                    char* token_str=strtok(str_name,"+");
+                    unsigned int modifier=0;
+                    char* token_str=strtok(strtok_str,"+");
                     while(token_str){
                         bool is_modifier=false;
                         if(!strcmp(token_str,"Escape")){
                             fprintf(stderr,ERR("Key 'Escape' cannot be used, because it is used to quit the macro.\n"));
+                            free(str_name);
+                            free(strtok_str);
                             DO_ERROR();
-                            break;
+                            goto uk_break;//Break out of token_str loop and not add any commands.
                         }
                         KeySym _keysym=XStringToKeysym(token_str);
                         if(_keysym){
                             if(keysym){
                                 fprintf(stderr,ERR("Second key disallowed. Can only add modifiers 'alt', 'ctrl', 'shift', and 'super' for one key.\n"));
+                                free(str_name);
+                                free(strtok_str);
                                 DO_ERROR();
-                                break;
+                                goto uk_break;
                             }
                             keysym=_keysym;
                         }
@@ -1701,11 +1744,14 @@ bool macro_buffer_process_next(macro_buffer_t* this,bool print_debug,bool rpn_de
                         }
                         if(!_keysym&&!is_modifier){
                             fprintf(stderr,ERR("Key '%s' is not a valid KeySym name or is not an 'alt', 'ctrl', 'shift', or 'super' modifier.\n"),token_str);
+                            free(str_name);
+                            free(strtok_str);
                             DO_ERROR();
-                            break;
+                            goto uk_break;
                         }
                         token_str=strtok(0,"+");
                     }
+                    free(strtok_str);
                     if(keysym){
                         command_array_add(this->cmd_arr,
                             (command_t){.type=CMD_UngrabKey,.subtype=CMDST_Command,.print_cmd=print_cmd,
@@ -1724,6 +1770,8 @@ bool macro_buffer_process_next(macro_buffer_t* this,bool print_debug,bool rpn_de
                         DO_ERROR();
                         break;
                     }
+                    uk_break:
+                    break;
                 }
                 fprintf(stderr,ERR("Invalid variable character '%c' at line %lu char %lu state %s.\n"),current_char,line_num,char_num,ReadStateStrings[read_state]);
                 DO_ERROR();

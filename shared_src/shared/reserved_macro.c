@@ -7,6 +7,7 @@ StringMap_r_ts_macro_t* R_TS_MacroFunctions=0;
 long EnumValue=0;
 static inline char* str_dup(const char* str){
     char* this=malloc(sizeof(char)*(strlen(str)+1));
+    EXIT_IF_NULL(this,char*);
     strcpy(this,str);
     return this;
 }
