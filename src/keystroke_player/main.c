@@ -58,19 +58,7 @@ typedef struct ms_cont{
 int main(void){
     if(access(CONFIG_FILE_F,F_OK)) if(!write_to_config(InitConfig)) return EXIT_FAILURE;
     xdo_t* xdo_obj=xdo_new(NULL);
-#if 0
-    XModifierKeymap* xmkm=XGetModifierMapping(xdo_obj->xdpy);
-    KeyCode(*xmkm_kcm)[xmkm->max_keypermod]=(KeyCode(*)[xmkm->max_keypermod])xmkm->modifiermap;
-    const char* mod_names[8]={"shift","lock","control","mod1","mod2","mod3","mod4","mod5"};
-    for(int mod_i=0;mod_i<8;mod_i++){
-        printf("Mod: %-8s [",mod_names[mod_i]);
-        for(int k=0;k<xmkm->max_keypermod;k++){
-            printf("0x%02x%s",xmkm_kcm[mod_i][k],k!=xmkm->max_keypermod-1?" ":"");
-        }
-        puts("]");
-    }
-    XFreeModifiermap(xmkm);
-#endif
+    KeystrokeGrabModifierSet(xdo_obj->xdpy);
     char* file_name_str=0;
     Config config;
     char input_str[INPUT_BUFFER_LEN+1];

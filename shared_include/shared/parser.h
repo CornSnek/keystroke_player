@@ -174,11 +174,6 @@ typedef enum _DebugConfigType{
     DCT_RPNStackDebug
 }DebugConfigType;
 extern const char* DebugConfigTypeString[3];
-typedef struct keystroke_mod_s{
-    const char* name;
-    unsigned int modifier;
-}keystroke_mod_t;
-extern const keystroke_mod_t KeystrokeGrabModifier[4];
 typedef struct debug_config_s{
     DebugConfigType type;
     long value;
@@ -279,6 +274,7 @@ typedef struct vp_array_s{//Container to free any pointer types when vp_array_fr
     void** vp_arr;
     int size;
 }vp_array_t;
+void KeystrokeGrabModifierSet(Display* xdpy);
 macro_buffer_t* macro_buffer_new(char* str_owned, command_array_t* cmd_arr);
 bool macro_buffer_process_next(macro_buffer_t* this,bool print_debug,bool rpn_debug);
 void macro_buffer_extra_checks(macro_buffer_t* this,const VariableLoader_t* vl);

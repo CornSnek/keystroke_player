@@ -4,20 +4,77 @@
 #include "rpn_evaluator.h"
 #include <string.h>
 #include <ctype.h>
+#include <X11/Xutil.h>
 __ReadStateWithStringDef(__ReadStateEnums)
 const char* DebugConfigTypeString[3]={
     "debug_print_type",
     "rpn_decimals",
     "rpn_stack_debug"
 };
-const keystroke_mod_t KeystrokeGrabModifier[4]={
-    {.name="alt",.modifier=Mod1Mask},
-    {.name="ctrl",.modifier=ControlMask},
-    {.name="shift",.modifier=ShiftMask},
-    {.name="super",.modifier=Mod4Mask}
-};
 const int IndexNotFound=-1;
 const int JumpFromNotConnected=-2;
+typedef struct KeystrokeGrabtoMask_s{
+    const char* name;
+    unsigned int mask;
+}KeystrokeGrabtoMask_t;
+KeystrokeGrabtoMask_t KsGtM[8]={
+    {"shift",ShiftMask},
+    {"Shift",ShiftMask},
+    {"ctrl",ControlMask},
+    {"Ctrl",ControlMask},
+    {"alt",None},//Initialized in KeystrokeGrabModifierSet. Masks may be different.
+    {"Alt",None},
+    {"super",None},
+    {"Super",None}
+};
+void KeystrokeGrabModifierSet(Display* xdpy){
+    XModifierKeymap* xmkm=XGetModifierMapping(xdpy);
+    KeyCode(*xmkm_kcm)[xmkm->max_keypermod]=(KeyCode(*)[xmkm->max_keypermod])xmkm->modifiermap;//Each modifier has 'max_keypermod' number of keys.
+#define STRANDENUM(enum) {#enum,enum}
+    static const struct {const char* name; unsigned int mask;} mod_km[8]={
+        STRANDENUM(ShiftMask),
+        STRANDENUM(LockMask),
+        STRANDENUM(ControlMask),
+        STRANDENUM(Mod1Mask),
+        STRANDENUM(Mod2Mask),
+        STRANDENUM(Mod3Mask),
+        STRANDENUM(Mod4Mask),
+        STRANDENUM(Mod5Mask)
+    };
+#undef STRANDENUM
+#if 0
+    for(int mod_i=0;mod_i<8;mod_i++){
+        printf("Mod: %-11s Mask: 0x%02x [",mod_km[mod_i].name,mod_km[mod_i].mask);
+        for(int k=0;k<xmkm->max_keypermod;k++)
+            printf("0x%02x%s",xmkm_kcm[mod_i][k],k!=xmkm->max_keypermod-1?",":"");
+        puts("]");
+    }
+#endif
+    KeyCode search_kc=XKeysymToKeycode(xdpy,XK_Alt_R);
+    for(int mod_i=0;mod_i<8;mod_i++){
+        for(int k=0;k<xmkm->max_keypermod;k++){
+            if(xmkm_kcm[mod_i][k]==search_kc){
+                KsGtM[4].mask=KsGtM[5].mask=mod_km[mod_i].mask;
+                break;
+            }
+        }
+    }
+    search_kc=XKeysymToKeycode(xdpy,XK_Super_R);
+    for(int mod_i=0;mod_i<8;mod_i++){
+        for(int k=0;k<xmkm->max_keypermod;k++){
+            if(xmkm_kcm[mod_i][k]==search_kc){
+                KsGtM[6].mask=KsGtM[7].mask=mod_km[mod_i].mask;
+                break;
+            }
+        }
+    }
+#if 0
+    for(int i=0;i<8;i++){
+        printf("%s 0x%02x\n",KsGtM[i].name,KsGtM[i].mask);
+    }
+#endif
+    XFreeModifiermap(xmkm);
+}
 macro_buffer_t* macro_buffer_new(char* str_owned, command_array_t* cmd_arr){
     macro_buffer_t* this=(malloc(sizeof(macro_buffer_t)));
     EXIT_IF_NULL(this,macro_buffer_t);
@@ -1174,7 +1231,7 @@ bool macro_buffer_process_next(macro_buffer_t* this,bool print_debug,bool rpn_de
                         KeySym _keysym=XStringToKeysym(token_str);
                         if(_keysym){
                             if(keysym){
-                                fprintf(stderr,ERR("Second key disallowed. Can only add modifiers 'alt', 'ctrl', 'shift', and 'super' for one key.\n"));
+                                fprintf(stderr,ERR("Second key disallowed. Can only add modifiers 'A/alt', 'C/ctrl', 'S/shift', and 'S/super' for one key.\n"));
                                 free(str_name);
                                 free(strtok_str);
                                 DO_ERROR();
@@ -1182,9 +1239,9 @@ bool macro_buffer_process_next(macro_buffer_t* this,bool print_debug,bool rpn_de
                             }
                             keysym=_keysym;
                         }
-                        for(int i=0;i<4;i++){
-                            if(!strcmp(token_str,KeystrokeGrabModifier[i].name)){
-                                modifier|=KeystrokeGrabModifier[i].modifier;
+                        for(int i=0;i<8;i++){
+                            if(!strcmp(token_str,KsGtM[i].name)){
+                                modifier|=KsGtM[i].mask;
                                 is_modifier=true;
                                 break;
                             }
@@ -1549,7 +1606,7 @@ bool macro_buffer_process_next(macro_buffer_t* this,bool print_debug,bool rpn_de
                         KeySym _keysym=XStringToKeysym(token_str);
                         if(_keysym){
                             if(keysym){
-                                fprintf(stderr,ERR("Second key disallowed. Can only add modifiers 'alt', 'ctrl', 'shift', and 'super' for one key.\n"));
+                                fprintf(stderr,ERR("Second key disallowed. Can only add modifiers 'A/alt', 'C/ctrl', 'S/shift', and 'S/super' for one key.\n"));
                                 free(str_name);
                                 free(strtok_str);
                                 DO_ERROR();
@@ -1557,9 +1614,9 @@ bool macro_buffer_process_next(macro_buffer_t* this,bool print_debug,bool rpn_de
                             }
                             keysym=_keysym;
                         }
-                        for(int i=0;i<4;i++){
-                            if(!strcmp(token_str,KeystrokeGrabModifier[i].name)){
-                                modifier|=KeystrokeGrabModifier[i].modifier;
+                        for(int i=0;i<8;i++){
+                            if(!strcmp(token_str,KsGtM[i].name)){
+                                modifier|=KsGtM[i].mask;
                                 is_modifier=true;
                                 break;
                             }
@@ -1653,7 +1710,7 @@ bool macro_buffer_process_next(macro_buffer_t* this,bool print_debug,bool rpn_de
                         KeySym _keysym=XStringToKeysym(token_str);
                         if(_keysym){
                             if(keysym){
-                                fprintf(stderr,ERR("Second key disallowed. Can only add modifiers 'alt', 'ctrl', 'shift', and 'super' for one key.\n"));
+                                fprintf(stderr,ERR("Second key disallowed. Can only add modifiers 'A/alt', 'C/ctrl', 'S/shift', and 'S/super' for one key.\n"));
                                 free(str_name);
                                 free(strtok_str);
                                 DO_ERROR();
@@ -1661,9 +1718,9 @@ bool macro_buffer_process_next(macro_buffer_t* this,bool print_debug,bool rpn_de
                             }
                             keysym=_keysym;
                         }
-                        for(int i=0;i<4;i++){
-                            if(!strcmp(token_str,KeystrokeGrabModifier[i].name)){
-                                modifier|=KeystrokeGrabModifier[i].modifier;
+                        for(int i=0;i<8;i++){
+                            if(!strcmp(token_str,KsGtM[i].name)){
+                                modifier|=KsGtM[i].mask;
                                 is_modifier=true;
                                 break;
                             }
@@ -1735,15 +1792,15 @@ bool macro_buffer_process_next(macro_buffer_t* this,bool print_debug,bool rpn_de
                             }
                             keysym=_keysym;
                         }
-                        for(int i=0;i<4;i++){
-                            if(!strcmp(token_str,KeystrokeGrabModifier[i].name)){
-                                modifier|=KeystrokeGrabModifier[i].modifier;
+                        for(int i=0;i<8;i++){
+                            if(!strcmp(token_str,KsGtM[i].name)){
+                                modifier|=KsGtM[i].mask;
                                 is_modifier=true;
                                 break;
                             }
                         }
                         if(!_keysym&&!is_modifier){
-                            fprintf(stderr,ERR("Key '%s' is not a valid KeySym name or is not an 'alt', 'ctrl', 'shift', or 'super' modifier.\n"),token_str);
+                            fprintf(stderr,ERR("Second key disallowed. Can only add modifiers 'A/alt', 'C/ctrl', 'S/shift', and 'S/super' for one key.\n"));
                             free(str_name);
                             free(strtok_str);
                             DO_ERROR();
