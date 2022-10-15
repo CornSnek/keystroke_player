@@ -98,9 +98,12 @@ WaitUntilKey command = `!?wait_key=[A-Za-z0-9_]+;`
     This command blocks the macro program until the key has been held down.
     This also prevents future key presses from this key to be used normally.
     Appending ! to wait_key inverts so that the program checks if it is not held down.
-    The key is based on the X11 KeySym names. 
+    The key is based on the X11 KeySym names with modifiers separated by '+'
+    Modifiers such as 'alt', 'ctrl', 'shift' and 'super' can be added to a key.
+    Example of valid keys: ctrl+a, ctrl+shift+b, shift+c+alt
+    You can only have one key (Ex: a+b not allowed), but multiple modifers. 
     You cannot use this with GrabKey commands, as the macro will throw a runtime error.
-    You cannot use the key 'escape' as that is the key to quit the macro.
+    You cannot use the key 'Escape' as that is the key to quit the macro.
     Note: This command slows down loops with delays.
     It is advised to use these outside loops.
 
@@ -128,8 +131,11 @@ UngrabKeyAll command = `ungrab_keys;`
     but also prevents future key presses from this key to be used normally.
     To undo this, use the UngrabKey or UngrabKeyAll command.
     This is paired with the QueryKeyPress command. 
-    The key is based on the X11 KeySym names.
-    You cannot use the key 'escape' as that is the key to quit the macro.
+    The key is based on the X11 KeySym names with modifiers separated by '+'
+    Modifiers such as 'alt', 'ctrl', 'shift' and 'super' can be added to a key.
+    Example of valid keys: ctrl+a, ctrl+shift+b, shift+c+alt
+    You can only have one key (Ex: a+b not allowed), but multiple modifers. 
+    You cannot use the key 'Escape' as that is the key to quit the macro.
 
 GrabButton command `grab_button=[1-5];`
 
@@ -229,10 +235,13 @@ QueryRPNEval command = `[\?|&]!?eval=\(RPN\)\?`
 QueryKeyPress command = `[\?|&]!?key_pressed=[A-Za-z0-9_]+\?`
 
     This query checks if a key has been held down.
-    The key is based on the X11 KeySym names.
+    The key is based on the X11 KeySym names with modifiers separated by '+'
+    Modifiers such as 'alt', 'ctrl', 'shift' and 'super' can be added to a key.
+    Example of valid keys: ctrl+a, ctrl+shift+b, shift+c+alt
+    You can only have one key (Ex: a+b not allowed), but multiple modifers. 
     The GrabKey command for the key is required here to function, otherwise the
     command will warn that the key has not been initialized yet.
-    You cannot use the key 'escape' as that is the key to quit the macro.
+    You cannot use the key 'Escape' as that is the key to quit the macro.
 
 QueryButtonPress command = `[\?|&]!?button_pressed=[1-5]\?`
 

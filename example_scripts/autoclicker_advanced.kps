@@ -11,8 +11,8 @@ debug,debug_print_type=0; #Disable any debug printing.
 debug,rpn_stack_debug=0;
 print=This macro can can autoclick the left mouse button up to 10 milliseconds and 1000 milliseconds.
 The autoclicker can also be enabled/disabled at will.
-Press [!EA0!][!K3!]\e[0m/[!EA1!][!K4!]\e[0m to enable/disable autoclick. \
-Hold [!K1!]/[!K2!] to adjust delay. \
+Press [!EA0!][!K3!]\e[0m/[!EA1!][!K4!]\e[0m to enable/disable autoclick.
+Hold [!K1!]/[!K2!] to adjust delay.
 Turn off autoclicker when holding [!K1!]/[!K2!].\n\n\n\n;; #Next println has escape codes that go backwards by 3.
 grab_key=[!K1!];grab_key=[!K2!];grab_key=[!K3!];grab_key=[!K4!];
 (A;

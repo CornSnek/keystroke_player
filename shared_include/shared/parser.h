@@ -155,6 +155,7 @@ typedef struct keystroke_s{
     KeySym keysym;
     const char* key;
     bool invert_press;
+    unsigned int modifier;
 }keystroke_t;
 typedef struct mouse_button_s{
     unsigned int button;
@@ -173,6 +174,11 @@ typedef enum _DebugConfigType{
     DCT_RPNStackDebug
 }DebugConfigType;
 extern const char* DebugConfigTypeString[3];
+typedef struct keystroke_mod_s{
+    const char* name;
+    unsigned int modifier;
+}keystroke_mod_t;
+extern const keystroke_mod_t KeystrokeGrabModifier[4];
 typedef struct debug_config_s{
     DebugConfigType type;
     long value;

@@ -10,6 +10,12 @@ const char* DebugConfigTypeString[3]={
     "rpn_decimals",
     "rpn_stack_debug"
 };
+const keystroke_mod_t KeystrokeGrabModifier[4]={
+    {.name="alt",.modifier=Mod1Mask},
+    {.name="ctrl",.modifier=ControlMask},
+    {.name="shift",.modifier=ShiftMask},
+    {.name="super",.modifier=Mod4Mask}
+};
 const int IndexNotFound=-1;
 const int JumpFromNotConnected=-2;
 macro_buffer_t* macro_buffer_new(char* str_owned, command_array_t* cmd_arr){
@@ -1144,25 +1150,52 @@ bool macro_buffer_process_next(macro_buffer_t* this,bool print_debug,bool rpn_de
                 DO_ERROR();
                 break;
             case RS_QueryKeyPress:
-                if(char_is_key(current_char)) break;
+                if(char_is_key(current_char)||current_char=='+') break;
                 if(current_char=='?'){
                     str_name=malloc(sizeof(char)*(read_offset_i+1));
                     EXIT_IF_NULL(str_name,char*);
                     strncpy(str_name,this->contents+this->token_i+read_i,read_offset_i);
                     str_name[read_offset_i]='\0';
-                    KeySym keysym;
-                    if(!strcmp(str_name,"Escape")){
-                        fprintf(stderr,ERR("Key 'Escape' cannot be used, because it is used to quit the macro.\n"));
-                        free(str_name);
-                        DO_ERROR();
-                        break;
+                    KeySym keysym=NoSymbol;
+                    unsigned int modifier=0;
+                    char* token_str=strtok(str_name,"+");
+                    while(token_str){
+                        bool is_modifier=false;
+                        if(!strcmp(token_str,"Escape")){
+                            fprintf(stderr,ERR("Key 'Escape' cannot be used, because it is used to quit the macro.\n"));
+                            DO_ERROR();
+                            break;
+                        }
+                        KeySym _keysym=XStringToKeysym(token_str);
+                        if(_keysym){
+                            if(keysym){
+                                fprintf(stderr,ERR("Second key disallowed. Can only add modifiers 'alt', 'ctrl', 'shift', and 'super' for one key.\n"));
+                                DO_ERROR();
+                                break;
+                            }
+                            keysym=_keysym;
+                        }
+                        for(int i=0;i<4;i++){
+                            if(!strcmp(token_str,KeystrokeGrabModifier[i].name)){
+                                modifier|=KeystrokeGrabModifier[i].modifier;
+                                is_modifier=true;
+                                break;
+                            }
+                        }
+                        if(!_keysym&&!is_modifier){
+                            fprintf(stderr,ERR("Key '%s' is not a valid KeySym name or is not an 'alt', 'ctrl', 'shift', or 'super' modifier.\n"),token_str);
+                            DO_ERROR();
+                            break;
+                        }
+                        token_str=strtok(0,"+");
                     }
-                    if((keysym=XStringToKeysym(str_name))){
+                    if(keysym){
                         command_array_add(this->cmd_arr,
                             (command_t){.type=CMD_QueryKeyPress,.subtype=CMDST_Query,.print_cmd=print_cmd,
                                 .cmd_u.qkey_pressed=(keystroke_t){
                                     .keysym=keysym,
-                                    .key=str_name
+                                    .key=str_name,
+                                    .modifier=modifier
                                 },
                                 .query_details=(query_details_t){
                                     .invert=invert_b,
@@ -1480,26 +1513,53 @@ bool macro_buffer_process_next(macro_buffer_t* this,bool print_debug,bool rpn_de
                 DO_ERROR();
                 break;
             case RS_WaitUntilKey:
-                if(char_is_key(current_char)) break;
+                if(char_is_key(current_char)||current_char=='+') break;
                 if(current_char==';'){
                     str_name=malloc(sizeof(char)*(read_offset_i+1));
                     EXIT_IF_NULL(str_name,char*);
                     strncpy(str_name,this->contents+this->token_i+read_i,read_offset_i);
                     str_name[read_offset_i]='\0';
-                    KeySym keysym;
-                    if(!strcmp(str_name,"Escape")){
-                        fprintf(stderr,ERR("Key 'Escape' cannot be used, because it is used to quit the macro.\n"));
-                        free(str_name);
-                        DO_ERROR();
-                        break;
+                    KeySym keysym=NoSymbol;
+                    unsigned int modifier=None;
+                    char* token_str=strtok(str_name,"+");
+                    while(token_str){
+                        bool is_modifier=false;
+                        if(!strcmp(token_str,"Escape")){
+                            fprintf(stderr,ERR("Key 'Escape' cannot be used, because it is used to quit the macro.\n"));
+                            DO_ERROR();
+                            break;
+                        }
+                        KeySym _keysym=XStringToKeysym(token_str);
+                        if(_keysym){
+                            if(keysym){
+                                fprintf(stderr,ERR("Second key disallowed. Can only add modifiers 'alt', 'ctrl', 'shift', and 'super' for one key.\n"));
+                                DO_ERROR();
+                                break;
+                            }
+                            keysym=_keysym;
+                        }
+                        for(int i=0;i<4;i++){
+                            if(!strcmp(token_str,KeystrokeGrabModifier[i].name)){
+                                modifier|=KeystrokeGrabModifier[i].modifier;
+                                is_modifier=true;
+                                break;
+                            }
+                        }
+                        if(!_keysym&&!is_modifier){
+                            fprintf(stderr,ERR("Key '%s' is not a valid KeySym name or is not an 'alt', 'ctrl', 'shift', or 'super' modifier.\n"),token_str);
+                            DO_ERROR();
+                            break;
+                        }
+                        token_str=strtok(0,"+");
                     }
-                    if((keysym=XStringToKeysym(str_name))){
+                    if(keysym){
                         command_array_add(this->cmd_arr,
                             (command_t){.type=CMD_WaitUntilKey,.subtype=CMDST_Command,.print_cmd=print_cmd,
                                 .cmd_u.wait_until_key=(keystroke_t){
                                     .keysym=keysym,
                                     .key=str_name,
-                                    .invert_press=invert_b
+                                    .invert_press=invert_b,
+                                    .modifier=modifier
                                 }
                             }
                         );
@@ -1545,25 +1605,52 @@ bool macro_buffer_process_next(macro_buffer_t* this,bool print_debug,bool rpn_de
                 DO_ERROR();
                 break;
             case RS_GrabKey:
-                if(char_is_key(current_char)) break;
+                if(char_is_key(current_char)||current_char=='+') break;
                 if(current_char==';'){
                     str_name=malloc(sizeof(char)*(read_offset_i+1));
                     EXIT_IF_NULL(str_name,char*);
                     strncpy(str_name,this->contents+this->token_i+read_i,read_offset_i);
                     str_name[read_offset_i]='\0';
-                    KeySym keysym;
-                    if(!strcmp(str_name,"Escape")){
-                        fprintf(stderr,ERR("Key 'Escape' cannot be used, because it is used to quit the macro.\n"));
-                        free(str_name);
-                        DO_ERROR();
-                        break;
+                    KeySym keysym=NoSymbol;
+                    unsigned int modifier=None;
+                    char* token_str=strtok(str_name,"+");
+                    while(token_str){
+                        bool is_modifier=false;
+                        if(!strcmp(token_str,"Escape")){
+                            fprintf(stderr,ERR("Key 'Escape' cannot be used, because it is used to quit the macro.\n"));
+                            DO_ERROR();
+                            break;
+                        }
+                        KeySym _keysym=XStringToKeysym(token_str);
+                        if(_keysym){
+                            if(keysym){
+                                fprintf(stderr,ERR("Second key disallowed. Can only add modifiers 'alt', 'ctrl', 'shift', and 'super' for one key.\n"));
+                                DO_ERROR();
+                                break;
+                            }
+                            keysym=_keysym;
+                        }
+                        for(int i=0;i<4;i++){
+                            if(!strcmp(token_str,KeystrokeGrabModifier[i].name)){
+                                modifier|=KeystrokeGrabModifier[i].modifier;
+                                is_modifier=true;
+                                break;
+                            }
+                        }
+                        if(!_keysym&&!is_modifier){
+                            fprintf(stderr,ERR("Key '%s' is not a valid KeySym name or is not an 'alt', 'ctrl', 'shift', or 'super' modifier.\n"),token_str);
+                            DO_ERROR();
+                            break;
+                        }
+                        token_str=strtok(0,"+");
                     }
-                    if((keysym=XStringToKeysym(str_name))){
+                    if(keysym){
                         command_array_add(this->cmd_arr,
                             (command_t){.type=CMD_GrabKey,.subtype=CMDST_Command,.print_cmd=print_cmd,
                                 .cmd_u.grab_key=(keystroke_t){
                                     .keysym=keysym,
-                                    .key=str_name
+                                    .key=str_name,
+                                    .modifier=modifier
                                 }
                             }
                         );
@@ -1580,25 +1667,52 @@ bool macro_buffer_process_next(macro_buffer_t* this,bool print_debug,bool rpn_de
                 DO_ERROR();
                 break;
             case RS_UngrabKey:
-                if(char_is_key(current_char)) break;
+                if(char_is_key(current_char)||current_char=='+') break;
                 if(current_char==';'){
                     str_name=malloc(sizeof(char)*(read_offset_i+1));
                     EXIT_IF_NULL(str_name,char*);
                     strncpy(str_name,this->contents+this->token_i+read_i,read_offset_i);
                     str_name[read_offset_i]='\0';
-                    KeySym keysym;
-                    if(!strcmp(str_name,"Escape")){
-                        fprintf(stderr,ERR("Key 'Escape' cannot be used, because it is used to quit the macro.\n"));
-                        free(str_name);
-                        DO_ERROR();
-                        break;
+                    KeySym keysym=NoSymbol;
+                    unsigned int modifier=None;
+                    char* token_str=strtok(str_name,"+");
+                    while(token_str){
+                        bool is_modifier=false;
+                        if(!strcmp(token_str,"Escape")){
+                            fprintf(stderr,ERR("Key 'Escape' cannot be used, because it is used to quit the macro.\n"));
+                            DO_ERROR();
+                            break;
+                        }
+                        KeySym _keysym=XStringToKeysym(token_str);
+                        if(_keysym){
+                            if(keysym){
+                                fprintf(stderr,ERR("Second key disallowed. Can only add modifiers 'alt', 'ctrl', 'shift', and 'super' for one key.\n"));
+                                DO_ERROR();
+                                break;
+                            }
+                            keysym=_keysym;
+                        }
+                        for(int i=0;i<4;i++){
+                            if(!strcmp(token_str,KeystrokeGrabModifier[i].name)){
+                                modifier|=KeystrokeGrabModifier[i].modifier;
+                                is_modifier=true;
+                                break;
+                            }
+                        }
+                        if(!_keysym&&!is_modifier){
+                            fprintf(stderr,ERR("Key '%s' is not a valid KeySym name or is not an 'alt', 'ctrl', 'shift', or 'super' modifier.\n"),token_str);
+                            DO_ERROR();
+                            break;
+                        }
+                        token_str=strtok(0,"+");
                     }
-                    if((keysym=XStringToKeysym(str_name))){
+                    if(keysym){
                         command_array_add(this->cmd_arr,
                             (command_t){.type=CMD_UngrabKey,.subtype=CMDST_Command,.print_cmd=print_cmd,
                                 .cmd_u.ungrab_key=(keystroke_t){
                                     .keysym=keysym,
-                                    .key=str_name
+                                    .key=str_name,
+                                    .modifier=modifier
                                 }
                             }
                         );
