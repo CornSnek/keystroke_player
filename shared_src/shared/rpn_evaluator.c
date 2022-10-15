@@ -103,10 +103,15 @@ static inline double deg_to_rad(double deg){
 static inline double rad_to_deg(double rad){
     return (rad*180)/__PI;
 }
+double pi_const(){
+    return __PI;
+}
 #define TrigDegWrap(name) double name##d(double deg){return name(deg_to_rad(deg));}
 #define ArcTrigDegWrap(name) double name##d(double v){return rad_to_deg(name(v));}
 TrigDegWrap(sin) TrigDegWrap(cos) TrigDegWrap(tan)
+TrigDegWrap(sinh) TrigDegWrap(cosh) TrigDegWrap(tanh)
 ArcTrigDegWrap(asin) ArcTrigDegWrap(acos) ArcTrigDegWrap(atan)
+ArcTrigDegWrap(asinh) ArcTrigDegWrap(acosh) ArcTrigDegWrap(atanh)
 double random_d(void){return (double)((size_t)random_l()/ULONG_MAX);}
 double castas_d(double num){return num;}
 double ternary_d(bool b,double x,double y){return b?x:y;}
@@ -152,9 +157,9 @@ void RPNEvaluatorInit(void){
             exit(EXIT_FAILURE);
         }
         DefaultRPNFunctionMap=StringMap_rpn_func_call_new(228);
-        //Current size: 167
-        //228 is [[0]=87,[1]=62,[2]=13,[3]=2,[4]=2,[5]=1] with djb hash
-        //210 is [[0]=68,[1]=59,[2]=26,[3]=8,[4]=5,[5]=1]
+        //Current size: 180
+        //228 is [[0]=76,[1]=58,[2]=36,[3]=6,[4]=3,[5]=1] with djb hash
+
 #define SMFA(Str,RFT,RFT_u,F,NumArgs,ReturnType) assert(StringMap_rpn_func_call_assign(DefaultRPNFunctionMap,Str,(rpn_func_call_t){.type=RFT,.func.RFT_u=F,.num_args=NumArgs,.return_type=ReturnType})==VA_Written)
         SMFA("abs",RPNFT_Null,rpn_null,rpn_f_null,0,VLNT_Invalid);//To check for "Existence" for any name collisions for char/int/long/double. Will not be calculated.
         SMFA("max",RPNFT_Null,rpn_null,rpn_f_null,0,VLNT_Invalid);
@@ -312,18 +317,31 @@ void RPNEvaluatorInit(void){
         SMFA("asin",RPNFT_Double_F_1Double,rpn_double_f_1double,asin,1,VLNT_Double);
         SMFA("acos",RPNFT_Double_F_1Double,rpn_double_f_1double,acos,1,VLNT_Double);
         SMFA("atan",RPNFT_Double_F_1Double,rpn_double_f_1double,atan,1,VLNT_Double);
+        SMFA("sinh",RPNFT_Double_F_1Double,rpn_double_f_1double,sinh,1,VLNT_Double);
+        SMFA("cosh",RPNFT_Double_F_1Double,rpn_double_f_1double,cosh,1,VLNT_Double);
+        SMFA("tanh",RPNFT_Double_F_1Double,rpn_double_f_1double,tanh,1,VLNT_Double);
+        SMFA("asinh",RPNFT_Double_F_1Double,rpn_double_f_1double,asinh,1,VLNT_Double);
+        SMFA("acosh",RPNFT_Double_F_1Double,rpn_double_f_1double,acosh,1,VLNT_Double);
+        SMFA("atanh",RPNFT_Double_F_1Double,rpn_double_f_1double,atanh,1,VLNT_Double);
         SMFA("sind",RPNFT_Double_F_1Double,rpn_double_f_1double,sind,1,VLNT_Double);
         SMFA("cosd",RPNFT_Double_F_1Double,rpn_double_f_1double,cosd,1,VLNT_Double);
         SMFA("tand",RPNFT_Double_F_1Double,rpn_double_f_1double,tand,1,VLNT_Double);
         SMFA("asind",RPNFT_Double_F_1Double,rpn_double_f_1double,asind,1,VLNT_Double);
         SMFA("acosd",RPNFT_Double_F_1Double,rpn_double_f_1double,acosd,1,VLNT_Double);
         SMFA("atand",RPNFT_Double_F_1Double,rpn_double_f_1double,atand,1,VLNT_Double);
+        SMFA("sinhd",RPNFT_Double_F_1Double,rpn_double_f_1double,sinhd,1,VLNT_Double);
+        SMFA("coshd",RPNFT_Double_F_1Double,rpn_double_f_1double,coshd,1,VLNT_Double);
+        SMFA("tanhd",RPNFT_Double_F_1Double,rpn_double_f_1double,tanhd,1,VLNT_Double);
+        SMFA("asinhd",RPNFT_Double_F_1Double,rpn_double_f_1double,asinhd,1,VLNT_Double);
+        SMFA("acoshd",RPNFT_Double_F_1Double,rpn_double_f_1double,acoshd,1,VLNT_Double);
+        SMFA("atanhd",RPNFT_Double_F_1Double,rpn_double_f_1double,atanhd,1,VLNT_Double);
         SMFA("ceil",RPNFT_Double_F_1Double,rpn_double_f_1double,ceil,1,VLNT_Double);
         SMFA("floor",RPNFT_Double_F_1Double,rpn_double_f_1double,floor,1,VLNT_Double);
         SMFA("round",RPNFT_Double_F_1Double,rpn_double_f_1double,round,1,VLNT_Double);
         SMFA("trunc",RPNFT_Double_F_1Double,rpn_double_f_1double,trunc,1,VLNT_Double);
         SMFA("as_d",RPNFT_Double_F_1Double,rpn_double_f_1double,castas_d,1,VLNT_Double);
         SMFA("__db?t:f",RPNFT_Double_F_Ternary,rpn_double_f_ternary,ternary_d,3,VLNT_Double);
+        SMFA("PI",RPNFT_Double_F_NoArg,rpn_double_f_noarg,pi_const,0,VLNT_Double);
 
         SMFA("!",RPNFT_Invert,rpn_invert,bool_invert,1,VLNT_Int);
         SMFA("&&",RPNFT_2_Bools,rpn_f_2_bools,bool_and,2,VLNT_Int);

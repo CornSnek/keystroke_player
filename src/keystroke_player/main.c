@@ -343,15 +343,15 @@ int main(void){
                     }
                 }
                 if(list_var){
-                    printf("Functions used (Updated since 9/17/2022):\n"
+                    printf("Functions used (Updated since 10/15/2022):\n"
                     "abs,max(u),min(u),random_c,as_c,random_i,as_i,random_l,as_l,random_d,as_d\n"
-                    "exp,exp2,log,log2,log10,pow,sqrt,cbrt,hypot,sin(d),cos(d),tan(d),asin(d),acos(d),atan(d),ceil,floor,round,trunc\n"
+                    "PI,exp,exp2,log,log2,log10,pow,sqrt,cbrt,hypot,sin(h)(d),cos(h)(d),tan(h)(d),asin(h)(d),acos(h)(d),atan(h)(d),ceil,floor,round,trunc\n"
                     "+,++,-,-m,--,*,/,/u,%%,%%u,&,|,~,^,<<,<<u,>>,>>u,==,==u,!=,!=u,>,>u,<,<u,>=,>=u,<=,<=u,!,&&,||\n"
                     "Notes: Functions/operators are nearly similar to c. Int/char/long are all signed.\n"
                     "Unlike in C, ++ and -- doesn't increment/decrement the variable value after usage.\n"
                     "For comparisons with unsigned integers, append u to ==,!-,>,<,>=,<=,/, and %%\n"
                     "(Note: Not implemented for double types). -m is unary minus sign, trigonometric functions can use degrees\n"
-                    "if appended with d (Ex: sind,atand...). minu and maxu compares unsigned integers.\n"
+                    "if appended with d (Ex: sind,coshd,atand...). minu and maxu compares unsigned integers.\n"
                     "random_(c/i/l) for random numbers of their respective types.\n"
                     "random_d just outputs a double from 0 to 1. Function as_(c/i/l/d) is used for type casting.\n"
                     "Dividing by 0 with /(u) or %%(u) doesn't abort the program, but terminates the macro.\n"

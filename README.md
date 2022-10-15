@@ -276,7 +276,7 @@ Variables can be added to this program as a char, int, long int, or double. The 
 
 Variables can be added to this program as a char, int, long int, or double. Note: All variables are in the global scope only and should be initialized before using (With the InitVar command). The following functions can be used that has near similar functions to the c operations and the math.h library. Note: These names are reserved and cannot be used to name functions with the same name. The program also prefixes __c, __i, __l, and __d for the functions below, and they are also reserved names for char/int/long/double functions respectively. Example: You cannot name a variable `abs`, as well as `__cabs`, `__iabs`, `__labs`, and `__dabs`.
 
-`abs`, `max/maxu`, `min/minu`, `random_c`, `as_c`, `random_i`, `as_i`, `random_l`, `as_l`, `random_d`, `as_d`, `exp`, `exp2`, `log`, `log2`, `log10`, `pow`, `sqrt`, `cbrt`, `hypot`, `sin/sind`, `cos/cosd`, `tan/tand`, `asin/asind`, `acos/acosd`, `atan/atand`, `ceil`, `floor`, `round`, `trunc`, `+`, `++`, `-`, `-m`, `--`, `*`, `/`, `/u`, `%`, `%u`, `&`, `|`, `~`, `^`, `<<`, `<<u`, `>>`, `>>u`, `==`, `==u`, `!=`, `!=u`, `>`, `>u`, `<`, `<u`, `>=`, `>=u`, `<=`, `<=u`, `!`, `&&`, `||`
+`abs`, `max/maxu`, `min/minu`, `random_c`, `as_c`, `random_i`, `as_i`, `random_l`, `as_l`, `random_d`, `as_d`, `PI`, `exp`, `exp2`, `log`, `log2`, `log10`, `pow`, `sqrt`, `cbrt`, `hypot`, `sin/sind`, `cos/cosd`, `tan/tand`, `asin/asind`, `acos/acosd`, `atan/atand`, `ceil`, `floor`, `round`, `trunc`, `+`, `++`, `-`, `-m`, `--`, `*`, `/`, `/u`, `%`, `%u`, `&`, `|`, `~`, `^`, `<<`, `<<u`, `>>`, `>>u`, `==`, `==u`, `!=`, `!=u`, `>`, `>u`, `<`, `<u`, `>=`, `>=u`, `<=`, `<=u`, `!`, `&&`, `||`
 
 Some differences when using these functions, compared to C, are listed below.
 
@@ -284,7 +284,7 @@ Some differences when using these functions, compared to C, are listed below.
 - Unlike in C, `++` and `--` doesn't increment/decrement any variable values after usage.
 - For comparisons with unsigned integers (and not doubles), append u to `==`, `!-`, `>`, `<`, `>=`, `<=`, `/`, and `%`.
 - `-m` is unary minus sign.
-- Trigonometric functions can use degrees if appended with d (Ex: `sind`, `atand`...).
+- Trigonometric functions can by hyperbolic (Add h) and can use degrees if appended with d (Ex: `sind`, `coshd`, `atand`...).
 - `minu` and `maxu` compares min and max for unsigned integers.
 - `random_(c/i/l)` outputs random numbers of their respective types anywhere from their minimum to maximum value.
 `random_d` just outputs a double from 0 to 1.
