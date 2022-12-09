@@ -1275,7 +1275,7 @@ char* path_as_file_path(const path_t* this,const char* file_str){
     return return_this;
 }
 //Sets the path_t path to the file path directory both paths share,
-//and returns a relative file directory that contains the file path
+//and returns the relative file path for the directory.
 //nodiscard: return value needs to be freed.
 char* path_set_and_split_path(path_t* this,const char* abs_file_str){
     assert(abs_file_str!=NULL);
