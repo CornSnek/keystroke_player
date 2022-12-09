@@ -16,6 +16,10 @@ int usleep(useconds_t usec);
 #include <X11/Xutil.h>
 #include <assert.h>
 #include <poll.h>
+#include <dirent.h>
+#include <error.h>
+#include <errno.h>
+#include <unistd.h>
 typedef enum _ProgramStatus{
     PS_RunSuccess,PS_CompileSuccess,PS_MacroError,PS_ReadError,PS_ParseError,PS_ProgramError
 }ProgramStatus;
@@ -55,6 +59,16 @@ typedef struct ms_cont{
     MenuState* ms;
     MenuState v;
 }ms_cont_t;
+typedef struct path_s{
+    char* path;
+    int len;
+}path_t;
+path_t* path_new();
+void path_remove_dir(path_t* this);
+void path_add_dir(path_t* this,const char* dir_str);
+char* path_as_file_path(const path_t* this,const char* file_str);
+char* path_set_and_split_path(path_t* this,const char* abs_file_str);
+void path_free(path_t* this);
 int main(void){
     if(access(CONFIG_FILE_F,F_OK)) if(!write_to_config(InitConfig)) return EXIT_FAILURE;
     xdo_t* xdo_obj=xdo_new(NULL);
@@ -62,6 +76,7 @@ int main(void){
     char* file_name_str=0;
     Config config;
     char input_str[INPUT_BUFFER_LEN+1];
+    path_t* path_obj=path_new();
     MenuState menu_state=MS_Start;
     bool also_run=false,do_rpn=false,rpn_see_stack=false,var_menu=false,add_var=false,remove_var=false,list_var=false;
     VariableLoader_t* vl=0;
@@ -173,49 +188,96 @@ int main(void){
                 //Fallthrough
             case MS_BuildFile:
                 file_name_str=read_default_file();
-                printf("Set file path to open. Current file: %s\n",file_name_str?file_name_str:"(None)");
-                printf("(Press enter to skip, type c to cancel.): ");
-                clear_stdin();
-                fgets(input_str,INPUT_BUFFER_LEN,stdin);
-                if(!strcmp(input_str,"c\n")){
+                if(file_name_str!=NULL){ //If default file used, change path.
+                    char* tmp=path_set_and_split_path(path_obj,file_name_str);
                     free(file_name_str);
-                    menu_state=MS_Start;
-                    break;
+                    file_name_str=tmp;
                 }
-                if(input_str[0]!='\n'){
-                    if(fgets_change(input_str,INPUT_BUFFER_LEN)) printf("Warning: String has been truncated to %d characters.\n",INPUT_BUFFER_LEN);
-                }else{//Enter pressed.
-                    if(!file_name_str){
-                        puts("Needs a filepath (None given).");
-                        break;
+                while(true){
+                    ms_build_run_restart:
+                    printf("Set file path to open. Current file: %s\n",file_name_str?file_name_str:"(None)");
+                    printf("Current directory: %s\n",path_obj->path);
+                    printf("(Press enter to skip, type c to cancel,\nls to list the files in the current directory.): ");
+                    clear_stdin();
+                    fgets(input_str,INPUT_BUFFER_LEN,stdin);
+                    if(!strcmp(input_str,"c\n")){
+                        free(file_name_str);
+                        menu_state=MS_Start;
+                        goto ms_build_run_done;
                     }
-                    strncpy(input_str,file_name_str,INPUT_BUFFER_LEN); //To input_str stack to be read.
-                    input_str[INPUT_BUFFER_LEN]='\0'; //Null terminate since strncpy doesn't guarantee.
+                    if(!strcmp(input_str,"ls\n")){
+                        struct dirent* entry;
+                        DIR* dir_p=opendir(path_obj->path);
+                        while((entry=readdir(dir_p))!=NULL) puts(entry->d_name);
+                        closedir(dir_p);
+                        continue;
+                    }
+                    if(!strcmp(input_str,"..\n")){
+                        path_remove_dir(path_obj);
+                        continue;
+                    }
+                    if(input_str[0]!='\n'){
+                        if(fgets_change(input_str,INPUT_BUFFER_LEN)) printf("Warning: String has been truncated to %d characters.\n",INPUT_BUFFER_LEN);
+                    }else{ //Enter pressed instead.
+                        if(!file_name_str){
+                            puts("Needs a filepath (None given).");
+                            goto ms_build_run_done;
+                        }
+                        strncpy(input_str,file_name_str,INPUT_BUFFER_LEN); //To input_str stack to be read.
+                        input_str[INPUT_BUFFER_LEN]='\0'; //Null terminate since strncpy doesn't guarantee.
+                    }
+                    char* get_suffix;
+                    char* file_str=path_as_file_path(path_obj,input_str);
+                    DIR* dir_p=opendir(file_str);
+                    if(dir_p==NULL){
+                        switch(errno){
+                            case ENOENT: //Non-existent file/directory.
+                                printf(ERR("Non-existent file/directory: '%s'\n"),input_str);
+                                free(file_str);
+                                goto ms_build_run_restart;
+                            case ENOTDIR: //File.
+                                if((get_suffix=strrchr(file_str,'.'))&&strlen(get_suffix)==4&&!strcmp(get_suffix,".kps")){
+                                    free(file_name_str);
+                                    printf("Opening file %s\n",file_str);
+                                    ProgramStatus ps=parse_file(file_str,xdo_obj,read_config_file(),also_run);
+                                    write_to_default_file(file_str);
+                                    free(file_str);
+                                    switch(ps){
+                                        case PS_RunSuccess: puts("Macro script ran successfully."); break;
+                                        case PS_CompileSuccess: puts("Macro script compiled successfully."); break;
+                                        case PS_ReadError: puts("Macro script failed (File non-existent or read error)."); break;
+                                        case PS_ParseError: puts("Macro script failed (File parsing errors)."); break;
+                                        case PS_ProgramError: puts("Macro script failed (Runtime program errors)."); break;
+                                        case PS_MacroError: puts("Macro script failed (Macro expansion errors or cancelled).");
+                                    }
+                                    puts("Press y to build/run again or q to return to menu.\n");
+                                    keypress_loop(xdo_obj->xdpy,(callback_t[2]){{
+                                        .func=input_state_func,
+                                        .arg=&(ms_cont_t){.ms=&menu_state,.v=MS_Start},
+                                        .ks=XK_Q
+                                    },{
+                                        .func=CallbackEndLoop,
+                                        .arg=0,//Previous state used.
+                                        .ks=XK_Y
+                                    }},2);
+                                    goto ms_build_run_done;
+                                }else{
+                                    printf(ERR("Cannot open file '%s'. It is not a .kps file.") "\n",file_str);
+                                    free(file_str);
+                                    break;
+                                }
+                            default:
+                                puts(ERR("An unexpected error has happened! Exiting program!"));
+                                exit(EXIT_FAILURE);
+                                break;
+                        } 
+                    }else{
+                        free(file_str);
+                        closedir(dir_p);
+                        path_add_dir(path_obj,input_str); //Directory.
+                    }
                 }
-                printf("Opening file %s\n",input_str);
-                free(file_name_str);
-                ProgramStatus ps=parse_file(input_str,xdo_obj,read_config_file(),also_run);
-                if(ps!=PS_ReadError){//Don't rewrite default path if non-existent.
-                    write_to_default_file(input_str);
-                }
-                switch(ps){
-                    case PS_RunSuccess: puts("Macro script ran successfully."); break;
-                    case PS_CompileSuccess: puts("Macro script compiled successfully."); break;
-                    case PS_ReadError: puts("Macro script failed (File non-existent or read error)."); break;
-                    case PS_ParseError: puts("Macro script failed (File parsing errors)."); break;
-                    case PS_ProgramError: puts("Macro script failed (Runtime program errors)."); break;
-                    case PS_MacroError: puts("Macro script failed (Macro expansion errors or cancelled).");
-                }
-                puts("Press y to build/run again or q to return to menu.\n");
-                keypress_loop(xdo_obj->xdpy,(callback_t[2]){{
-                    .func=input_state_func,
-                    .arg=&(ms_cont_t){.ms=&menu_state,.v=MS_Start},
-                    .ks=XK_Q
-                },{
-                    .func=CallbackEndLoop,
-                    .arg=0,//Previous state used.
-                    .ks=XK_Y
-                }},2);
+                ms_build_run_done:
                 break;
             case MS_MouseCoords:
                 puts("Press t to test mouse/color coordinates. Press q to quit.\n");
@@ -371,6 +433,7 @@ int main(void){
     done:
     RPNEvaluatorFree();
     R_TS_Macro_Free();
+    path_free(path_obj);
     xdo_free(xdo_obj);
     return 0;
 }
@@ -412,7 +475,7 @@ char* read_default_file(void){
     FILE* f_obj;
     char* df_str;
     f_obj=fopen(LAST_FILE_F,"r");
-    if(!f_obj) return 0;
+    if(!f_obj) return NULL;
     fseek(f_obj,0,SEEK_END);
     size_t str_len=ftell(f_obj);
     rewind(f_obj);
@@ -1161,4 +1224,81 @@ inline static void clear_stdin(){
     static char next_c;
     static struct pollfd pfd={.fd=STDIN_FILENO,.events=POLLIN};//Using poll(,,0) to read() without block.
     while(poll(&pfd,1,0)>0) read(STDIN_FILENO,&next_c,sizeof(next_c));
+}
+path_t* path_new(){
+    path_t* this=malloc(sizeof(path_t));
+    EXIT_IF_NULL(this,path_t*);
+    this->path=malloc(sizeof(char)*DIRECTORY_LEN);
+    EXIT_IF_NULL(this->path,char*);
+    char* buf=NULL;
+    int len_now=DIRECTORY_LEN;
+    while((buf=getcwd(this->path,len_now))==NULL){
+        len_now+=DIRECTORY_LEN;
+        this->path=realloc(this->path,sizeof(char[len_now]));
+        EXIT_IF_NULL(this->path,char*); //Keep resizing until path is filled, or no more space.
+    }
+    int dir_len=strlen(this->path);
+    strcat(this->path+dir_len,"/");
+    this->path=realloc(this->path,sizeof(char[dir_len+2])); // '/' and '\0' from strcat.
+    EXIT_IF_NULL(this->path,char*);
+    this->len=dir_len+2;
+    return this;
+}
+void path_remove_dir(path_t* this){
+    int slash_i=this->len;
+    if(slash_i==0) return; //At root already. Don't go back.
+    slash_i-=2; //Index without counting the last '/'
+    while(this->path[--slash_i]!='/');
+    this->path[slash_i+1]='\0';
+    this->path=realloc(this->path,sizeof(char[slash_i+2]));
+    EXIT_IF_NULL(this->path,char*);
+    this->len=slash_i;
+}
+//When .. has been inserted, uses path_remove_dir instead.
+void path_add_dir(path_t* this,const char* dir_str){
+    if(strcmp(dir_str,"..")){
+        int old_path_len=strlen(this->path);
+        this->path=realloc(this->path,sizeof(char[old_path_len+strlen(dir_str)+2]));
+        EXIT_IF_NULL(this->path,char*);
+        this->len=old_path_len+strlen(dir_str)+1;
+        strcat(this->path+old_path_len,dir_str);
+        strcat(this->path+old_path_len+strlen(dir_str),"/");
+    }else path_remove_dir(this);
+}
+//Same as path_add_dir, but returns a malloc string that returns a file path with the path directory.
+//nodiscard: return value needs to be freed.
+char* path_as_file_path(const path_t* this,const char* file_str){
+    char* return_this=malloc(sizeof(char[strlen(this->path)+strlen(file_str)+1]));
+    EXIT_IF_NULL(return_this,char*);
+    strcpy(return_this,this->path);
+    strcat(return_this+strlen(this->path),file_str);
+    return return_this;
+}
+//Sets the path_t path to the file path directory both paths share,
+//and returns a relative file directory that contains the file path
+//nodiscard: return value needs to be freed.
+char* path_set_and_split_path(path_t* this,const char* abs_file_str){
+    assert(abs_file_str!=NULL);
+    const char* absolute_dir_sub=abs_file_str+strlen(abs_file_str);
+    while(*(absolute_dir_sub--)!='/'); //Readjust to get the 2nd-to-last '/'
+    absolute_dir_sub+=2;
+    const char* relative_file_p=abs_file_str+strlen(abs_file_str);
+    while(*(relative_file_p--)!='/'); //Same algorithm.
+    relative_file_p+=2;
+    //Change path_t's path to the directory of abs_file_str.
+    ptrdiff_t new_path_len=absolute_dir_sub-abs_file_str; //Length of abs_file_str directory.
+    this->path=realloc(this->path,sizeof(char[new_path_len+1]));
+    EXIT_IF_NULL(this->path,char*);
+    strncpy(this->path,abs_file_str,new_path_len);
+    this->path[new_path_len]='\0';
+    this->len=strlen(abs_file_str);
+    //Get the leftover relative file path.
+    char* file_str=malloc(sizeof(char[strlen(relative_file_p)+1]));
+    EXIT_IF_NULL(file_str,char*);
+    strncpy(file_str,relative_file_p,strlen(relative_file_p)+1);
+    return file_str;
+}
+void path_free(path_t* this){
+    free(this->path);
+    free(this);
 }

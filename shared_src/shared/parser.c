@@ -996,8 +996,8 @@ bool macro_buffer_process_next(macro_buffer_t* this,bool print_debug,bool rpn_de
                     read_state=RS_QueryButtonPress;
                     break;
                 }
-                SHOULD_BE_UNREACHABLE();
                 fprintf(stderr,ERR("Unexpected character '%c' at line %lu char %lu state %s.\n"),current_char,line_num,char_num,ReadStateStrings[read_state]);
+                fprintf(stderr,ERR("A command may have been spelled wrong. Try again with the correct spelling."));
                 DO_ERROR();
                 break;
             case RS_QueryComparePixel:

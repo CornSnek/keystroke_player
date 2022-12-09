@@ -3,7 +3,7 @@ init,d,tri_w=0;#Triangle wave from 0 to 1 back to 0 linearly
 init,d,radius=100;
 init,i,tri_f=720;
 init,r,tri_h=i(tri_f,2,/);
-debug,debug_print_type=1;
+debug,debug_print_type=0;
 debug,rpn_decimals=10;
 debug,rpn_stack_debug=1;
 save_mma;
@@ -11,10 +11,10 @@ grab_key=a;grab_key=d;grab_key=w;grab_key=s;
 println=\e[1;34maaa\nbbb;%\(1,2,+) is (1,2,+) (tri_f,as_d)\e[0m;;
 println=This will output 3l => (1,2,+);;
 (A;
-?key_press=a?edit,deg_n=(deg_n,++);
-?key_press=d?edit,deg_n=(deg_n,--,0,max); #No negative modulo
-?key_press=w?edit,radius=(radius,++);
-?key_press=s?edit,radius=(radius,--,0,max); #No negative radius
+?key_pressed=a?edit,deg_n=(deg_n,++);
+?key_pressed=d?edit,deg_n=(deg_n,--,0,max); #No negative modulo
+?key_pressed=w?edit,radius=(radius,++);
+?key_pressed=s?edit,radius=(radius,--,0,max); #No negative radius
 edit,tri_w=(deg_n,tri_f,%,tri_h,/,0,==,deg_n,tri_h,%,tri_h,deg_n,tri_h,%,-,b?t:f,tri_h,as_d,/);#0 to tri_h back to 0
 .m5;
 mma=(@mma_x,deg_n,cosd,radius,tri_w,*,*,+),(@mma_y,deg_n,sind,radius,tri_w,*,*,+);

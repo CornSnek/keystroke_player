@@ -1,6 +1,7 @@
 {
     "window.zoomLevel":0,
     "files.associations": {
+        "*.cube": "plaintext",
         "Makefile_build": "makefile",
         "build.conf": "shellscript",
         "tasks.conf": "shellscript",
@@ -96,7 +97,12 @@
         "keysymdef.h": "c",
         "stdarg.h": "c",
         "reserved_macro.h": "c",
-        "typeinfo": "c"
+        "typeinfo": "c",
+        "dirent.h": "c",
+        "error.h": "c",
+        "features.h": "c",
+        "fcntl.h": "c",
+        "strstream": "c"
     },
     //"editor.autoClosingBrackets": "never",
     //"editor.autoClosingDelete": "never",

@@ -19,6 +19,7 @@
 #define MICSEC_TO_SEC 1000000
 //101 to include '\0'.
 #define INPUT_BUFFER_LEN 200
+#define DIRECTORY_LEN 100
 #define LAST_CMD_BUFFER_LEN 100
 #define LAST_COMMANDS_LEN 50
 
