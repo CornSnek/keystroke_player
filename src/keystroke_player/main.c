@@ -997,9 +997,9 @@ bool run_program(command_array_t* cmd_arr, const char* file_str, Config config, 
                 xdo_get_mouse_location(xdo_obj,&x_mouse,&y_mouse,0);
                 get_pixel_color(xdo_obj->xdpy,x_mouse,y_mouse,&pc);
                 pthread_mutex_unlock(&input_mutex);
-                query_is_true=(abs((pc.red>>8)-an_output[0].c)<=an_output[3].i
-                    &&abs((pc.green>>8)-an_output[1].c)<=an_output[3].i
-                    &&abs((pc.blue>>8)-an_output[2].c)<=an_output[3].i
+                query_is_true=(abs((pc.red>>8)-an_output[0].i)<=an_output[3].i
+                    &&abs((pc.green>>8)-an_output[1].i)<=an_output[3].i
+                    &&abs((pc.blue>>8)-an_output[2].i)<=an_output[3].i
                 );
                 cmdprintf("Pixel does%s match (r,g,b=%d,%d,%d).\n",query_is_true?"":"n't",pc.red>>8,pc.green>>8,pc.blue>>8);
                 PrintLastCommand(LastQuery);
@@ -1279,14 +1279,11 @@ char* path_as_file_path(const path_t* this,const char* file_str){
 //nodiscard: return value needs to be freed.
 char* path_set_and_split_path(path_t* this,const char* abs_file_str){
     assert(abs_file_str!=NULL);
-    const char* absolute_dir_sub=abs_file_str+strlen(abs_file_str);
-    while(*(absolute_dir_sub--)!='/'); //Readjust to get the 2nd-to-last '/'
-    absolute_dir_sub+=2;
     const char* relative_file_p=abs_file_str+strlen(abs_file_str);
     while(*(relative_file_p--)!='/'); //Same algorithm.
     relative_file_p+=2;
     //Change path_t's path to the directory of abs_file_str.
-    ptrdiff_t new_path_len=absolute_dir_sub-abs_file_str; //Length of abs_file_str directory.
+    ptrdiff_t new_path_len=relative_file_p-abs_file_str; //Length of abs_file_str directory.
     this->path=realloc(this->path,sizeof(char[new_path_len+1]));
     EXIT_IF_NULL(this->path,char*);
     strncpy(this->path,abs_file_str,new_path_len);
