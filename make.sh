@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/bin/bash
 if [[ -z $1 ]]; then
     echo "Usage: ./make.sh project_name (Directory within src/ with build.conf) makefile_option (Number. Check/modify make.sh for options.)"
     exit 0
